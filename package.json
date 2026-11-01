@@ -1,8 +1,8 @@
 {
   "name": "vizion",
   "displayName": "Vizion - Visual Editors",
-  "description": "Custom visual editor for unversioned .uml.viz JSON documents with embedded AI guidance.",
-  "version": "0.1.0",
+  "description": "Custom visual editor for unversioned .viz JSON documents with embedded AI guidance.",
+  "version": "0.1.1",
   "publisher": "Vizionary",
   "license": "MIT",
   "engines": {
@@ -24,13 +24,13 @@
       {
         "id": "json",
         "filenamePatterns": [
-          "*.uml.viz"
+          "*.viz"
         ]
       }
     ],
     "jsonValidation": [
       {
-        "fileMatch": "*.uml.viz",
+        "fileMatch": "*.viz",
         "url": "./schemas/uml.schema.json"
       }
     ],
@@ -41,7 +41,7 @@
         "priority": "default",
         "selector": [
           {
-            "filenamePattern": "*.uml.viz"
+            "filenamePattern": "*.viz"
           }
         ]
       }

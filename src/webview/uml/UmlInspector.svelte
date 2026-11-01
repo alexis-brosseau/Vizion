@@ -63,6 +63,13 @@
     store.umlDoc?.edges.find((e) => store.selectedIds.includes(e.id))
   );
 
+  const selectedEdgeTouchesNote = $derived.by(() => {
+    if (!selectedEdge || !store.umlDoc) return false;
+    const s = store.umlDoc.nodes.find((n) => n.id === selectedEdge.source.nodeId);
+    const t = store.umlDoc.nodes.find((n) => n.id === selectedEdge.target.nodeId);
+    return s?.kind === 'note' || t?.kind === 'note';
+  });
+
   const relationPresets = listUmlRelationPresets();
   const endpointShapes = listEndpointShapes();
 
@@ -260,7 +267,7 @@
             </div>
           {:else}
             <label class="vz-field">
-              <span class="vz-field-label">{selectedNode.kind === 'shape' ? 'Label (Name)' : 'Name'}</span>
+              <span class="vz-field-label">Name</span>
               <input
                 type="text"
                 class="vz-input"
@@ -293,6 +300,23 @@
               </label>
             {:else if selectedNode.kind === 'shape'}
               <label class="vz-field">
+                <span class="vz-field-label">Stereotype (optional)</span>
+                <input
+                  type="text"
+                  class="vz-input"
+                  placeholder="e.g. process, decision, actor"
+                  value={selectedNode.stereotype ?? ''}
+                  disabled={store.isReadOnly}
+                  onchange={(e) =>
+                    store.dispatchOperation({
+                      type: 'uml.updateNode',
+                      nodeId: selectedNode.id,
+                      stereotype: e.currentTarget.value
+                    })}
+                />
+              </label>
+
+              <label class="vz-field">
                 <span class="vz-field-label">Shape Geometry</span>
                 <select
                   class="vz-select"
@@ -310,23 +334,6 @@
                     <option value={sh.kind}>{sh.label}</option>
                   {/each}
                 </select>
-              </label>
-
-              <label class="vz-field">
-                <span class="vz-field-label">Stereotype (optional)</span>
-                <input
-                  type="text"
-                  class="vz-input"
-                  placeholder="e.g. process, decision, actor"
-                  value={selectedNode.stereotype ?? ''}
-                  disabled={store.isReadOnly}
-                  onchange={(e) =>
-                    store.dispatchOperation({
-                      type: 'uml.updateNode',
-                      nodeId: selectedNode.id,
-                      stereotype: e.currentTarget.value
-                    })}
-                />
               </label>
             {:else}
               <label class="vz-field">
@@ -610,7 +617,7 @@
               <span class="vz-field-label">Line Style</span>
               <select
                 class="vz-select"
-                value={selectedEdge.visual?.line ?? 'solid'}
+                value={selectedEdge.visual?.line ?? (selectedEdgeTouchesNote ? 'dashed' : 'solid')}
                 disabled={store.isReadOnly}
                 onchange={(e) =>
                   store.dispatchOperation({

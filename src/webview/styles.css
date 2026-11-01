@@ -628,14 +628,12 @@ body,
 }
 
 .vz-viewport.space-grab,
-.vz-viewport.space-grab .vz-uml-node,
-.vz-viewport.space-grab .vz-sketch-el {
+.vz-viewport.space-grab .vz-uml-node {
   cursor: grab !important;
 }
 
 .vz-viewport.space-grabbing,
-.vz-viewport.space-grabbing .vz-uml-node,
-.vz-viewport.space-grabbing .vz-sketch-el {
+.vz-viewport.space-grabbing .vz-uml-node {
   cursor: grabbing !important;
 }
 
@@ -1288,7 +1286,6 @@ body,
 .vz-gesture-line {
   stroke: var(--vscode-focusBorder);
   stroke-width: 2px;
-  stroke-dasharray: 5 4;
 }
 
 .vz-marquee-box,

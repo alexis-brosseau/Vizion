@@ -123,7 +123,7 @@ async function resolveTargetFolder(contextUri) {
   return picked?.[0];
 }
 async function createAndOpenVizionFile(contextUri) {
-  const suffix = ".uml.viz";
+  const suffix = ".viz";
   const defaultBase = "domain";
   const entered = await vscode.window.showInputBox({
     title: "Vizion: New UML Diagram",
@@ -139,7 +139,7 @@ async function createAndOpenVizionFile(contextUri) {
   if (!entered) return;
   let fileName = entered.trim();
   if (!fileName.toLowerCase().endsWith(suffix)) {
-    fileName = fileName.replace(/\.viz$/i, "") + suffix;
+    fileName = `${fileName}${suffix}`;
   }
   const folderUri = await resolveTargetFolder(contextUri);
   if (!folderUri) return;
@@ -171,12 +171,12 @@ function registerVizionCommands(context, registry) {
         return;
       }
       const editor = vscode.window.activeTextEditor;
-      if (editor && editor.document.fileName.endsWith(".uml.viz")) {
+      if (editor && editor.document.fileName.endsWith(".viz")) {
         const coord = registry.acquire(editor.document, "uml");
         await coord.explicitlyInitializeEmptyDocument();
       } else {
         void vscode.window.showInformationMessage(
-          "Focus an empty .uml.viz document first."
+          "Focus an empty .viz document first."
         );
       }
     }),
@@ -2662,13 +2662,17 @@ function applyUmlOperationToText(rawText, op) {
       if (doc.edges.some((e) => e.id === op.id)) {
         return { ok: false, error: `Edge ID "${op.id}" already exists.` };
       }
-      if (!doc.nodes.some((n) => n.id === op.sourceNodeId)) {
+      const sourceNode = doc.nodes.find((n) => n.id === op.sourceNodeId);
+      if (!sourceNode) {
         return { ok: false, error: `Source node "${op.sourceNodeId}" does not exist.` };
       }
-      if (!doc.nodes.some((n) => n.id === op.targetNodeId)) {
+      const targetNode = doc.nodes.find((n) => n.id === op.targetNodeId);
+      if (!targetNode) {
         return { ok: false, error: `Target node "${op.targetNodeId}" does not exist.` };
       }
       const preset = getUmlRelationPreset(op.kind);
+      const touchesNote = sourceNode.kind === "note" || targetNode.kind === "note";
+      const defaultLine = touchesNote ? "dashed" : preset?.line ?? "solid";
       const newEdge = {
         id: op.id,
         kind: op.kind,
@@ -2680,7 +2684,7 @@ function applyUmlOperationToText(rawText, op) {
         },
         ...op.label ? { label: op.label } : {},
         visual: {
-          line: preset?.line ?? "solid",
+          line: op.line ?? defaultLine,
           routing: preset?.routing ?? "bezier",
           start: { ...preset?.start ?? { shape: "none", size: 10 } },
           end: { ...preset?.end ?? { shape: "none", size: 10 } }
@@ -2750,11 +2754,17 @@ function applyUmlOperationToText(rawText, op) {
         patches.push({ path: ["edges", idx, "kind"], value: op.kind });
         const preset = getUmlRelationPreset(op.kind);
         if (preset) {
+          const effectiveSource = op.sourceNodeId ?? existing.source.nodeId;
+          const effectiveTarget = op.targetNodeId ?? existing.target.nodeId;
+          const sourceNode = doc.nodes.find((n) => n.id === effectiveSource);
+          const targetNode = doc.nodes.find((n) => n.id === effectiveTarget);
+          const touchesNote = sourceNode?.kind === "note" || targetNode?.kind === "note";
+          const defaultLine = touchesNote ? "dashed" : preset.line;
           patches.push({
             path: ["edges", idx, "visual"],
             value: {
               ...existing.visual ?? {},
-              line: preset.line,
+              line: defaultLine,
               routing: existing.visual?.routing ?? preset.routing,
               start: { ...preset.start },
               end: { ...preset.end }
@@ -3456,7 +3466,7 @@ var DocumentCoordinator = class {
   }
   async saveExportedSvg(svgContent) {
     const defaultUri = vscode3.Uri.file(
-      this.document.uri.fsPath.replace(/\.uml\.viz$/i, ".svg")
+      this.document.uri.fsPath.replace(/(?:\.uml)?\.viz$/i, ".svg")
     );
     const targetUri = await vscode3.window.showSaveDialog({
       title: "Export Vizion Diagram as SVG",

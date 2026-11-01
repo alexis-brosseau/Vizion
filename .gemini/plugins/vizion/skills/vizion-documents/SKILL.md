@@ -1,11 +1,11 @@
 ---
 name: vizion-documents
-description: Author, inspect, and safely edit Vizion UML (*.uml.viz) visual project architecture documents without introducing version fields or breaking referential integrity.
+description: Author, inspect, and safely edit Vizion UML (*.viz) visual project architecture documents without introducing version fields or breaking referential integrity.
 ---
 
-# Vizion Visual Architecture Documents (`*.uml.viz`)
+# Vizion Visual Architecture Documents (`*.viz`)
 
-Use this skill whenever creating, reading, or modifying `*.uml.viz` files.
+Use this skill whenever creating, reading, or modifying `*.viz` files.
 
 ## Mandatory Standalone Structure & Rules
 
@@ -15,7 +15,7 @@ Use this skill whenever creating, reading, or modifying `*.uml.viz` files.
    - `id`: Unique string.
    - `kind`: `"class"` | `"shape"` | `"note"`.
    - `name`: Title/label string.
-   - `stereotype`: Optional architectural role string (`"entity"`, `"service"`, `"value"`, `"aggregate"`, `"controller"`).
+   - `stereotype`: Optional architectural role string (`"entity"`, `"service"`, `"value"`, `"aggregate"`, `"controller"`). Not used on `"note"` nodes.
    - `shape` (when `kind: "shape"`): `"ellipse"` | `"rectangle"` | `"rhombus"` | `"trapezoid"` | `"parallelogram"`.
    - `attributes`: `[{ id, visibility: "+"|"-"|"#"|"~", name, type }]`.
    - `operations`: `[{ id, visibility: "+"|"-"|"#"|"~", name, signature, returnType, parameters: [{ id, name, type }] }]`.

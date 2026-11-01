@@ -317,16 +317,16 @@
       }
     },
     {
-      "id": "edge-domain-note-order-k90r",
+      "id": "edge-domain-note-payment-service-y7xo",
       "kind": "association",
       "source": {
         "nodeId": "domain-note"
       },
       "target": {
-        "nodeId": "order"
+        "nodeId": "payment-service"
       },
       "visual": {
-        "line": "solid",
+        "line": "dashed",
         "routing": "bezier",
         "start": {
           "shape": "none",
@@ -363,7 +363,7 @@
         "x": 500,
         "y": 340,
         "width": 240,
-        "height": 150
+        "height": 140
       },
       "fraud-check": {
         "x": 940,
@@ -372,10 +372,10 @@
         "height": 120
       },
       "domain-note": {
-        "x": 120,
-        "y": 300,
-        "width": 300,
-        "height": 80
+        "x": 200,
+        "y": 340,
+        "width": 200,
+        "height": 140
       }
     },
     "edges": {}

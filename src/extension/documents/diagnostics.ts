@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import type { ValidationIssue } from '../../shared/documents/types';
 
 /**
- * Publishes validation and syntax issues for .uml.viz and .sketch.viz files
+ * Publishes validation and syntax issues for .viz files
  * to the native VS Code Problems panel (`DiagnosticCollection`).
  */
 export class VizionDiagnosticsManager implements vscode.Disposable {

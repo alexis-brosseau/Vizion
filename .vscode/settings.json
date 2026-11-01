@@ -1,7 +1,6 @@
 {
   "workbench.editorAssociations": {
-    "*.uml.viz": "vizion.uml",
-    "*.sketch.viz": "vizion.sketch"
+    "*.viz": "vizion.uml"
   }
 }
 

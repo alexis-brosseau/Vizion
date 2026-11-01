@@ -1,5 +1,5 @@
 /**
- * Canonical unversioned document types for Vizion (.uml.viz).
+ * Canonical unversioned document types for Vizion (.viz).
  *
  * Per Section 3.2 & 4.1:
  * - Strictly unversioned (`version`, `schemaVersion`, `formatVersion`, `instructionsVersion` are forbidden).
@@ -16,7 +16,7 @@ export interface EmbeddedAiGuidance {
 }
 
 // ============================================================================
-// UML Document Types (.uml.viz)
+// UML Document Types (.viz)
 // ============================================================================
 
 export type UmlVisibility = '+' | '-' | '#' | '~';

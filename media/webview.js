@@ -7852,7 +7852,7 @@ ${component_stack}
         const nodeMap = new Map(store().umlDoc.nodes.map((n) => [n.id, n]));
         const nodeItems = store().umlDoc.nodes.map((n) => {
           const desc = getUmlNodeKind(n.kind);
-          const stereotype = n.stereotype || desc?.defaultStereotype || "";
+          const stereotype = n.kind === "note" ? "" : n.stereotype || desc?.defaultStereotype || "";
           const iconKey = n.kind === "shape" && n.shape ? n.shape : n.kind;
           const label = n.name || n.id;
           return {
@@ -7873,7 +7873,9 @@ ${component_stack}
           const targetName = targetNode?.name || e.target.nodeId;
           const edgeLabel = e.label?.trim() || "";
           const preset = getUmlRelationPreset(e.kind);
-          const line = e.visual?.line ?? preset?.line ?? "solid";
+          const touchesNote = sourceNode?.kind === "note" || targetNode?.kind === "note";
+          const defaultLine = touchesNote ? "dashed" : preset?.line ?? "solid";
+          const line = e.visual?.line ?? defaultLine;
           const isDashed = line === "dashed";
           const startShape = e.visual?.start?.shape ?? preset?.start?.shape ?? "none";
           const startFill = e.visual?.start?.fill ?? preset?.start?.fill ?? "hollow";
@@ -8215,14 +8217,14 @@ ${component_stack}
   var root_210 = from_html(`<div class="vz-warning-box">Unsupported node kind <code> </code>. Shown in non-destructive read-only fallback mode.</div>`);
   var root_34 = from_html(`<label class="vz-field"><span class="vz-field-label">Note Content</span> <textarea class="vz-textarea" rows="4"></textarea></label>`);
   var root_44 = from_html(`<option> </option>`);
-  var root_53 = from_html(`<label class="vz-field"><span class="vz-field-label">Shape Geometry</span> <select class="vz-select" aria-label="Shape geometry"></select></label> <label class="vz-field"><span class="vz-field-label">Stereotype (optional)</span> <input type="text" class="vz-input" placeholder="e.g. process, decision, actor"/></label>`, 1);
+  var root_53 = from_html(`<label class="vz-field"><span class="vz-field-label">Stereotype (optional)</span> <input type="text" class="vz-input" placeholder="e.g. process, decision, actor"/></label> <label class="vz-field"><span class="vz-field-label">Shape Geometry</span> <select class="vz-select" aria-label="Shape geometry"></select></label>`, 1);
   var root_63 = from_html(`<div class="vz-member-row"><!> <input type="text" class="vz-input-mini" aria-label="Attribute name"/> <input type="text" class="vz-input-mini" aria-label="Attribute type" placeholder="type"/> <button type="button" class="vz-icon-btn vz-danger-btn vz-square-del-btn" aria-label="Remove attribute">\xD7</button></div>`);
   var root_73 = from_html(`<!> <button type="button" class="vz-inline-add-btn">\uFF0B Attribute</button>`, 1);
   var root_82 = from_html(`<div class="vz-param-row"><input type="text" class="vz-input-mini" aria-label="Argument name" placeholder="argName"/> <input type="text" class="vz-input-mini" aria-label="Argument type" placeholder="argType"/> <button type="button" class="vz-icon-btn vz-danger-btn vz-square-del-btn" aria-label="Remove argument">\xD7</button></div>`);
   var root_92 = from_html(`<div class="vz-operation-card"><div class="vz-member-row"><!> <input type="text" class="vz-input-mini" aria-label="Operation name"/> <input type="text" class="vz-input-mini" aria-label="Return type" placeholder="return"/> <button type="button" class="vz-icon-btn vz-danger-btn vz-square-del-btn" aria-label="Remove operation">\xD7</button></div> <div class="vz-op-params-section"><div class="vz-op-params-title"> </div> <!> <button type="button" class="vz-inline-add-btn vz-param-add-btn">\uFF0B Argument</button></div></div>`);
   var root_102 = from_html(`<!> <button type="button" class="vz-inline-add-btn">\uFF0B Operation</button>`, 1);
   var root_112 = from_html(`<label class="vz-field"><span class="vz-field-label">Stereotype (optional)</span> <input type="text" class="vz-input" placeholder="e.g. entity, service, aggregate"/></label> <div><div class="vz-compartment-header"><span> </span> <button type="button"><!></button></div> <!></div> <div><div class="vz-compartment-header"><span> </span> <button type="button"><!></button></div> <!></div>`, 1);
-  var root_123 = from_html(`<label class="vz-field"><span class="vz-field-label"> </span> <input type="text" class="vz-input"/></label> <!>`, 1);
+  var root_123 = from_html(`<label class="vz-field"><span class="vz-field-label">Name</span> <input type="text" class="vz-input"/></label> <!>`, 1);
   var root_133 = from_html(`<div class="vz-sidebar-header"><span class="vz-sidebar-title"> </span></div> <div class="vz-inspector-body"><!></div>`, 1);
   var root_143 = from_html(`<label class="vz-field"><span class="vz-field-label">Fill</span> <select class="vz-select"><option>Hollow</option><option>Filled</option></select></label>`);
   var root_152 = from_html(`<div class="vz-endpoint-box"><div class="vz-compartment-header"><span> </span></div> <label class="vz-field"><span class="vz-field-label">Multiplicity (optional)</span> <input type="text" class="vz-input" placeholder="e.g. 1, *, 1..5, 2..*"/></label> <div class="vz-field-grid"><label class="vz-field"><span class="vz-field-label">Shape</span> <select class="vz-select"></select></label> <!></div></div>`);
@@ -8250,6 +8252,12 @@ ${component_stack}
     }
     const selectedNode = user_derived(() => $$props.store.umlDoc?.nodes.find((n) => $$props.store.selectedIds.includes(n.id)));
     const selectedEdge = user_derived(() => $$props.store.umlDoc?.edges.find((e) => $$props.store.selectedIds.includes(e.id)));
+    const selectedEdgeTouchesNote = user_derived(() => {
+      if (!get(selectedEdge) || !$$props.store.umlDoc) return false;
+      const s = $$props.store.umlDoc.nodes.find((n) => n.id === get(selectedEdge).source.nodeId);
+      const t = $$props.store.umlDoc.nodes.find((n) => n.id === get(selectedEdge).target.nodeId);
+      return s?.kind === "note" || t?.kind === "note";
+    });
     const relationPresets = listUmlRelationPresets();
     const endpointShapes = listEndpointShapes();
     function addAttribute(node) {
@@ -8408,9 +8416,7 @@ ${component_stack}
               var alternate_2 = ($$anchor4) => {
                 var fragment_4 = root_123();
                 var label = first_child(fragment_4);
-                var span_1 = child(label);
-                var text_2 = only_child(span_1, true);
-                var input = sibling(span_1, 2);
+                var input = sibling(child(label), 2);
                 remove_input_defaults(input);
                 reset(label);
                 var node_6 = sibling(label, 2);
@@ -8434,13 +8440,17 @@ ${component_stack}
                   var consequent_3 = ($$anchor5) => {
                     var fragment_5 = root_53();
                     var label_2 = first_child(fragment_5);
-                    var select = sibling(child(label_2), 2);
+                    var input_1 = sibling(child(label_2), 2);
+                    remove_input_defaults(input_1);
+                    reset(label_2);
+                    var label_3 = sibling(label_2, 2);
+                    var select = sibling(child(label_3), 2);
                     each(select, 21, () => UML_SHAPE_GEOMETRIES, (sh) => sh.kind, ($$anchor6, sh) => {
                       var option = root_44();
-                      var text_3 = only_child(option, true);
+                      var text_2 = only_child(option, true);
                       var option_value = {};
                       template_effect(() => {
-                        set_text(text_3, get(sh).label);
+                        set_text(text_2, get(sh).label);
                         if (option_value !== (option_value = get(sh).kind)) {
                           option.value = (option.__value = option_value) ?? "";
                         }
@@ -8450,28 +8460,24 @@ ${component_stack}
                     reset(select);
                     var select_value;
                     init_select(select);
-                    reset(label_2);
-                    var label_3 = sibling(label_2, 2);
-                    var input_1 = sibling(child(label_3), 2);
-                    remove_input_defaults(input_1);
                     reset(label_3);
                     template_effect(() => {
+                      set_value(input_1, get(selectedNode).stereotype ?? "");
+                      input_1.disabled = $$props.store.isReadOnly;
                       select.disabled = $$props.store.isReadOnly;
                       if (select_value !== (select_value = get(selectedNode).shape ?? "rectangle")) {
                         select.value = (select.__value = select_value) ?? "", select_option(select, select_value);
                       }
-                      set_value(input_1, get(selectedNode).stereotype ?? "");
-                      input_1.disabled = $$props.store.isReadOnly;
                     });
-                    delegated("change", select, (e) => $$props.store.dispatchOperation({
-                      type: "uml.updateNode",
-                      nodeId: get(selectedNode).id,
-                      shape: e.currentTarget.value
-                    }));
                     delegated("change", input_1, (e) => $$props.store.dispatchOperation({
                       type: "uml.updateNode",
                       nodeId: get(selectedNode).id,
                       stereotype: e.currentTarget.value
+                    }));
+                    delegated("change", select, (e) => $$props.store.dispatchOperation({
+                      type: "uml.updateNode",
+                      nodeId: get(selectedNode).id,
+                      shape: e.currentTarget.value
                     }));
                     append($$anchor5, fragment_5);
                   };
@@ -8484,9 +8490,9 @@ ${component_stack}
                     var div_5 = sibling(label_4, 2);
                     let classes;
                     var div_6 = child(div_5);
-                    var span_2 = child(div_6);
-                    var text_4 = only_child(span_2);
-                    var button = sibling(span_2, 2);
+                    var span_1 = child(div_6);
+                    var text_3 = only_child(span_1);
+                    var button = sibling(span_1, 2);
                     let classes_1;
                     var node_7 = child(button);
                     eyeIcon(node_7, () => get(attrsVisible));
@@ -8544,9 +8550,9 @@ ${component_stack}
                     var div_8 = sibling(div_5, 2);
                     let classes_2;
                     var div_9 = child(div_8);
-                    var span_3 = child(div_9);
-                    var text_5 = only_child(span_3);
-                    var button_3 = sibling(span_3, 2);
+                    var span_2 = child(div_9);
+                    var text_4 = only_child(span_2);
+                    var button_3 = sibling(span_2, 2);
                     let classes_3;
                     var node_11 = child(button_3);
                     eyeIcon(node_11, () => get(opsVisible));
@@ -8583,7 +8589,7 @@ ${component_stack}
                           reset(div_11);
                           var div_12 = sibling(div_11, 2);
                           var div_13 = child(div_12);
-                          var text_6 = only_child(div_13);
+                          var text_5 = only_child(div_13);
                           var node_15 = sibling(div_13, 2);
                           each(node_15, 19, () => get(opArgs), (argItem) => argItem.id, ($$anchor8, argItem, aIdx) => {
                             var div_14 = root_82();
@@ -8614,7 +8620,7 @@ ${component_stack}
                             set_value(input_6, get(op).returnType ?? "");
                             input_6.disabled = $$props.store.isReadOnly;
                             button_4.disabled = $$props.store.isReadOnly;
-                            set_text(text_6, `Arguments (${get(opArgs).length ?? ""})`);
+                            set_text(text_5, `Arguments (${get(opArgs).length ?? ""})`);
                             button_6.disabled = $$props.store.isReadOnly;
                           });
                           delegated("change", input_5, (e) => updateOperation(get(selectedNode), get(idx), { name: e.currentTarget.value }));
@@ -8637,13 +8643,13 @@ ${component_stack}
                       set_value(input_2, get(selectedNode).stereotype ?? "");
                       input_2.disabled = $$props.store.isReadOnly;
                       classes = set_class(div_5, 1, "vz-compartment-section", null, classes, { "section-hidden": !get(attrsVisible) });
-                      set_text(text_4, `Attributes (${(get(selectedNode).attributes ?? []).length ?? ""})`);
+                      set_text(text_3, `Attributes (${(get(selectedNode).attributes ?? []).length ?? ""})`);
                       classes_1 = set_class(button, 1, "vz-eye-toggle-btn", null, classes_1, { off: !get(attrsVisible) });
                       set_attribute2(button, "title", get(attrsVisible) ? "Hide Attributes section on node" : "Show Attributes section on node");
                       set_attribute2(button, "aria-label", get(attrsVisible) ? "Hide Attributes section" : "Show Attributes section");
                       button.disabled = $$props.store.isReadOnly;
                       classes_2 = set_class(div_8, 1, "vz-compartment-section", null, classes_2, { "section-hidden": !get(opsVisible) });
-                      set_text(text_5, `Operations (${(get(selectedNode).operations ?? []).length ?? ""})`);
+                      set_text(text_4, `Operations (${(get(selectedNode).operations ?? []).length ?? ""})`);
                       classes_3 = set_class(button_3, 1, "vz-eye-toggle-btn", null, classes_3, { off: !get(opsVisible) });
                       set_attribute2(button_3, "title", get(opsVisible) ? "Hide Operations section on node" : "Show Operations section on node");
                       set_attribute2(button_3, "aria-label", get(opsVisible) ? "Hide Operations section" : "Show Operations section");
@@ -8673,7 +8679,6 @@ ${component_stack}
                   });
                 }
                 template_effect(() => {
-                  set_text(text_2, get(selectedNode).kind === "shape" ? "Label (Name)" : "Name");
                   set_value(input, get(selectedNode).name);
                   input.disabled = $$props.store.isReadOnly;
                 });
@@ -8696,18 +8701,18 @@ ${component_stack}
           var consequent_8 = ($$anchor3) => {
             var fragment_9 = root_162();
             var div_15 = first_child(fragment_9);
-            var span_4 = child(div_15);
-            var text_7 = only_child(span_4);
+            var span_3 = child(div_15);
+            var text_6 = only_child(span_3);
             reset(div_15);
             var div_16 = sibling(div_15, 2);
             var label_5 = child(div_16);
             var select_1 = sibling(child(label_5), 2);
             each(select_1, 21, () => relationPresets, index, ($$anchor4, preset) => {
               var option_1 = root_44();
-              var text_8 = only_child(option_1, true);
+              var text_7 = only_child(option_1, true);
               var option_1_value = {};
               template_effect(() => {
-                set_text(text_8, get(preset).label);
+                set_text(text_7, get(preset).label);
                 if (option_1_value !== (option_1_value = get(preset).kind)) {
                   option_1.value = (option_1.__value = option_1_value) ?? "";
                 }
@@ -8752,8 +8757,8 @@ ${component_stack}
               const currentMult = user_derived(() => endKey === "start" ? get(selectedEdge).source.multiplicity ?? "" : get(selectedEdge).target.multiplicity ?? "");
               var div_18 = root_152();
               var div_19 = child(div_18);
-              var span_5 = child(div_19);
-              var text_9 = only_child(span_5, true);
+              var span_4 = child(div_19);
+              var text_8 = only_child(span_4, true);
               reset(div_19);
               var label_9 = sibling(div_19, 2);
               var input_10 = sibling(child(label_9), 2);
@@ -8764,10 +8769,10 @@ ${component_stack}
               var select_4 = sibling(child(label_10), 2);
               each(select_4, 21, () => endpointShapes, index, ($$anchor5, sh) => {
                 var option_6 = root_44();
-                var text_10 = only_child(option_6, true);
+                var text_9 = only_child(option_6, true);
                 var option_6_value = {};
                 template_effect(() => {
-                  set_text(text_10, get(sh).label);
+                  set_text(text_9, get(sh).label);
                   if (option_6_value !== (option_6_value = get(sh).kind)) {
                     option_6.value = (option_6.__value = option_6_value) ?? "";
                   }
@@ -8813,7 +8818,7 @@ ${component_stack}
               reset(div_20);
               reset(div_18);
               template_effect(() => {
-                set_text(text_9, endKey === "start" ? `Start Side (${get(selectedEdge).source.nodeId})` : `End Side (${get(selectedEdge).target.nodeId})`);
+                set_text(text_8, endKey === "start" ? `Start Side (${get(selectedEdge).source.nodeId})` : `End Side (${get(selectedEdge).target.nodeId})`);
                 set_value(input_10, get(currentMult));
                 input_10.disabled = $$props.store.isReadOnly;
                 set_attribute2(select_4, "aria-label", `${endKey ?? ""} endpoint shape`);
@@ -8837,7 +8842,7 @@ ${component_stack}
             });
             reset(div_16);
             template_effect(() => {
-              set_text(text_7, `Relation: ${get(selectedEdge).id ?? ""}`);
+              set_text(text_6, `Relation: ${get(selectedEdge).id ?? ""}`);
               select_1.disabled = $$props.store.isReadOnly;
               if (select_1_value !== (select_1_value = get(selectedEdge).kind)) {
                 select_1.value = (select_1.__value = select_1_value) ?? "", select_option(select_1, select_1_value);
@@ -8847,7 +8852,7 @@ ${component_stack}
               button_8.disabled = $$props.store.isReadOnly;
               set_attribute2(button_8, "title", `Switch Direction (${get(selectedEdge).target.nodeId} \u2192 ${get(selectedEdge).source.nodeId})`);
               select_2.disabled = $$props.store.isReadOnly;
-              if (select_2_value !== (select_2_value = get(selectedEdge).visual?.line ?? "solid")) {
+              if (select_2_value !== (select_2_value = get(selectedEdge).visual?.line ?? (get(selectedEdgeTouchesNote) ? "dashed" : "solid"))) {
                 select_2.value = (select_2.__value = select_2_value) ?? "", select_option(select_2, select_2_value);
               }
               select_3.disabled = $$props.store.isReadOnly;
@@ -8955,34 +8960,35 @@ ${component_stack}
   var root_74 = from_html(`<div class="vz-uml-stereotype"> </div>`);
   var root_83 = from_html(`<div class="vz-uml-node-title"> </div> <!>`, 1);
   var root_93 = from_html(`<svg class="vz-shape-node-svg" aria-hidden="true"><path class="vz-shape-node-path"></path></svg> <div class="vz-shape-node-content"><!></div>`, 1);
-  var root_103 = from_html(`<input type="text" class="vz-inline-input"/> <input type="text" class="vz-inline-input vz-inline-stereotype-input" placeholder="\xABstereotype\xBB"/>`, 1);
-  var root_113 = from_html(`<div class="vz-uml-note-body"><textarea class="vz-inline-textarea" rows="4" placeholder="Note content\u2026"></textarea></div>`);
-  var root_124 = from_html(`<div class="vz-uml-note-body"> </div>`);
-  var root_134 = from_html(`<div class="vz-inline-member-row"><!> <input type="text" class="vz-inline-cell-input" placeholder="name"/> <input type="text" class="vz-inline-cell-input" placeholder="type"/> <button type="button" class="vz-inline-del-btn" title="Remove attribute">\xD7</button></div>`);
-  var root_144 = from_html(`<!> <button type="button" class="vz-inline-add-btn">\uFF0B Attribute</button>`, 1);
-  var root_153 = from_html(`<div class="vz-inline-sec-hdr"><span>Attributes</span> <button type="button"><!></button></div> <!>`, 1);
-  var root_163 = from_html(`<span class="vz-type"> </span>`);
-  var root_173 = from_html(`<div class="vz-uml-member"><span class="vz-vis"> </span> <span> </span> <!></div>`);
-  var root_183 = from_html(`<div class="vz-uml-compartment"><!></div>`);
-  var root_192 = from_html(`<div class="vz-inline-param-row"><input type="text" class="vz-inline-cell-input" placeholder="argName"/> <input type="text" class="vz-inline-cell-input" placeholder="argType"/> <button type="button" class="vz-inline-del-btn" title="Remove argument">\xD7</button></div>`);
-  var root_202 = from_html(`<div class="vz-inline-op-block"><div class="vz-inline-member-row"><!> <input type="text" class="vz-inline-cell-input" placeholder="method"/> <input type="text" class="vz-inline-cell-input" placeholder="return"/> <button type="button" class="vz-inline-del-btn" title="Remove operation">\xD7</button></div> <div class="vz-inline-params-wrap"><!> <button type="button" class="vz-inline-add-btn vz-param-add-btn">\uFF0B Argument</button></div></div>`);
-  var root_212 = from_html(`<!> <button type="button" class="vz-inline-add-btn">\uFF0B Operation</button>`, 1);
-  var root_223 = from_html(`<div class="vz-inline-sec-hdr"><span>Operations</span> <button type="button"><!></button></div> <!>`, 1);
-  var root_233 = from_html(`<!> <!>`, 1);
-  var root_243 = from_html(`<div class="vz-uml-node-header"><!></div> <!>`, 1);
-  var root_252 = from_html(`<div class="vz-resize-handle" title="Drag to resize node (snaps to 20px grid)"></div>`);
-  var root_262 = from_html(`<div class="vz-connect-port" title="Drag to another node to connect relation"></div> <!>`, 1);
-  var root_272 = from_html(`<div role="button" tabindex="0"><!> <!></div>`);
-  var root_282 = from_svg(`<circle class="vz-endpoint-picker-target"><title>Click to customize START endpoint shape & multiplicity</title></circle><circle class="vz-endpoint-picker-target"><title>Click to customize END endpoint shape & multiplicity</title></circle>`, 1);
-  var root_292 = from_svg(`<line class="vz-gesture-line"></line>`);
-  var root_302 = from_svg(`<rect class="vz-marquee-box"></rect>`);
-  var root_312 = from_html(`<div class="vz-floating-edge-label-editor"><input type="text" class="vz-input" placeholder="Relation label\u2026"/></div>`);
-  var root_323 = from_html(`<div class="vz-floating-edge-label-editor vz-floating-mult-editor"><input type="text" class="vz-input" placeholder="1, *"/></div>`);
-  var root_333 = from_svg(`<path stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>`);
-  var root_342 = from_html(`<button type="button"><svg width="34" height="18" viewBox="-24 -9 26 18" class="vz-endpoint-preview-svg" aria-hidden="true"><line x1="-22" y1="0" y2="0" stroke="currentColor" stroke-width="1.8"></line><!></svg> <span> </span></button>`);
-  var root_352 = from_html(`<div class="vz-endpoint-popup"><div class="vz-context-menu-title"> </div> <div class="vz-endpoint-mult-row"><span class="vz-field-label">Multiplicity</span> <input type="text" class="vz-input-mini" placeholder="e.g. 1, *, 1..5, 2..*"/></div> <div class="vz-endpoint-icon-grid"></div></div>`);
-  var root_36 = from_html(`<svg class="vz-svg-layer vz-svg-relations vz-svg-overlay" aria-label="UML Relationships"><g></g></svg> <div class="vz-html-world"></div> <svg class="vz-svg-layer vz-svg-foreground" aria-label="UML Canvas Interactions"><g><!><!><!></g></svg> <!> <!> <!>`, 1);
-  var root_37 = from_html(`<div class="vz-workspace"><div class="vz-main-split"><div tabindex="0" role="application" aria-label="Vizion UML Canvas"><div class="vz-floating-zoom"><button type="button" class="vz-zoom-pill-btn" title="Zoom Out">\uFF0D</button> <button type="button" class="vz-zoom-pill-label" title="Scroll wheel here to adjust by \xB11%, or click to Fit Content"> </button> <button type="button" class="vz-zoom-pill-btn" title="Zoom In">\uFF0B</button></div> <!></div> <!></div></div>`);
+  var root_103 = from_html(`<input type="text" class="vz-inline-input vz-inline-stereotype-input" placeholder="\xABstereotype\xBB"/>`);
+  var root_113 = from_html(`<input type="text" class="vz-inline-input"/> <!>`, 1);
+  var root_124 = from_html(`<div class="vz-uml-note-body"><textarea class="vz-inline-textarea" rows="4" placeholder="Note content\u2026"></textarea></div>`);
+  var root_134 = from_html(`<div class="vz-uml-note-body"> </div>`);
+  var root_144 = from_html(`<div class="vz-inline-member-row"><!> <input type="text" class="vz-inline-cell-input" placeholder="name"/> <input type="text" class="vz-inline-cell-input" placeholder="type"/> <button type="button" class="vz-inline-del-btn" title="Remove attribute">\xD7</button></div>`);
+  var root_153 = from_html(`<!> <button type="button" class="vz-inline-add-btn">\uFF0B Attribute</button>`, 1);
+  var root_163 = from_html(`<div class="vz-inline-sec-hdr"><span>Attributes</span> <button type="button"><!></button></div> <!>`, 1);
+  var root_173 = from_html(`<span class="vz-type"> </span>`);
+  var root_183 = from_html(`<div class="vz-uml-member"><span class="vz-vis"> </span> <span> </span> <!></div>`);
+  var root_192 = from_html(`<div class="vz-uml-compartment"><!></div>`);
+  var root_202 = from_html(`<div class="vz-inline-param-row"><input type="text" class="vz-inline-cell-input" placeholder="argName"/> <input type="text" class="vz-inline-cell-input" placeholder="argType"/> <button type="button" class="vz-inline-del-btn" title="Remove argument">\xD7</button></div>`);
+  var root_212 = from_html(`<div class="vz-inline-op-block"><div class="vz-inline-member-row"><!> <input type="text" class="vz-inline-cell-input" placeholder="method"/> <input type="text" class="vz-inline-cell-input" placeholder="return"/> <button type="button" class="vz-inline-del-btn" title="Remove operation">\xD7</button></div> <div class="vz-inline-params-wrap"><!> <button type="button" class="vz-inline-add-btn vz-param-add-btn">\uFF0B Argument</button></div></div>`);
+  var root_223 = from_html(`<!> <button type="button" class="vz-inline-add-btn">\uFF0B Operation</button>`, 1);
+  var root_233 = from_html(`<div class="vz-inline-sec-hdr"><span>Operations</span> <button type="button"><!></button></div> <!>`, 1);
+  var root_243 = from_html(`<!> <!>`, 1);
+  var root_252 = from_html(`<div class="vz-uml-node-header"><!></div> <!>`, 1);
+  var root_262 = from_html(`<div class="vz-resize-handle" title="Drag to resize node (snaps to 20px grid)"></div>`);
+  var root_272 = from_html(`<div class="vz-connect-port" title="Drag to another node to connect relation"></div> <!>`, 1);
+  var root_282 = from_html(`<div role="button" tabindex="0"><!> <!></div>`);
+  var root_292 = from_svg(`<circle class="vz-endpoint-picker-target"><title>Click to customize START endpoint shape & multiplicity</title></circle><circle class="vz-endpoint-picker-target"><title>Click to customize END endpoint shape & multiplicity</title></circle>`, 1);
+  var root_302 = from_svg(`<line class="vz-gesture-line"></line>`);
+  var root_312 = from_svg(`<rect class="vz-marquee-box"></rect>`);
+  var root_323 = from_html(`<div class="vz-floating-edge-label-editor"><input type="text" class="vz-input" placeholder="Relation label\u2026"/></div>`);
+  var root_333 = from_html(`<div class="vz-floating-edge-label-editor vz-floating-mult-editor"><input type="text" class="vz-input" placeholder="1, *"/></div>`);
+  var root_342 = from_svg(`<path stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>`);
+  var root_352 = from_html(`<button type="button"><svg width="34" height="18" viewBox="-24 -9 26 18" class="vz-endpoint-preview-svg" aria-hidden="true"><line x1="-22" y1="0" y2="0" stroke="currentColor" stroke-width="1.8"></line><!></svg> <span> </span></button>`);
+  var root_36 = from_html(`<div class="vz-endpoint-popup"><div class="vz-endpoint-mult-row"><span class="vz-field-label">Multiplicity</span> <input type="text" class="vz-input-mini" placeholder="e.g. 1, *, 1..5, 2..*"/></div> <div class="vz-endpoint-icon-grid"></div></div>`);
+  var root_37 = from_html(`<svg class="vz-svg-layer vz-svg-relations vz-svg-overlay" aria-label="UML Relationships"><g></g></svg> <div class="vz-html-world"></div> <svg class="vz-svg-layer vz-svg-foreground" aria-label="UML Canvas Interactions"><g><!><!><!></g></svg> <!> <!> <!>`, 1);
+  var root_38 = from_html(`<div class="vz-workspace"><div class="vz-main-split"><div tabindex="0" role="application" aria-label="Vizion UML Canvas"><div class="vz-floating-zoom"><button type="button" class="vz-zoom-pill-btn" title="Zoom Out">\uFF0D</button> <button type="button" class="vz-zoom-pill-label" title="Scroll wheel here to adjust by \xB11%, or click to Fit Content"> </button> <button type="button" class="vz-zoom-pill-btn" title="Zoom In">\uFF0B</button></div> <!></div> <!></div></div>`);
   function UmlCanvas($$anchor, $$props) {
     push($$props, true);
     let store = prop($$props, "store", 7);
@@ -9773,7 +9779,7 @@ ${component_stack}
       }
       set(inlineEditingNodeId, node.id, true);
       set(inlineNodeNameDraft, node.name ?? "", true);
-      set(inlineNodeStereotypeDraft, node.stereotype ?? "", true);
+      set(inlineNodeStereotypeDraft, node.kind === "note" ? "" : node.stereotype ?? "", true);
     }
     function commitInlineNodeEdit(node) {
       const nodeId = get(inlineEditingNodeId);
@@ -9787,7 +9793,7 @@ ${component_stack}
       if (nextName !== targetNode.name) {
         updates.name = nextName;
       }
-      if (nextStereo !== (targetNode.stereotype ?? "")) {
+      if (targetNode.kind !== "note" && nextStereo !== (targetNode.stereotype ?? "")) {
         updates.stereotype = nextStereo;
       }
       if (Object.keys(updates).length > 0) {
@@ -10023,7 +10029,7 @@ ${component_stack}
 </svg>`;
       postToHost({ type: "webview.exportSvgContent", svgContent });
     }
-    var div = root_37();
+    var div = root_38();
     event("pointermove", $window, handleWindowPointerMove);
     event("pointerup", $window, handleWindowPointerUp);
     event("pointercancel", $window, cancelGesture);
@@ -10040,8 +10046,8 @@ ${component_stack}
     reset(div_3);
     var node_2 = sibling(div_3, 2);
     {
-      var consequent_39 = ($$anchor2) => {
-        var fragment_1 = root_36();
+      var consequent_40 = ($$anchor2) => {
+        var fragment_1 = root_37();
         var svg_2 = first_child(fragment_1);
         var g_1 = child(svg_2);
         each(g_1, 21, () => get(doc).edges, (edge) => edge.id, ($$anchor3, edge) => {
@@ -10053,6 +10059,8 @@ ${component_stack}
           var node_3 = first_child(fragment_2);
           {
             var consequent_6 = ($$anchor4) => {
+              const touchesNote = user_derived(() => get(srcNode)?.kind === "note" || get(tgtNode)?.kind === "note");
+              const isDashed = user_derived(() => (get(edge).visual?.line ?? (get(touchesNote) ? "dashed" : "solid")) === "dashed");
               const startDec = user_derived(() => get(edge).visual?.start ?? { shape: "none", size: 10 });
               const endDec = user_derived(() => get(edge).visual?.end ?? { shape: "none", size: 10 });
               const geom = user_derived(() => computeUmlEdgeGeometry(get(srcBox), get(tgtBox), get(edge).visual?.routing ?? "bezier", get(startDec), get(endDec), get(edgeParallelOffsets)[get(edge).id] ?? 0));
@@ -10189,7 +10197,7 @@ ${component_stack}
                 classes_1 = set_class(g_2, 0, "vz-edge-group", null, classes_1, { selected: get(isEdgeSelected) });
                 set_attribute2(path, "d", get(geom).hitPathD);
                 set_attribute2(path_1, "d", get(geom).pathD);
-                set_attribute2(path_1, "stroke-dasharray", get(edge).visual?.line === "dashed" ? "6 4" : void 0);
+                set_attribute2(path_1, "stroke-dasharray", get(isDashed) ? "6 4" : void 0);
               });
               delegated("contextmenu", g_2, (e) => handleEdgeContextMenu(e, get(edge)));
               delegated("click", path, (e) => {
@@ -10222,8 +10230,8 @@ ${component_stack}
           var fragment_3 = comment();
           var node_9 = first_child(fragment_3);
           {
-            var consequent_25 = ($$anchor4) => {
-              var div_5 = root_272();
+            var consequent_26 = ($$anchor4) => {
+              var div_5 = root_282();
               let classes_2;
               var node_10 = child(div_5);
               {
@@ -10300,17 +10308,35 @@ ${component_stack}
                   append($$anchor5, fragment_4);
                 };
                 var alternate_7 = ($$anchor5) => {
-                  var fragment_7 = root_243();
+                  var fragment_7 = root_252();
                   var div_9 = first_child(fragment_7);
                   var node_13 = child(div_9);
                   {
-                    var consequent_10 = ($$anchor6) => {
-                      var fragment_8 = root_103();
+                    var consequent_11 = ($$anchor6) => {
+                      var fragment_8 = root_113();
                       var input_2 = first_child(fragment_8);
                       remove_input_defaults(input_2);
                       autofocus(input_2, true);
-                      var input_3 = sibling(input_2, 2);
-                      remove_input_defaults(input_3);
+                      var node_14 = sibling(input_2, 2);
+                      {
+                        var consequent_10 = ($$anchor7) => {
+                          var input_3 = root_103();
+                          remove_input_defaults(input_3);
+                          event("blur", input_3, () => commitInlineNodeEdit(get(node)));
+                          delegated("keydown", input_3, (ke) => {
+                            if (ke.key === "Enter") {
+                              commitInlineNodeEdit(get(node));
+                            } else if (ke.key === "Escape") {
+                              set(inlineEditingNodeId, null);
+                            }
+                          });
+                          bind_value(input_3, () => get(inlineNodeStereotypeDraft), ($$value) => set(inlineNodeStereotypeDraft, $$value));
+                          append($$anchor7, input_3);
+                        };
+                        if_block(node_14, ($$render) => {
+                          if (get(node).kind !== "note") $$render(consequent_10);
+                        });
+                      }
                       event("blur", input_2, () => commitInlineNodeEdit(get(node)));
                       delegated("keydown", input_2, (ke) => {
                         if (ke.key === "Enter") {
@@ -10320,57 +10346,48 @@ ${component_stack}
                         }
                       });
                       bind_value(input_2, () => get(inlineNodeNameDraft), ($$value) => set(inlineNodeNameDraft, $$value));
-                      event("blur", input_3, () => commitInlineNodeEdit(get(node)));
-                      delegated("keydown", input_3, (ke) => {
-                        if (ke.key === "Enter") {
-                          commitInlineNodeEdit(get(node));
-                        } else if (ke.key === "Escape") {
-                          set(inlineEditingNodeId, null);
-                        }
-                      });
-                      bind_value(input_3, () => get(inlineNodeStereotypeDraft), ($$value) => set(inlineNodeStereotypeDraft, $$value));
                       append($$anchor6, fragment_8);
                     };
                     var alternate_2 = ($$anchor6) => {
                       var fragment_9 = root_83();
                       var div_10 = first_child(fragment_9);
                       var text_9 = only_child(div_10, true);
-                      var node_14 = sibling(div_10, 2);
+                      var node_15 = sibling(div_10, 2);
                       {
-                        var consequent_11 = ($$anchor7) => {
+                        var consequent_12 = ($$anchor7) => {
                           var div_11 = root_74();
                           var text_10 = only_child(div_11);
                           template_effect(() => set_text(text_10, `\xAB${(get(node).stereotype || get(kindDesc)?.defaultStereotype) ?? ""}\xBB`));
                           append($$anchor7, div_11);
                         };
-                        var consequent_12 = ($$anchor7) => {
+                        var consequent_13 = ($$anchor7) => {
                           var div_12 = root_74();
                           var text_11 = only_child(div_12);
                           template_effect(() => set_text(text_11, `\xABunsupported: ${get(node).kind ?? ""}\xBB`));
                           append($$anchor7, div_12);
                         };
-                        if_block(node_14, ($$render) => {
-                          if (get(node).stereotype || get(kindDesc)?.defaultStereotype) $$render(consequent_11);
-                          else if (!get(kindDesc)) $$render(consequent_12, 1);
+                        if_block(node_15, ($$render) => {
+                          if (get(node).kind !== "note" && (get(node).stereotype || get(kindDesc)?.defaultStereotype)) $$render(consequent_12);
+                          else if (!get(kindDesc)) $$render(consequent_13, 1);
                         });
                       }
                       template_effect(() => set_text(text_9, get(node).name));
                       append($$anchor6, fragment_9);
                     };
                     if_block(node_13, ($$render) => {
-                      if (get(isInlineEditing)) $$render(consequent_10);
+                      if (get(isInlineEditing)) $$render(consequent_11);
                       else $$render(alternate_2, -1);
                     });
                   }
                   reset(div_9);
-                  var node_15 = sibling(div_9, 2);
+                  var node_16 = sibling(div_9, 2);
                   {
-                    var consequent_14 = ($$anchor6) => {
+                    var consequent_15 = ($$anchor6) => {
                       var fragment_10 = comment();
-                      var node_16 = first_child(fragment_10);
+                      var node_17 = first_child(fragment_10);
                       {
-                        var consequent_13 = ($$anchor7) => {
-                          var div_13 = root_113();
+                        var consequent_14 = ($$anchor7) => {
+                          var div_13 = root_124();
                           var textarea = child(div_13);
                           remove_textarea_child(textarea);
                           reset(div_13);
@@ -10395,46 +10412,46 @@ ${component_stack}
                           append($$anchor7, div_13);
                         };
                         var alternate_3 = ($$anchor7) => {
-                          var div_14 = root_124();
+                          var div_14 = root_134();
                           var text_12 = only_child(div_14, true);
                           template_effect(() => set_text(text_12, get(node).text || get(node).name));
                           append($$anchor7, div_14);
                         };
-                        if_block(node_16, ($$render) => {
-                          if (get(isInlineEditing)) $$render(consequent_13);
+                        if_block(node_17, ($$render) => {
+                          if (get(isInlineEditing)) $$render(consequent_14);
                           else $$render(alternate_3, -1);
                         });
                       }
                       append($$anchor6, fragment_10);
                     };
                     var alternate_6 = ($$anchor6) => {
-                      var fragment_11 = root_233();
-                      var node_17 = first_child(fragment_11);
+                      var fragment_11 = root_243();
+                      var node_18 = first_child(fragment_11);
                       {
-                        var consequent_18 = ($$anchor7) => {
-                          var div_15 = root_183();
-                          var node_18 = child(div_15);
+                        var consequent_19 = ($$anchor7) => {
+                          var div_15 = root_192();
+                          var node_19 = child(div_15);
                           {
-                            var consequent_16 = ($$anchor8) => {
-                              var fragment_12 = root_153();
+                            var consequent_17 = ($$anchor8) => {
+                              var fragment_12 = root_163();
                               var div_16 = first_child(fragment_12);
                               var button_3 = sibling(child(div_16), 2);
                               let classes_3;
-                              var node_19 = child(button_3);
-                              eyeIcon2(node_19, () => get(attrsVisible));
+                              var node_20 = child(button_3);
+                              eyeIcon2(node_20, () => get(attrsVisible));
                               reset(button_3);
                               reset(div_16);
-                              var node_20 = sibling(div_16, 2);
+                              var node_21 = sibling(div_16, 2);
                               {
-                                var consequent_15 = ($$anchor9) => {
-                                  var fragment_13 = root_144();
-                                  var node_21 = first_child(fragment_13);
-                                  each(node_21, 19, () => get(node).attributes ?? [], (attr2) => attr2.id, ($$anchor10, attr2, idx) => {
-                                    var div_17 = root_134();
-                                    var node_22 = child(div_17);
+                                var consequent_16 = ($$anchor9) => {
+                                  var fragment_13 = root_153();
+                                  var node_22 = first_child(fragment_13);
+                                  each(node_22, 19, () => get(node).attributes ?? [], (attr2) => attr2.id, ($$anchor10, attr2, idx) => {
+                                    var div_17 = root_144();
+                                    var node_23 = child(div_17);
                                     {
                                       let $0 = user_derived(() => get(attr2).visibility ?? "+");
-                                      VisibilityPicker(node_22, {
+                                      VisibilityPicker(node_23, {
                                         compact: true,
                                         get value() {
                                           return get($0);
@@ -10443,7 +10460,7 @@ ${component_stack}
                                         onSelect: (nextVis) => updateNodeAttributeInline(get(node), get(idx), { visibility: nextVis })
                                       });
                                     }
-                                    var input_4 = sibling(node_22, 2);
+                                    var input_4 = sibling(node_23, 2);
                                     remove_input_defaults(input_4);
                                     var input_5 = sibling(input_4, 2);
                                     remove_input_defaults(input_5);
@@ -10468,12 +10485,12 @@ ${component_stack}
                                     delegated("click", button_4, () => removeNodeAttributeInline(get(node), get(idx)));
                                     append($$anchor10, div_17);
                                   });
-                                  var button_5 = sibling(node_21, 2);
+                                  var button_5 = sibling(node_22, 2);
                                   delegated("click", button_5, () => addNodeAttributeInline(get(node)));
                                   append($$anchor9, fragment_13);
                                 };
-                                if_block(node_20, ($$render) => {
-                                  if (get(attrsVisible)) $$render(consequent_15);
+                                if_block(node_21, ($$render) => {
+                                  if (get(attrsVisible)) $$render(consequent_16);
                                 });
                               }
                               template_effect(() => {
@@ -10492,23 +10509,23 @@ ${component_stack}
                             };
                             var alternate_4 = ($$anchor8) => {
                               var fragment_14 = comment();
-                              var node_23 = first_child(fragment_14);
-                              each(node_23, 17, () => get(node).attributes ?? [], (attr2) => attr2.id, ($$anchor9, attr2) => {
-                                var div_18 = root_173();
+                              var node_24 = first_child(fragment_14);
+                              each(node_24, 17, () => get(node).attributes ?? [], (attr2) => attr2.id, ($$anchor9, attr2) => {
+                                var div_18 = root_183();
                                 var span = child(div_18);
                                 var text_13 = only_child(span, true);
                                 var span_1 = sibling(span, 2);
                                 var text_14 = only_child(span_1, true);
-                                var node_24 = sibling(span_1, 2);
+                                var node_25 = sibling(span_1, 2);
                                 {
-                                  var consequent_17 = ($$anchor10) => {
-                                    var span_2 = root_163();
+                                  var consequent_18 = ($$anchor10) => {
+                                    var span_2 = root_173();
                                     var text_15 = only_child(span_2);
                                     template_effect(() => set_text(text_15, `: ${get(attr2).type ?? ""}`));
                                     append($$anchor10, span_2);
                                   };
-                                  if_block(node_24, ($$render) => {
-                                    if (get(attr2).type) $$render(consequent_17);
+                                  if_block(node_25, ($$render) => {
+                                    if (get(attr2).type) $$render(consequent_18);
                                   });
                                 }
                                 reset(div_18);
@@ -10523,46 +10540,46 @@ ${component_stack}
                               });
                               append($$anchor8, fragment_14);
                             };
-                            if_block(node_18, ($$render) => {
-                              if (get(isInlineEditing)) $$render(consequent_16);
+                            if_block(node_19, ($$render) => {
+                              if (get(isInlineEditing)) $$render(consequent_17);
                               else $$render(alternate_4, -1);
                             });
                           }
                           reset(div_15);
                           append($$anchor7, div_15);
                         };
-                        if_block(node_17, ($$render) => {
-                          if (get(attrsVisible) || get(isInlineEditing)) $$render(consequent_18);
+                        if_block(node_18, ($$render) => {
+                          if (get(attrsVisible) || get(isInlineEditing)) $$render(consequent_19);
                         });
                       }
-                      var node_25 = sibling(node_17, 2);
+                      var node_26 = sibling(node_18, 2);
                       {
-                        var consequent_22 = ($$anchor7) => {
-                          var div_19 = root_183();
-                          var node_26 = child(div_19);
+                        var consequent_23 = ($$anchor7) => {
+                          var div_19 = root_192();
+                          var node_27 = child(div_19);
                           {
-                            var consequent_20 = ($$anchor8) => {
-                              var fragment_15 = root_223();
+                            var consequent_21 = ($$anchor8) => {
+                              var fragment_15 = root_233();
                               var div_20 = first_child(fragment_15);
                               var button_6 = sibling(child(div_20), 2);
                               let classes_4;
-                              var node_27 = child(button_6);
-                              eyeIcon2(node_27, () => get(opsVisible));
+                              var node_28 = child(button_6);
+                              eyeIcon2(node_28, () => get(opsVisible));
                               reset(button_6);
                               reset(div_20);
-                              var node_28 = sibling(div_20, 2);
+                              var node_29 = sibling(div_20, 2);
                               {
-                                var consequent_19 = ($$anchor9) => {
-                                  var fragment_16 = root_212();
-                                  var node_29 = first_child(fragment_16);
-                                  each(node_29, 19, () => get(node).operations ?? [], (op) => op.id, ($$anchor10, op, idx) => {
+                                var consequent_20 = ($$anchor9) => {
+                                  var fragment_16 = root_223();
+                                  var node_30 = first_child(fragment_16);
+                                  each(node_30, 19, () => get(node).operations ?? [], (op) => op.id, ($$anchor10, op, idx) => {
                                     const opArgs = user_derived(() => extractOperationParameters(get(op)));
-                                    var div_21 = root_202();
+                                    var div_21 = root_212();
                                     var div_22 = child(div_21);
-                                    var node_30 = child(div_22);
+                                    var node_31 = child(div_22);
                                     {
                                       let $0 = user_derived(() => get(op).visibility ?? "+");
-                                      VisibilityPicker(node_30, {
+                                      VisibilityPicker(node_31, {
                                         compact: true,
                                         get value() {
                                           return get($0);
@@ -10571,16 +10588,16 @@ ${component_stack}
                                         onSelect: (nextVis) => updateNodeOperationInline(get(node), get(idx), { visibility: nextVis })
                                       });
                                     }
-                                    var input_6 = sibling(node_30, 2);
+                                    var input_6 = sibling(node_31, 2);
                                     remove_input_defaults(input_6);
                                     var input_7 = sibling(input_6, 2);
                                     remove_input_defaults(input_7);
                                     var button_7 = sibling(input_7, 2);
                                     reset(div_22);
                                     var div_23 = sibling(div_22, 2);
-                                    var node_31 = child(div_23);
-                                    each(node_31, 19, () => get(opArgs), (argItem) => argItem.id, ($$anchor11, argItem, aIdx) => {
-                                      var div_24 = root_192();
+                                    var node_32 = child(div_23);
+                                    each(node_32, 19, () => get(opArgs), (argItem) => argItem.id, ($$anchor11, argItem, aIdx) => {
+                                      var div_24 = root_202();
                                       var input_8 = child(div_24);
                                       remove_input_defaults(input_8);
                                       var input_9 = sibling(input_8, 2);
@@ -10606,7 +10623,7 @@ ${component_stack}
                                       delegated("click", button_8, () => removeNodeOperationArgInline(get(node), get(idx), get(aIdx)));
                                       append($$anchor11, div_24);
                                     });
-                                    var button_9 = sibling(node_31, 2);
+                                    var button_9 = sibling(node_32, 2);
                                     reset(div_23);
                                     reset(div_21);
                                     template_effect(() => {
@@ -10629,12 +10646,12 @@ ${component_stack}
                                     delegated("click", button_9, () => addNodeOperationArgInline(get(node), get(idx)));
                                     append($$anchor10, div_21);
                                   });
-                                  var button_10 = sibling(node_29, 2);
+                                  var button_10 = sibling(node_30, 2);
                                   delegated("click", button_10, () => addNodeOperationInline(get(node)));
                                   append($$anchor9, fragment_16);
                                 };
-                                if_block(node_28, ($$render) => {
-                                  if (get(opsVisible)) $$render(consequent_19);
+                                if_block(node_29, ($$render) => {
+                                  if (get(opsVisible)) $$render(consequent_20);
                                 });
                               }
                               template_effect(() => {
@@ -10653,23 +10670,23 @@ ${component_stack}
                             };
                             var alternate_5 = ($$anchor8) => {
                               var fragment_17 = comment();
-                              var node_32 = first_child(fragment_17);
-                              each(node_32, 17, () => get(node).operations ?? [], (op) => op.id, ($$anchor9, op) => {
-                                var div_25 = root_173();
+                              var node_33 = first_child(fragment_17);
+                              each(node_33, 17, () => get(node).operations ?? [], (op) => op.id, ($$anchor9, op) => {
+                                var div_25 = root_183();
                                 var span_3 = child(div_25);
                                 var text_16 = only_child(span_3, true);
                                 var span_4 = sibling(span_3, 2);
                                 var text_17 = only_child(span_4);
-                                var node_33 = sibling(span_4, 2);
+                                var node_34 = sibling(span_4, 2);
                                 {
-                                  var consequent_21 = ($$anchor10) => {
-                                    var span_5 = root_163();
+                                  var consequent_22 = ($$anchor10) => {
+                                    var span_5 = root_173();
                                     var text_18 = only_child(span_5);
                                     template_effect(() => set_text(text_18, `: ${get(op).returnType ?? ""}`));
                                     append($$anchor10, span_5);
                                   };
-                                  if_block(node_33, ($$render) => {
-                                    if (get(op).returnType) $$render(consequent_21);
+                                  if_block(node_34, ($$render) => {
+                                    if (get(op).returnType) $$render(consequent_22);
                                   });
                                 }
                                 reset(div_25);
@@ -10684,22 +10701,22 @@ ${component_stack}
                               });
                               append($$anchor8, fragment_17);
                             };
-                            if_block(node_26, ($$render) => {
-                              if (get(isInlineEditing)) $$render(consequent_20);
+                            if_block(node_27, ($$render) => {
+                              if (get(isInlineEditing)) $$render(consequent_21);
                               else $$render(alternate_5, -1);
                             });
                           }
                           reset(div_19);
                           append($$anchor7, div_19);
                         };
-                        if_block(node_25, ($$render) => {
-                          if (get(opsVisible) || get(isInlineEditing)) $$render(consequent_22);
+                        if_block(node_26, ($$render) => {
+                          if (get(opsVisible) || get(isInlineEditing)) $$render(consequent_23);
                         });
                       }
                       append($$anchor6, fragment_11);
                     };
-                    if_block(node_15, ($$render) => {
-                      if (get(node).kind === "note") $$render(consequent_14);
+                    if_block(node_16, ($$render) => {
+                      if (get(node).kind === "note") $$render(consequent_15);
                       else $$render(alternate_6, -1);
                     });
                   }
@@ -10710,27 +10727,27 @@ ${component_stack}
                   else $$render(alternate_7, -1);
                 });
               }
-              var node_34 = sibling(node_10, 2);
+              var node_35 = sibling(node_10, 2);
               {
-                var consequent_24 = ($$anchor5) => {
-                  var fragment_18 = root_262();
+                var consequent_25 = ($$anchor5) => {
+                  var fragment_18 = root_272();
                   var div_26 = first_child(fragment_18);
-                  var node_35 = sibling(div_26, 2);
+                  var node_36 = sibling(div_26, 2);
                   {
-                    var consequent_23 = ($$anchor6) => {
-                      var div_27 = root_252();
+                    var consequent_24 = ($$anchor6) => {
+                      var div_27 = root_262();
                       delegated("pointerdown", div_27, (e) => handleResizeHandlePointerDown(e, get(node)));
                       append($$anchor6, div_27);
                     };
-                    if_block(node_35, ($$render) => {
-                      if (get(isSelected)) $$render(consequent_23);
+                    if_block(node_36, ($$render) => {
+                      if (get(isSelected)) $$render(consequent_24);
                     });
                   }
                   delegated("pointerdown", div_26, (e) => handleConnectPortPointerDown(e, get(node)));
                   append($$anchor5, fragment_18);
                 };
-                if_block(node_34, ($$render) => {
-                  if (!store().isReadOnly && get(kindDesc)) $$render(consequent_24);
+                if_block(node_35, ($$render) => {
+                  if (!store().isReadOnly && get(kindDesc)) $$render(consequent_25);
                 });
               }
               reset(div_5);
@@ -10753,7 +10770,7 @@ ${component_stack}
               append($$anchor4, div_5);
             };
             if_block(node_9, ($$render) => {
-              if (get(box)) $$render(consequent_25);
+              if (get(box)) $$render(consequent_26);
             });
           }
           append($$anchor3, fragment_3);
@@ -10761,29 +10778,29 @@ ${component_stack}
         reset(div_4);
         var svg_4 = sibling(div_4, 2);
         var g_6 = child(svg_4);
-        var node_36 = child(g_6);
+        var node_37 = child(g_6);
         {
-          var consequent_28 = ($$anchor3) => {
+          var consequent_29 = ($$anchor3) => {
             var fragment_19 = comment();
-            var node_37 = first_child(fragment_19);
-            each(node_37, 17, () => get(doc).edges, (edge) => edge.id, ($$anchor4, edge) => {
+            var node_38 = first_child(fragment_19);
+            each(node_38, 17, () => get(doc).edges, (edge) => edge.id, ($$anchor4, edge) => {
               const isEdgeSelected = user_derived(() => store().selectedIds.includes(get(edge).id) || store().selectedIds.includes(get(edge).source.nodeId) && store().selectedIds.includes(get(edge).target.nodeId));
               var fragment_20 = comment();
-              var node_38 = first_child(fragment_20);
+              var node_39 = first_child(fragment_20);
               {
-                var consequent_27 = ($$anchor5) => {
+                var consequent_28 = ($$anchor5) => {
                   const srcBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).source.nodeId]);
                   const tgtBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).target.nodeId]);
                   var fragment_21 = comment();
-                  var node_39 = first_child(fragment_21);
+                  var node_40 = first_child(fragment_21);
                   {
-                    var consequent_26 = ($$anchor6) => {
+                    var consequent_27 = ($$anchor6) => {
                       const startDec = user_derived(() => get(edge).visual?.start ?? { shape: "none", size: 10 });
                       const endDec = user_derived(() => get(edge).visual?.end ?? { shape: "none", size: 10 });
                       const geom = user_derived(() => computeUmlEdgeGeometry(get(srcBox), get(tgtBox), get(edge).visual?.routing ?? "bezier", get(startDec), get(endDec), get(edgeParallelOffsets)[get(edge).id] ?? 0));
                       const startCenter = user_derived(() => getEndpointVisualCenter(get(geom).startTip, get(geom).startAngleDeg, get(startDec)));
                       const endCenter = user_derived(() => getEndpointVisualCenter(get(geom).endTip, get(geom).endAngleDeg, get(endDec)));
-                      var fragment_22 = root_282();
+                      var fragment_22 = root_292();
                       var circle = first_child(fragment_22);
                       var circle_1 = sibling(circle);
                       template_effect(
@@ -10810,28 +10827,28 @@ ${component_stack}
                       });
                       append($$anchor6, fragment_22);
                     };
-                    if_block(node_39, ($$render) => {
-                      if (get(srcBox) && get(tgtBox)) $$render(consequent_26);
+                    if_block(node_40, ($$render) => {
+                      if (get(srcBox) && get(tgtBox)) $$render(consequent_27);
                     });
                   }
                   append($$anchor5, fragment_21);
                 };
-                if_block(node_38, ($$render) => {
-                  if (get(isEdgeSelected)) $$render(consequent_27);
+                if_block(node_39, ($$render) => {
+                  if (get(isEdgeSelected)) $$render(consequent_28);
                 });
               }
               append($$anchor4, fragment_20);
             });
             append($$anchor3, fragment_19);
           };
-          if_block(node_36, ($$render) => {
-            if (!store().isReadOnly) $$render(consequent_28);
+          if_block(node_37, ($$render) => {
+            if (!store().isReadOnly) $$render(consequent_29);
           });
         }
-        var node_40 = sibling(node_36);
+        var node_41 = sibling(node_37);
         {
-          var consequent_29 = ($$anchor3) => {
-            var line = root_292();
+          var consequent_30 = ($$anchor3) => {
+            var line = root_302();
             template_effect(() => {
               set_attribute2(line, "x1", get(gesture).startPoint.x);
               set_attribute2(line, "y1", get(gesture).startPoint.y);
@@ -10840,14 +10857,14 @@ ${component_stack}
             });
             append($$anchor3, line);
           };
-          if_block(node_40, ($$render) => {
-            if (get(gesture).mode === "connecting") $$render(consequent_29);
+          if_block(node_41, ($$render) => {
+            if (get(gesture).mode === "connecting") $$render(consequent_30);
           });
         }
-        var node_41 = sibling(node_40);
+        var node_42 = sibling(node_41);
         {
-          var consequent_30 = ($$anchor3) => {
-            var rect_4 = root_302();
+          var consequent_31 = ($$anchor3) => {
+            var rect_4 = root_312();
             template_effect(() => {
               set_attribute2(rect_4, "x", get(marqueeRect).x);
               set_attribute2(rect_4, "y", get(marqueeRect).y);
@@ -10856,28 +10873,28 @@ ${component_stack}
             });
             append($$anchor3, rect_4);
           };
-          if_block(node_41, ($$render) => {
-            if (get(marqueeRect)) $$render(consequent_30);
+          if_block(node_42, ($$render) => {
+            if (get(marqueeRect)) $$render(consequent_31);
           });
         }
         reset(g_6);
         reset(svg_4);
-        var node_42 = sibling(svg_4, 2);
+        var node_43 = sibling(svg_4, 2);
         {
-          var consequent_33 = ($$anchor3) => {
+          var consequent_34 = ($$anchor3) => {
             const editingEdge = user_derived(() => get(doc).edges.find((e) => e.id === get(inlineEditingEdgeId)));
             var fragment_23 = comment();
-            var node_43 = first_child(fragment_23);
+            var node_44 = first_child(fragment_23);
             {
-              var consequent_32 = ($$anchor4) => {
+              var consequent_33 = ($$anchor4) => {
                 const srcB = user_derived(() => get(effectiveNodeLayouts)[get(editingEdge).source.nodeId]);
                 const tgtB = user_derived(() => get(effectiveNodeLayouts)[get(editingEdge).target.nodeId]);
                 var fragment_24 = comment();
-                var node_44 = first_child(fragment_24);
+                var node_45 = first_child(fragment_24);
                 {
-                  var consequent_31 = ($$anchor5) => {
+                  var consequent_32 = ($$anchor5) => {
                     const g = user_derived(() => computeUmlEdgeGeometry(get(srcB), get(tgtB), get(editingEdge).visual?.routing ?? "bezier", get(editingEdge).visual?.start, get(editingEdge).visual?.end, get(edgeParallelOffsets)[get(editingEdge).id] ?? 0));
-                    var div_28 = root_312();
+                    var div_28 = root_323();
                     var input_10 = child(div_28);
                     remove_input_defaults(input_10);
                     autofocus(input_10, true);
@@ -10892,40 +10909,40 @@ ${component_stack}
                     bind_value(input_10, () => get(inlineEdgeLabelDraft), ($$value) => set(inlineEdgeLabelDraft, $$value));
                     append($$anchor5, div_28);
                   };
-                  if_block(node_44, ($$render) => {
-                    if (get(srcB) && get(tgtB)) $$render(consequent_31);
+                  if_block(node_45, ($$render) => {
+                    if (get(srcB) && get(tgtB)) $$render(consequent_32);
                   });
                 }
                 append($$anchor4, fragment_24);
               };
-              if_block(node_43, ($$render) => {
-                if (get(editingEdge)) $$render(consequent_32);
+              if_block(node_44, ($$render) => {
+                if (get(editingEdge)) $$render(consequent_33);
               });
             }
             append($$anchor3, fragment_23);
           };
-          if_block(node_42, ($$render) => {
-            if (get(inlineEditingEdgeId)) $$render(consequent_33);
+          if_block(node_43, ($$render) => {
+            if (get(inlineEditingEdgeId)) $$render(consequent_34);
           });
         }
-        var node_45 = sibling(node_42, 2);
+        var node_46 = sibling(node_43, 2);
         {
-          var consequent_36 = ($$anchor3) => {
+          var consequent_37 = ($$anchor3) => {
             const multEdit = user_derived(() => get(inlineEditingMultiplicity));
             const editingEdge = user_derived(() => get(doc).edges.find((e) => e.id === get(multEdit).edgeId));
             var fragment_25 = comment();
-            var node_46 = first_child(fragment_25);
+            var node_47 = first_child(fragment_25);
             {
-              var consequent_35 = ($$anchor4) => {
+              var consequent_36 = ($$anchor4) => {
                 const srcB = user_derived(() => get(effectiveNodeLayouts)[get(editingEdge).source.nodeId]);
                 const tgtB = user_derived(() => get(effectiveNodeLayouts)[get(editingEdge).target.nodeId]);
                 var fragment_26 = comment();
-                var node_47 = first_child(fragment_26);
+                var node_48 = first_child(fragment_26);
                 {
-                  var consequent_34 = ($$anchor5) => {
+                  var consequent_35 = ($$anchor5) => {
                     const g = user_derived(() => computeUmlEdgeGeometry(get(srcB), get(tgtB), get(editingEdge).visual?.routing ?? "bezier", get(editingEdge).visual?.start, get(editingEdge).visual?.end, get(edgeParallelOffsets)[get(editingEdge).id] ?? 0));
                     const pt = user_derived(() => get(multEdit).end === "start" ? getMultiplicityLabelPoint(get(g).startTip, get(g).startAngleDeg) : getMultiplicityLabelPoint(get(g).endTip, get(g).endAngleDeg));
-                    var div_29 = root_323();
+                    var div_29 = root_333();
                     var input_11 = child(div_29);
                     remove_input_defaults(input_11);
                     autofocus(input_11, true);
@@ -10940,65 +10957,63 @@ ${component_stack}
                     bind_value(input_11, () => get(inlineEditingMultiplicity).draft, ($$value) => get(inlineEditingMultiplicity).draft = $$value);
                     append($$anchor5, div_29);
                   };
-                  if_block(node_47, ($$render) => {
-                    if (get(srcB) && get(tgtB)) $$render(consequent_34);
+                  if_block(node_48, ($$render) => {
+                    if (get(srcB) && get(tgtB)) $$render(consequent_35);
                   });
                 }
                 append($$anchor4, fragment_26);
               };
-              if_block(node_46, ($$render) => {
-                if (get(editingEdge)) $$render(consequent_35);
+              if_block(node_47, ($$render) => {
+                if (get(editingEdge)) $$render(consequent_36);
               });
             }
             append($$anchor3, fragment_25);
           };
-          if_block(node_45, ($$render) => {
-            if (get(inlineEditingMultiplicity)) $$render(consequent_36);
+          if_block(node_46, ($$render) => {
+            if (get(inlineEditingMultiplicity)) $$render(consequent_37);
           });
         }
-        var node_48 = sibling(node_45, 2);
+        var node_49 = sibling(node_46, 2);
         {
-          var consequent_38 = ($$anchor3) => {
+          var consequent_39 = ($$anchor3) => {
             const popup = user_derived(() => get(endpointPickerPopup));
-            var div_30 = root_352();
+            var div_30 = root_36();
             var div_31 = child(div_30);
-            var text_19 = only_child(div_31, true);
-            var div_32 = sibling(div_31, 2);
-            var input_12 = sibling(child(div_32), 2);
+            var input_12 = sibling(child(div_31), 2);
             remove_input_defaults(input_12);
-            reset(div_32);
-            var div_33 = sibling(div_32, 2);
-            each(div_33, 21, () => endpointIconChoices, index, ($$anchor4, choice) => {
+            reset(div_31);
+            var div_32 = sibling(div_31, 2);
+            each(div_32, 21, () => endpointIconChoices, index, ($$anchor4, choice) => {
               const preview = user_derived(() => renderEndpointPath(get(choice).decoration));
               const isActive = user_derived(() => isSameEndpointChoice(get(popup).current, get(choice).decoration));
-              var button_11 = root_342();
+              var button_11 = root_352();
               let classes_5;
               var svg_5 = child(button_11);
               var line_1 = child(svg_5);
-              var node_49 = sibling(line_1);
+              var node_50 = sibling(line_1);
               {
-                var consequent_37 = ($$anchor5) => {
-                  var path_5 = root_333();
+                var consequent_38 = ($$anchor5) => {
+                  var path_5 = root_342();
                   template_effect(() => {
                     set_attribute2(path_5, "d", get(preview).d);
                     set_attribute2(path_5, "fill", get(choice).decoration.fill === "filled" ? "currentColor" : "var(--vscode-editor-background)");
                   });
                   append($$anchor5, path_5);
                 };
-                if_block(node_49, ($$render) => {
-                  if (get(preview).d) $$render(consequent_37);
+                if_block(node_50, ($$render) => {
+                  if (get(preview).d) $$render(consequent_38);
                 });
               }
               reset(svg_5);
               var span_6 = sibling(svg_5, 2);
-              var text_20 = only_child(span_6, true);
+              var text_19 = only_child(span_6, true);
               reset(button_11);
               template_effect(
                 ($0) => {
                   classes_5 = set_class(button_11, 1, "vz-endpoint-icon-btn", null, classes_5, { active: get(isActive) });
                   set_attribute2(button_11, "title", get(choice).label);
                   set_attribute2(line_1, "x2", $0);
-                  set_text(text_20, get(choice).label);
+                  set_text(text_19, get(choice).label);
                 },
                 [
                   () => get(choice).decoration.shape === "none" || get(choice).decoration.shape === "open-arrow" ? "0" : String(-(get(choice).decoration.size ?? 11))
@@ -11015,12 +11030,9 @@ ${component_stack}
               });
               append($$anchor4, button_11);
             });
-            reset(div_33);
+            reset(div_32);
             reset(div_30);
-            template_effect(() => {
-              set_style(div_30, `left: ${get(popup).x ?? ""}px; top: ${get(popup).y ?? ""}px;`);
-              set_text(text_19, get(popup).end === "start" ? "Start Endpoint & Multiplicity" : "End Endpoint & Multiplicity");
-            });
+            template_effect(() => set_style(div_30, `left: ${get(popup).x ?? ""}px; top: ${get(popup).y ?? ""}px;`));
             delegated("pointerdown", div_30, (e) => e.stopPropagation());
             delegated("change", input_12, (ev) => {
               const val = ev.currentTarget.value.trim();
@@ -11044,8 +11056,8 @@ ${component_stack}
             bind_value(input_12, () => get(endpointPickerPopup).multiplicityDraft, ($$value) => get(endpointPickerPopup).multiplicityDraft = $$value);
             append($$anchor3, div_30);
           };
-          if_block(node_48, ($$render) => {
-            if (get(endpointPickerPopup)) $$render(consequent_38);
+          if_block(node_49, ($$render) => {
+            if (get(endpointPickerPopup)) $$render(consequent_39);
           });
         }
         template_effect(() => {
@@ -11056,13 +11068,13 @@ ${component_stack}
         append($$anchor2, fragment_1);
       };
       if_block(node_2, ($$render) => {
-        if (get(doc)) $$render(consequent_39);
+        if (get(doc)) $$render(consequent_40);
       });
     }
     reset(div_2);
     bind_this(div_2, ($$value) => set(viewportEl, $$value), () => get(viewportEl));
-    var node_50 = sibling(div_2, 2);
-    UmlInspector(node_50, {
+    var node_51 = sibling(div_2, 2);
+    UmlInspector(node_51, {
       get store() {
         return store();
       },

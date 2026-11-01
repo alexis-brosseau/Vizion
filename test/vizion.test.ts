@@ -41,11 +41,14 @@ describe('Vizion Document Templates & Initialization Predicates', () => {
     expect('schemaVersion' in uml).toBe(false);
   });
 
-  it('derives clean titles from .uml.viz filenames', () => {
+  it('derives clean titles from .viz filenames', () => {
+    expect(deriveDefaultTitle('/workspace/.vizion/order-domain.viz', 'uml')).toBe(
+      'Order Domain'
+    );
+    expect(deriveDefaultTitle('.viz', 'uml')).toBe('Domain');
     expect(deriveDefaultTitle('/workspace/.vizion/order-domain.uml.viz', 'uml')).toBe(
       'Order Domain'
     );
-    expect(deriveDefaultTitle('.uml.viz', 'uml')).toBe('Domain');
   });
 
   it('distinguishes empty/whitespace-only documents from {}, [], null, or strings (Section 5.1)', () => {
@@ -61,17 +64,28 @@ describe('Vizion Document Templates & Initialization Predicates', () => {
 
 describe('Vizion Schema & Cross-Reference Validator', () => {
   it('validates newly serialized default UML documents and demo .vizion architecture files', () => {
-    const umlJson = serializeDefaultDocument('uml', 'domain.uml.viz');
+    const umlJson = serializeDefaultDocument('uml', 'domain.viz');
     const umlRes = parseAndValidateDocument(umlJson, 'uml');
     expect(umlRes.ok).toBe(true);
     expect(umlRes.issues).toHaveLength(0);
 
     const archDir = path.resolve(__dirname, '../.vizion/architecture');
     if (fs.existsSync(archDir)) {
-      const demoFiles = fs.readdirSync(archDir).filter((f) => f.endsWith('.uml.viz'));
+      const demoFiles = fs.readdirSync(archDir).filter((f) => f.endsWith('.viz'));
       expect(demoFiles.length).toBeGreaterThan(0);
       for (const file of demoFiles) {
         const content = fs.readFileSync(path.resolve(archDir, file), 'utf8');
+        const res = parseAndValidateDocument(content, 'uml');
+        expect(res.ok).toBe(true);
+      }
+    }
+
+    const vizionDir = path.resolve(__dirname, '../.vizion');
+    if (fs.existsSync(vizionDir)) {
+      const demoFiles = fs.readdirSync(vizionDir).filter((f) => f.endsWith('.viz'));
+      expect(demoFiles.length).toBeGreaterThan(0);
+      for (const file of demoFiles) {
+        const content = fs.readFileSync(path.resolve(vizionDir, file), 'utf8');
         const res = parseAndValidateDocument(content, 'uml');
         expect(res.ok).toBe(true);
       }
@@ -112,7 +126,7 @@ describe('Vizion Schema & Cross-Reference Validator', () => {
 
 describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities', () => {
   it('updates document metadata and purpose via uml.updateMetadata', () => {
-    const text = serializeDefaultDocument('uml', 'domain.uml.viz');
+    const text = serializeDefaultDocument('uml', 'domain.viz');
     const updated = applyUmlOperationToText(text, {
       type: 'uml.updateMetadata',
       title: 'Order Processing System',
@@ -210,7 +224,7 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
       'parallelogram'
     ]);
 
-    let text = serializeDefaultDocument('uml', 'shapes.uml.viz');
+    let text = serializeDefaultDocument('uml', 'shapes.viz');
     const addRhombus = applyUmlOperationToText(text, {
       type: 'uml.addNode',
       id: 'decision-1',
@@ -250,7 +264,7 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
   });
 
   it('supports section visibility toggles and relation direction switching (B -> A)', () => {
-    let text = serializeDefaultDocument('uml', 'services.uml.viz');
+    let text = serializeDefaultDocument('uml', 'services.viz');
     text = applyUmlOperationToText(text, {
       type: 'uml.addNode',
       id: 'service-a',
@@ -302,8 +316,72 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
     expect(doc.edges[0].target.nodeId).toBe('service-a');
   });
 
+  it('defaults relations connected to a Note to dashed', () => {
+    let text = serializeDefaultDocument('uml', 'notes.viz');
+    text = applyUmlOperationToText(text, {
+      type: 'uml.addNode',
+      id: 'class-1',
+      kind: 'class',
+      name: 'Order',
+      x: 100,
+      y: 100
+    }).updatedText!;
+    text = applyUmlOperationToText(text, {
+      type: 'uml.addNode',
+      id: 'class-2',
+      kind: 'class',
+      name: 'Customer',
+      x: 400,
+      y: 100
+    }).updatedText!;
+    text = applyUmlOperationToText(text, {
+      type: 'uml.addNode',
+      id: 'note-1',
+      kind: 'note',
+      name: 'Order Note',
+      x: 100,
+      y: 300
+    }).updatedText!;
+
+    // Non-note to non-note association defaults to solid
+    text = applyUmlOperationToText(text, {
+      type: 'uml.addEdge',
+      id: 'edge-class-class',
+      kind: 'association',
+      sourceNodeId: 'class-1',
+      targetNodeId: 'class-2'
+    }).updatedText!;
+
+    // Note to class association defaults to dashed
+    text = applyUmlOperationToText(text, {
+      type: 'uml.addEdge',
+      id: 'edge-note-class',
+      kind: 'association',
+      sourceNodeId: 'note-1',
+      targetNodeId: 'class-1'
+    }).updatedText!;
+
+    // Class to note association defaults to dashed
+    text = applyUmlOperationToText(text, {
+      type: 'uml.addEdge',
+      id: 'edge-class-note',
+      kind: 'association',
+      sourceNodeId: 'class-2',
+      targetNodeId: 'note-1'
+    }).updatedText!;
+
+    const doc = parseAndValidateDocument(text, 'uml').document!;
+    const edgeClassClass = doc.edges.find((e) => e.id === 'edge-class-class');
+    const edgeNoteClass = doc.edges.find((e) => e.id === 'edge-note-class');
+    const edgeClassNote = doc.edges.find((e) => e.id === 'edge-class-note');
+
+    expect(edgeClassClass?.visual?.line).toBe('solid');
+    expect(edgeNoteClass?.visual?.line).toBe('dashed');
+    expect(edgeClassNote?.visual?.line).toBe('dashed');
+  });
+
   it('allows setting node name, stereotype, relation label, and multiplicity to blank and saves cleanly', () => {
-    let text = serializeDefaultDocument('uml', 'blank-test.uml.viz');
+    let text = serializeDefaultDocument('uml', 'blank-test.viz');
     text = applyUmlOperationToText(text, {
       type: 'uml.addNode',
       id: 'node-1',
@@ -371,7 +449,7 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
   });
 
   it('automatically removes incident edges when deleting a node and remaps IDs on duplicate (Section 9.3)', () => {
-    let text = serializeDefaultDocument('uml', 'domain.uml.viz');
+    let text = serializeDefaultDocument('uml', 'domain.viz');
     text = applyUmlOperationToText(text, {
       type: 'uml.addNode',
       id: 'a',
@@ -445,7 +523,7 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
     expect(getEndpointShape('chevrons')?.label).toBe('Double Chevron');
     expect(listEndpointShapes().some((s) => s.kind === 'chevrons')).toBe(true);
 
-    const text = serializeDefaultDocument('uml', 'ext.uml.viz');
+    const text = serializeDefaultDocument('uml', 'ext.viz');
     const addComp = applyUmlOperationToText(text, {
       type: 'uml.addNode',
       id: 'comp-1',

@@ -143,6 +143,7 @@ export type UmlOperationPayload =
       sourceNodeId: string;
       targetNodeId: string;
       label?: string;
+      line?: UmlLineStyle;
     }
   | {
       type: 'uml.updateEdge';
@@ -552,14 +553,19 @@ export function applyUmlOperationToText(
       if (doc.edges.some((e) => e.id === op.id)) {
         return { ok: false, error: `Edge ID "${op.id}" already exists.` };
       }
-      if (!doc.nodes.some((n) => n.id === op.sourceNodeId)) {
+      const sourceNode = doc.nodes.find((n) => n.id === op.sourceNodeId);
+      if (!sourceNode) {
         return { ok: false, error: `Source node "${op.sourceNodeId}" does not exist.` };
       }
-      if (!doc.nodes.some((n) => n.id === op.targetNodeId)) {
+      const targetNode = doc.nodes.find((n) => n.id === op.targetNodeId);
+      if (!targetNode) {
         return { ok: false, error: `Target node "${op.targetNodeId}" does not exist.` };
       }
 
       const preset = getUmlRelationPreset(op.kind);
+      const touchesNote = sourceNode.kind === 'note' || targetNode.kind === 'note';
+      const defaultLine = touchesNote ? 'dashed' : (preset?.line ?? 'solid');
+
       const newEdge: UmlEdge = {
         id: op.id,
         kind: op.kind,
@@ -571,7 +577,7 @@ export function applyUmlOperationToText(
         },
         ...(op.label ? { label: op.label } : {}),
         visual: {
-          line: preset?.line ?? 'solid',
+          line: op.line ?? defaultLine,
           routing: preset?.routing ?? 'bezier',
           start: { ...(preset?.start ?? { shape: 'none', size: 10 }) },
           end: { ...(preset?.end ?? { shape: 'none', size: 10 }) }
@@ -645,11 +651,17 @@ export function applyUmlOperationToText(
         patches.push({ path: ['edges', idx, 'kind'], value: op.kind });
         const preset = getUmlRelationPreset(op.kind);
         if (preset) {
+          const effectiveSource = op.sourceNodeId ?? existing.source.nodeId;
+          const effectiveTarget = op.targetNodeId ?? existing.target.nodeId;
+          const sourceNode = doc.nodes.find((n) => n.id === effectiveSource);
+          const targetNode = doc.nodes.find((n) => n.id === effectiveTarget);
+          const touchesNote = sourceNode?.kind === 'note' || targetNode?.kind === 'note';
+          const defaultLine = touchesNote ? 'dashed' : preset.line;
           patches.push({
             path: ['edges', idx, 'visual'],
             value: {
               ...(existing.visual ?? {}),
-              line: preset.line,
+              line: defaultLine,
               routing: existing.visual?.routing ?? preset.routing,
               start: { ...preset.start },
               end: { ...preset.end }

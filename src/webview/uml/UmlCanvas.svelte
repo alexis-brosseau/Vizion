@@ -1033,7 +1033,7 @@
     }
     inlineEditingNodeId = node.id;
     inlineNodeNameDraft = node.name ?? '';
-    inlineNodeStereotypeDraft = node.stereotype ?? '';
+    inlineNodeStereotypeDraft = node.kind === 'note' ? '' : (node.stereotype ?? '');
   }
 
   function commitInlineNodeEdit(node?: UmlNode): void {
@@ -1050,7 +1050,7 @@
     if (nextName !== targetNode.name) {
       updates.name = nextName;
     }
-    if (nextStereo !== (targetNode.stereotype ?? '')) {
+    if (targetNode.kind !== 'note' && nextStereo !== (targetNode.stereotype ?? '')) {
       updates.stereotype = nextStereo; // An empty string triggers property deletion on the host
     }
 
@@ -1469,6 +1469,8 @@
               {@const srcNode = doc.nodes.find((n) => n.id === edge.source.nodeId)}
               {@const tgtNode = doc.nodes.find((n) => n.id === edge.target.nodeId)}
               {#if srcBox && tgtBox}
+                {@const touchesNote = srcNode?.kind === 'note' || tgtNode?.kind === 'note'}
+                {@const isDashed = (edge.visual?.line ?? (touchesNote ? 'dashed' : 'solid')) === 'dashed'}
                 {@const startDec = edge.visual?.start ?? { shape: 'none', size: 10 }}
                 {@const endDec = edge.visual?.end ?? { shape: 'none', size: 10 }}
                 {@const geom = computeUmlEdgeGeometry(
@@ -1531,7 +1533,7 @@
                   <path
                     d={geom.pathD}
                     class="vz-edge-stroke"
-                    stroke-dasharray={edge.visual?.line === 'dashed' ? '6 4' : undefined}
+                    stroke-dasharray={isDashed ? '6 4' : undefined}
                   />
 
                   <!-- Start Endpoint Decoration -->
@@ -1753,23 +1755,25 @@
                           }
                         }}
                       />
-                      <input
-                        type="text"
-                        class="vz-inline-input vz-inline-stereotype-input"
-                        placeholder="«stereotype»"
-                        bind:value={inlineNodeStereotypeDraft}
-                        onblur={() => commitInlineNodeEdit(node)}
-                        onkeydown={(ke) => {
-                          if (ke.key === 'Enter') {
-                            commitInlineNodeEdit(node);
-                          } else if (ke.key === 'Escape') {
-                            inlineEditingNodeId = null;
-                          }
-                        }}
-                      />
+                      {#if node.kind !== 'note'}
+                        <input
+                          type="text"
+                          class="vz-inline-input vz-inline-stereotype-input"
+                          placeholder="«stereotype»"
+                          bind:value={inlineNodeStereotypeDraft}
+                          onblur={() => commitInlineNodeEdit(node)}
+                          onkeydown={(ke) => {
+                            if (ke.key === 'Enter') {
+                              commitInlineNodeEdit(node);
+                            } else if (ke.key === 'Escape') {
+                              inlineEditingNodeId = null;
+                            }
+                          }}
+                        />
+                      {/if}
                     {:else}
                       <div class="vz-uml-node-title">{node.name}</div>
-                      {#if node.stereotype || kindDesc?.defaultStereotype}
+                      {#if node.kind !== 'note' && (node.stereotype || kindDesc?.defaultStereotype)}
                         <div class="vz-uml-stereotype">
                           «{node.stereotype || kindDesc?.defaultStereotype}»
                         </div>
@@ -2283,10 +2287,6 @@
             style="left: {popup.x}px; top: {popup.y}px;"
             onpointerdown={(e) => e.stopPropagation()}
           >
-            <div class="vz-context-menu-title">
-              {popup.end === 'start' ? 'Start Endpoint & Multiplicity' : 'End Endpoint & Multiplicity'}
-            </div>
-
             <div class="vz-endpoint-mult-row">
               <span class="vz-field-label">Multiplicity</span>
               <input

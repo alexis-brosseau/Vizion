@@ -31,7 +31,7 @@ async function resolveTargetFolder(contextUri?: vscode.Uri): Promise<vscode.Uri 
 }
 
 async function createAndOpenVizionFile(contextUri?: vscode.Uri): Promise<void> {
-  const suffix = '.uml.viz';
+  const suffix = '.viz';
   const defaultBase = 'domain';
   const entered = await vscode.window.showInputBox({
     title: 'Vizion: New UML Diagram',
@@ -49,7 +49,7 @@ async function createAndOpenVizionFile(contextUri?: vscode.Uri): Promise<void> {
 
   let fileName = entered.trim();
   if (!fileName.toLowerCase().endsWith(suffix)) {
-    fileName = fileName.replace(/\.viz$/i, '') + suffix;
+    fileName = `${fileName}${suffix}`;
   }
 
   const folderUri = await resolveTargetFolder(contextUri);
@@ -90,12 +90,12 @@ export function registerVizionCommands(
         return;
       }
       const editor = vscode.window.activeTextEditor;
-      if (editor && editor.document.fileName.endsWith('.uml.viz')) {
+      if (editor && editor.document.fileName.endsWith('.viz')) {
         const coord = registry.acquire(editor.document, 'uml');
         await coord.explicitlyInitializeEmptyDocument();
       } else {
         void vscode.window.showInformationMessage(
-          'Focus an empty .uml.viz document first.'
+          'Focus an empty .viz document first.'
         );
       }
     }),

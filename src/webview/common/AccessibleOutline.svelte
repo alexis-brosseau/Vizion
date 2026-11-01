@@ -52,7 +52,7 @@
       const nodeMap = new Map(store.umlDoc.nodes.map((n) => [n.id, n]));
       const nodeItems = store.umlDoc.nodes.map((n) => {
         const desc = getUmlNodeKind(n.kind);
-        const stereotype = n.stereotype || desc?.defaultStereotype || '';
+        const stereotype = n.kind === 'note' ? '' : (n.stereotype || desc?.defaultStereotype || '');
         const iconKey = n.kind === 'shape' && n.shape ? n.shape : n.kind;
         const label = n.name || n.id;
         return {
@@ -75,7 +75,9 @@
         const edgeLabel = e.label?.trim() || '';
 
         const preset = getUmlRelationPreset(e.kind);
-        const line = (e.visual?.line ?? preset?.line ?? 'solid') as 'solid' | 'dashed';
+        const touchesNote = sourceNode?.kind === 'note' || targetNode?.kind === 'note';
+        const defaultLine = touchesNote ? 'dashed' : (preset?.line ?? 'solid');
+        const line = (e.visual?.line ?? defaultLine) as 'solid' | 'dashed';
         const isDashed = line === 'dashed';
         const startShape = e.visual?.start?.shape ?? preset?.start?.shape ?? 'none';
         const startFill = e.visual?.start?.fill ?? preset?.start?.fill ?? 'hollow';

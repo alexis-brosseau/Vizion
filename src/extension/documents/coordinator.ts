@@ -810,7 +810,7 @@ export class DocumentCoordinator implements vscode.Disposable {
 
   private async saveExportedSvg(svgContent: string): Promise<void> {
     const defaultUri = vscode.Uri.file(
-      this.document.uri.fsPath.replace(/\.uml\.viz$/i, '.svg')
+      this.document.uri.fsPath.replace(/(?:\.uml)?\.viz$/i, '.svg')
     );
     const targetUri = await vscode.window.showSaveDialog({
       title: 'Export Vizion Diagram as SVG',
