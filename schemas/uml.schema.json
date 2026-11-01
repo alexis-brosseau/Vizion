@@ -1,13 +1,17 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Vizion UML Architecture Document (.viz)",
-  "description": "Unversioned human-and-AI readable UML visual architecture document for Vizion.",
+  "description": "Human-and-AI readable UML visual architecture document for Vizion.",
   "type": "object",
   "required": ["format", "kind", "title", "ai", "nodes", "edges", "layout"],
   "properties": {
     "format": {
       "const": "vizion",
       "description": "Fixed format discriminator for Vizion files."
+    },
+    "version": {
+      "type": "string",
+      "description": "Vizion document version, matching the extension version (e.g. 0.1.1)."
     },
     "kind": {
       "const": "uml",

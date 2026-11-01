@@ -15,7 +15,6 @@ export interface ParseAndValidateResult<T extends VizionDocument = VizionDocumen
 }
 
 const FORBIDDEN_VERSION_KEYS = [
-  'version',
   'schemaVersion',
   'formatVersion',
   'instructionsVersion',
@@ -77,7 +76,7 @@ function validateAiGuidance(ai: unknown, issues: ValidationIssue[]): void {
     if (key in ai) {
       issues.push({
         path: `ai.${key}`,
-        message: `Forbidden version field "${key}" in AI guidance. Vizion documents are unversioned.`,
+        message: `Forbidden version field "${key}" in AI guidance.`,
         severity: 'error'
       });
     }

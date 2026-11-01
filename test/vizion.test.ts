@@ -7,6 +7,7 @@ import {
   isEmptyOrWhitespaceDocument,
   serializeDefaultDocument
 } from '../src/shared/documents/templates';
+import { EXTENSION_VERSION } from '../src/shared/documents/version';
 import { parseAndValidateDocument } from '../src/shared/documents/validator';
 import {
   computeUmlEdgeGeometry,
@@ -30,14 +31,17 @@ import {
 } from '../src/shared/registry/uml-registry';
 
 describe('Vizion Document Templates & Initialization Predicates', () => {
-  it('generates unversioned default UML documents with embedded AI guidance', () => {
+  it('generates default UML documents with version property matching extension version after format', () => {
     const uml = createDefaultUmlDocument('Domain');
     expect(uml.format).toBe('vizion');
+    expect(uml.version).toBe(EXTENSION_VERSION);
     expect(uml.kind).toBe('uml');
+    const keys = Object.keys(uml);
+    expect(keys.indexOf('format')).toBe(0);
+    expect(keys.indexOf('version')).toBe(1);
     expect(uml.ai.purpose).toBeTruthy();
     expect(uml.ai.interpretation.length).toBeGreaterThan(0);
     expect(uml.ai.editingRules.length).toBeGreaterThan(0);
-    expect('version' in uml).toBe(false);
     expect('schemaVersion' in uml).toBe(false);
   });
 
@@ -87,6 +91,7 @@ describe('Vizion Schema & Cross-Reference Validator', () => {
       for (const file of demoFiles) {
         const content = fs.readFileSync(path.resolve(vizionDir, file), 'utf8');
         const res = parseAndValidateDocument(content, 'uml');
+        if (!res.ok) console.log('Validation issues in', file, res.issues);
         expect(res.ok).toBe(true);
       }
     }
@@ -100,6 +105,29 @@ describe('Vizion Schema & Cross-Reference Validator', () => {
     const res = parseAndValidateDocument(JSON.stringify(doc), 'uml');
     expect(res.ok).toBe(false);
     expect(res.issues.some((i) => i.path === 'schemaVersion')).toBe(true);
+  });
+
+  it('does not show error if version is missing or different (version is not validated)', () => {
+    const withoutVersion = {
+      format: 'vizion',
+      kind: 'uml',
+      title: 'No Version',
+      ai: { purpose: 'p', interpretation: ['i'], editingRules: ['r'] },
+      nodes: [],
+      edges: [],
+      layout: { nodes: {}, edges: {} }
+    };
+    const resNoVer = parseAndValidateDocument(JSON.stringify(withoutVersion), 'uml');
+    expect(resNoVer.ok).toBe(true);
+    expect(resNoVer.issues).toHaveLength(0);
+
+    const mismatchVersion = {
+      ...createDefaultUmlDocument('Domain'),
+      version: '99.99.99'
+    };
+    const resMismatch = parseAndValidateDocument(JSON.stringify(mismatchVersion), 'uml');
+    expect(resMismatch.ok).toBe(true);
+    expect(resMismatch.issues).toHaveLength(0);
   });
 
   it('reports line and column for invalid JSON syntax without overwriting', () => {

@@ -1,4 +1,4 @@
-# Vizion - Visual Editor
+# Vizion
 
 Vizion is a native-first VS Code extension that adds a visual editor for ordinary, readable JSON project documents:
 
@@ -7,7 +7,7 @@ Vizion is a native-first VS Code extension that adds a visual editor for ordinar
 ## Core Design Principles
 
 1. **Ordinary Text Documents**: Every `.viz` file is an ordinary VS Code `TextDocument`. Native Save, Undo/Redo, Split Editor, Git diffs, and "Open as Text" work out of the box.
-2. **Unversioned & Non-Destructive**: Documents contain zero `version` or `schemaVersion` fields. Unknown fields and user formatting are preserved across visual edits. Non-empty invalid files are never overwritten; they display actionable diagnostics with one-click recovery.
+2. **Version-Tracked & Non-Destructive**: Documents track a root `version` matching the extension version. Unknown fields and user formatting are preserved across visual edits. Non-empty invalid files are never overwritten; they display actionable diagnostics with one-click recovery.
 3. **Embedded AI Guidance**: Every initialized file includes concise `ai.purpose`, `ai.interpretation`, and `ai.editingRules` instructions so external coding agents understand how to interpret and safely edit the diagram.
 
 ## Installing & Testing in VS Code

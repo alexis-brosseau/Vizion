@@ -40,6 +40,138 @@ var vscode6 = __toESM(require("vscode"));
 var path = __toESM(require("path"));
 var vscode = __toESM(require("vscode"));
 
+// package.json
+var package_default = {
+  name: "vizion",
+  displayName: "Vizion",
+  description: "Custom UML editor for .viz JSON documents with embedded AI guidance.",
+  version: "0.1.1",
+  publisher: "Vizionary",
+  license: "MIT",
+  engines: {
+    vscode: "^1.88.0"
+  },
+  categories: [
+    "Visualization",
+    "Custom Editors",
+    "Other"
+  ],
+  activationEvents: [
+    "onCustomEditor:vizion.uml",
+    "onCommand:vizion.newUmlDiagram",
+    "onCommand:vizion.initializeCurrentDocument"
+  ],
+  main: "./dist/extension.cjs",
+  contributes: {
+    languages: [
+      {
+        id: "json",
+        filenamePatterns: [
+          "*.viz"
+        ]
+      }
+    ],
+    jsonValidation: [
+      {
+        fileMatch: "*.viz",
+        url: "./schemas/uml.schema.json"
+      }
+    ],
+    customEditors: [
+      {
+        viewType: "vizion.uml",
+        displayName: "UML Editor",
+        priority: "default",
+        selector: [
+          {
+            filenamePattern: "*.viz"
+          }
+        ]
+      }
+    ],
+    commands: [
+      {
+        command: "vizion.newUmlDiagram",
+        title: "New UML Diagram",
+        category: "Vizion",
+        icon: "$(type-hierarchy-sub)"
+      },
+      {
+        command: "vizion.initializeCurrentDocument",
+        title: "Initialize Current Empty Vizion Document",
+        category: "Vizion",
+        icon: "$(sparkle)"
+      },
+      {
+        command: "vizion.openCurrentAsText",
+        title: "Open Current Vizion Document as JSON Text",
+        category: "Vizion",
+        icon: "$(code)"
+      },
+      {
+        command: "vizion.fitCanvasToContent",
+        title: "Fit Canvas to Content",
+        category: "Vizion",
+        icon: "$(screen-full)"
+      },
+      {
+        command: "vizion.resetCanvasZoom",
+        title: "Reset Canvas Zoom (100%)",
+        category: "Vizion",
+        icon: "$(zoom-in)"
+      },
+      {
+        command: "vizion.exportCurrentSvg",
+        title: "Export Current Diagram as SVG",
+        category: "Vizion",
+        icon: "$(export)"
+      }
+    ],
+    menus: {
+      "editor/title": [
+        {
+          command: "vizion.openCurrentAsText",
+          when: "activeCustomEditorId == 'vizion.uml'",
+          group: "navigation@1"
+        },
+        {
+          command: "vizion.fitCanvasToContent",
+          when: "activeCustomEditorId == 'vizion.uml'",
+          group: "navigation@2"
+        },
+        {
+          command: "vizion.exportCurrentSvg",
+          when: "activeCustomEditorId == 'vizion.uml'",
+          group: "navigation@3"
+        }
+      ]
+    }
+  },
+  scripts: {
+    build: "node scripts/build.mjs",
+    watch: "node scripts/build.mjs --watch",
+    typecheck: "tsc --noEmit",
+    test: "vitest run",
+    package: "vsce package --no-dependencies --allow-missing-repository"
+  },
+  dependencies: {
+    "jsonc-parser": "^3.3.1"
+  },
+  devDependencies: {
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.88.0",
+    "@vscode/vsce": "^3.0.0",
+    esbuild: "^0.24.0",
+    svelte: "^5.16.0",
+    typescript: "^5.6.3",
+    vitest: "^2.1.4"
+  }
+};
+
+// src/shared/documents/version.ts
+var EXTENSION_VERSION = package_default.version;
+
 // src/shared/documents/templates.ts
 function deriveDefaultTitle(filenameOrPath, _kind = "uml") {
   const base = filenameOrPath.split(/[\\/]/).pop() ?? "";
@@ -49,15 +181,16 @@ function deriveDefaultTitle(filenameOrPath, _kind = "uml") {
   }
   return stripped.split(/[-_.\s]+/).filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
-function createDefaultUmlDocument(title = "Domain") {
+function createDefaultUmlDocument(title = "Domain", version = EXTENSION_VERSION) {
   return {
     format: "vizion",
+    version,
     kind: "uml",
     title: title || "Domain",
     ai: {
       purpose: "Describe classes, notes, shapes, and explicitly typed relationships.",
       interpretation: [
-        'Document Structure: Standalone unversioned JSON document. Root required fields are: "format" (must be "vizion"), "kind" (must be "uml"), "title" (string), "ai" (guidance object with "purpose", "interpretation", "editingRules"), "nodes" (array), "edges" (array), and "layout" (object with "nodes" and "edges"). NEVER add version fields like "version" or "schemaVersion".',
+        'Document Structure: JSON document with schema version tracking. Root required fields are: "format" (must be "vizion"), "version" (matching extension version), "kind" (must be "uml"), "title" (string), "ai" (guidance object with "purpose", "interpretation", "editingRules"), "nodes" (array), "edges" (array), and "layout" (object with "nodes" and "edges").',
         'Node Types & Properties ("nodes[]"): Each node must have "id" (unique string) and "kind" ("class" | "shape" | "note"). Optional common fields: "name" (display label string), "stereotype" (architectural role string, e.g. "entity", "service", "value", "aggregate", "controller"). For "note" nodes, prose is stored in "text" (markdown/plain text).',
         'Geometric Shapes ("kind": "shape"): Must specify "shape" geometry as one of: "ellipse" | "rectangle" | "rhombus" | "trapezoid" | "parallelogram". The node "name" is rendered as the centered label.',
         'Class Members & Compartments ("kind": "class"): Supports "attributes" array and "operations" array. Section visibility can be toggled via boolean flags "showAttributes" and "showOperations" (default true).',
@@ -71,7 +204,7 @@ function createDefaultUmlDocument(title = "Domain") {
       ],
       editingRules: [
         "Strict JSON Conformity: Output strictly valid standard JSON with 2-space indentation. Never use JavaScript comments, trailing commas, single quotes, or unquoted identifiers.",
-        'Never Add Versioning: This format is permanently unversioned. Do NOT output "version", "schemaVersion", "formatVersion", or "instructionsVersion" at root or in any sub-object.',
+        'Document Versioning: The root "version" field must match the Vizion extension version. Do NOT output alternate version fields like "schemaVersion", "formatVersion", or "instructionsVersion".',
         'Referential Integrity: Every "source.nodeId" and "target.nodeId" in "edges[]" MUST exactly match an existing node "id" in "nodes[]". When removing a node from "nodes[]", you must atomically delete all edges referencing its ID.',
         'Layout Synchronization: Every node added to "nodes[]" MUST have a corresponding bounding box in "layout.nodes[nodeId]" ({ "x": number, "y": number, "width": number, "height": number }) aligned to a 20px grid. When deleting a node, delete its layout entry.',
         'Preserve Existing Identifiers: Never alter existing "id" strings when updating nodes, edges, attributes, operations, or parameters. When creating new entities, generate clean, unique kebab-case IDs (e.g., "node-order-service", "edge-order-payment-1", "order-attr-status", "order-op-cancel", "cancel-arg-reason").',
@@ -1875,7 +2008,6 @@ registerUmlRelationPreset({
 
 // src/shared/documents/validator.ts
 var FORBIDDEN_VERSION_KEYS = [
-  "version",
   "schemaVersion",
   "formatVersion",
   "instructionsVersion",
@@ -1928,7 +2060,7 @@ function validateAiGuidance(ai, issues) {
     if (key in ai) {
       issues.push({
         path: `ai.${key}`,
-        message: `Forbidden version field "${key}" in AI guidance. Vizion documents are unversioned.`,
+        message: `Forbidden version field "${key}" in AI guidance.`,
         severity: "error"
       });
     }

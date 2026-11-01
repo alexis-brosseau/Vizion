@@ -1,6 +1,6 @@
 ---
 name: vizion-documents
-description: Author, inspect, and safely edit Vizion UML (*.viz) visual project architecture documents without introducing version fields or breaking referential integrity.
+description: Author, inspect, and safely edit Vizion UML (*.viz) visual project architecture documents matching extension version without breaking referential integrity.
 ---
 
 # Vizion Visual Architecture Documents (`*.viz`)
@@ -9,7 +9,7 @@ Use this skill whenever creating, reading, or modifying `*.viz` files.
 
 ## Mandatory Standalone Structure & Rules
 
-1. **Unversioned Standalone JSON**: Never add `version`, `schemaVersion`, `formatVersion`, or `instructionsVersion` fields to `.viz` documents. Root required keys: `format` (`"vizion"`), `kind` (`"uml"`), `title`, `ai`, `nodes`, `edges`, `layout`.
+1. **Standalone JSON**: Root required keys: `format` (`"vizion"`), `version` (matching extension version), `kind` (`"uml"`), `title`, `ai`, `nodes`, `edges`, `layout`. Never add `schemaVersion`, `formatVersion`, or `instructionsVersion` fields.
 2. **Preserve Embedded AI Guidance**: Always keep `ai.purpose`, `ai.interpretation`, and `ai.editingRules` intact in the file.
 3. **Nodes (`nodes[]`)**:
    - `id`: Unique string.

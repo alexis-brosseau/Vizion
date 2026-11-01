@@ -1,4 +1,5 @@
 import type { UmlDocument, VizionDocumentKind } from './types';
+import { EXTENSION_VERSION } from './version';
 
 /**
  * Extracts a clean human-readable title from a filename or URI path.
@@ -25,15 +26,19 @@ export function deriveDefaultTitle(filenameOrPath: string, _kind: VizionDocument
 /**
  * Generates the unversioned default UML document per Section 4.1 of the implementation plan.
  */
-export function createDefaultUmlDocument(title = 'Domain'): UmlDocument {
+export function createDefaultUmlDocument(
+  title = 'Domain',
+  version = EXTENSION_VERSION
+): UmlDocument {
   return {
     format: 'vizion',
+    version,
     kind: 'uml',
     title: title || 'Domain',
     ai: {
       purpose: 'Describe classes, notes, shapes, and explicitly typed relationships.',
       interpretation: [
-        'Document Structure: Standalone unversioned JSON document. Root required fields are: "format" (must be "vizion"), "kind" (must be "uml"), "title" (string), "ai" (guidance object with "purpose", "interpretation", "editingRules"), "nodes" (array), "edges" (array), and "layout" (object with "nodes" and "edges"). NEVER add version fields like "version" or "schemaVersion".',
+        'Document Structure: JSON document with schema version tracking. Root required fields are: "format" (must be "vizion"), "version" (matching extension version), "kind" (must be "uml"), "title" (string), "ai" (guidance object with "purpose", "interpretation", "editingRules"), "nodes" (array), "edges" (array), and "layout" (object with "nodes" and "edges").',
         'Node Types & Properties ("nodes[]"): Each node must have "id" (unique string) and "kind" ("class" | "shape" | "note"). Optional common fields: "name" (display label string), "stereotype" (architectural role string, e.g. "entity", "service", "value", "aggregate", "controller"). For "note" nodes, prose is stored in "text" (markdown/plain text).',
         'Geometric Shapes ("kind": "shape"): Must specify "shape" geometry as one of: "ellipse" | "rectangle" | "rhombus" | "trapezoid" | "parallelogram". The node "name" is rendered as the centered label.',
         'Class Members & Compartments ("kind": "class"): Supports "attributes" array and "operations" array. Section visibility can be toggled via boolean flags "showAttributes" and "showOperations" (default true).',
@@ -47,7 +52,7 @@ export function createDefaultUmlDocument(title = 'Domain'): UmlDocument {
       ],
       editingRules: [
         'Strict JSON Conformity: Output strictly valid standard JSON with 2-space indentation. Never use JavaScript comments, trailing commas, single quotes, or unquoted identifiers.',
-        'Never Add Versioning: This format is permanently unversioned. Do NOT output "version", "schemaVersion", "formatVersion", or "instructionsVersion" at root or in any sub-object.',
+        'Document Versioning: The root "version" field must match the Vizion extension version. Do NOT output alternate version fields like "schemaVersion", "formatVersion", or "instructionsVersion".',
         'Referential Integrity: Every "source.nodeId" and "target.nodeId" in "edges[]" MUST exactly match an existing node "id" in "nodes[]". When removing a node from "nodes[]", you must atomically delete all edges referencing its ID.',
         'Layout Synchronization: Every node added to "nodes[]" MUST have a corresponding bounding box in "layout.nodes[nodeId]" ({ "x": number, "y": number, "width": number, "height": number }) aligned to a 20px grid. When deleting a node, delete its layout entry.',
         'Preserve Existing Identifiers: Never alter existing "id" strings when updating nodes, edges, attributes, operations, or parameters. When creating new entities, generate clean, unique kebab-case IDs (e.g., "node-order-service", "edge-order-payment-1", "order-attr-status", "order-op-cancel", "cancel-arg-reason").',

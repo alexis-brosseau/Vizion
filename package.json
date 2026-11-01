@@ -1,7 +1,7 @@
 {
   "name": "vizion",
-  "displayName": "Vizion - Visual Editors",
-  "description": "Custom visual editor for unversioned .viz JSON documents with embedded AI guidance.",
+  "displayName": "Vizion",
+  "description": "Custom UML editor for .viz JSON documents with embedded AI guidance.",
   "version": "0.1.1",
   "publisher": "Vizionary",
   "license": "MIT",

@@ -138,6 +138,7 @@ export interface UmlEdgeLayout {
 
 export interface UmlDocument {
   format: 'vizion';
+  version?: string;
   kind: 'uml';
   title: string;
   ai: EmbeddedAiGuidance;
