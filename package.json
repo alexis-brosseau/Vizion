@@ -85,12 +85,6 @@
       }
     ],
     "menus": {
-      "explorer/context": [
-        {
-          "command": "vizion.newUmlDiagram",
-          "group": "navigation@1"
-        }
-      ],
       "editor/title": [
         {
           "command": "vizion.openCurrentAsText",
