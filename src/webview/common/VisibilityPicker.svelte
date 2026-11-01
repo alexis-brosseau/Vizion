@@ -20,7 +20,7 @@
 
   const options: { symbol: UmlVisibility; display: string; label: string }[] = [
     { symbol: '+', display: '＋', label: 'Public' },
-    { symbol: '-', display: '-', label: 'Private' },
+    { symbol: '-', display: '－', label: 'Private' },
     { symbol: '#', display: '#', label: 'Protected' },
     { symbol: '~', display: '~', label: 'Package' }
   ];

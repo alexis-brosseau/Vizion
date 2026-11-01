@@ -1432,7 +1432,7 @@
               zoom: (Math.round(store.viewport.zoom * 100) - 10) / 100
             })}
         >
-          -
+          －
         </button>
         <button
           type="button"

@@ -244,7 +244,7 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
     expect(params[1]).toMatchObject({ name: 'discount', type: 'number' });
     expect(buildOperationSignature(params)).toBe('(items: LineItem[], discount: number)');
     expect(formatVisibilitySign('+')).toBe('＋');
-    expect(formatVisibilitySign('-')).toBe('-');
+    expect(formatVisibilitySign('-')).toBe('－');
     expect(formatVisibilitySign('#')).toBe('#');
     expect(formatVisibilitySign('~')).toBe('~');
   });

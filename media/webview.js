@@ -7539,7 +7539,7 @@ ${component_stack}
       case "+":
         return "\uFF0B";
       case "-":
-        return "-";
+        return "\uFF0D";
       case "#":
         return "#";
       case "~":
@@ -7587,7 +7587,7 @@ ${component_stack}
     let open = state(false);
     const options = [
       { symbol: "+", display: "\uFF0B", label: "Public" },
-      { symbol: "-", display: "-", label: "Private" },
+      { symbol: "-", display: "\uFF0D", label: "Private" },
       { symbol: "#", display: "#", label: "Protected" },
       { symbol: "~", display: "~", label: "Package" }
     ];
@@ -8982,7 +8982,7 @@ ${component_stack}
   var root_342 = from_html(`<button type="button"><svg width="34" height="18" viewBox="-24 -9 26 18" class="vz-endpoint-preview-svg" aria-hidden="true"><line x1="-22" y1="0" y2="0" stroke="currentColor" stroke-width="1.8"></line><!></svg> <span> </span></button>`);
   var root_352 = from_html(`<div class="vz-endpoint-popup"><div class="vz-context-menu-title"> </div> <div class="vz-endpoint-mult-row"><span class="vz-field-label">Multiplicity</span> <input type="text" class="vz-input-mini" placeholder="e.g. 1, *, 1..5, 2..*"/></div> <div class="vz-endpoint-icon-grid"></div></div>`);
   var root_36 = from_html(`<svg class="vz-svg-layer vz-svg-relations vz-svg-overlay" aria-label="UML Relationships"><g></g></svg> <div class="vz-html-world"></div> <svg class="vz-svg-layer vz-svg-foreground" aria-label="UML Canvas Interactions"><g><!><!><!></g></svg> <!> <!> <!>`, 1);
-  var root_37 = from_html(`<div class="vz-workspace"><div class="vz-main-split"><div tabindex="0" role="application" aria-label="Vizion UML Canvas"><div class="vz-floating-zoom"><button type="button" class="vz-zoom-pill-btn" title="Zoom Out">-</button> <button type="button" class="vz-zoom-pill-label" title="Scroll wheel here to adjust by \xB11%, or click to Fit Content"> </button> <button type="button" class="vz-zoom-pill-btn" title="Zoom In">\uFF0B</button></div> <!></div> <!></div></div>`);
+  var root_37 = from_html(`<div class="vz-workspace"><div class="vz-main-split"><div tabindex="0" role="application" aria-label="Vizion UML Canvas"><div class="vz-floating-zoom"><button type="button" class="vz-zoom-pill-btn" title="Zoom Out">\uFF0D</button> <button type="button" class="vz-zoom-pill-label" title="Scroll wheel here to adjust by \xB11%, or click to Fit Content"> </button> <button type="button" class="vz-zoom-pill-btn" title="Zoom In">\uFF0B</button></div> <!></div> <!></div></div>`);
   function UmlCanvas($$anchor, $$props) {
     push($$props, true);
     let store = prop($$props, "store", 7);

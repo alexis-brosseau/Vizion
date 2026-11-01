@@ -33,7 +33,7 @@ export function formatVisibilitySign(vis?: UmlVisibility): string {
     case '+':
       return '＋';
     case '-':
-      return '-';
+      return '－';
     case '#':
       return '#';
     case '~':
