@@ -1,0 +1,210 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Vizion UML Architecture Document (.uml.viz)",
+  "description": "Unversioned human-and-AI readable UML visual architecture document for Vizion.",
+  "type": "object",
+  "required": ["format", "kind", "title", "ai", "nodes", "edges", "layout"],
+  "properties": {
+    "format": {
+      "const": "vizion",
+      "description": "Fixed format discriminator for Vizion files."
+    },
+    "kind": {
+      "const": "uml",
+      "description": "Document kind discriminator. Must match *.uml.viz filename."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable diagram title."
+    },
+    "ai": {
+      "type": "object",
+      "required": ["purpose", "interpretation", "editingRules"],
+      "properties": {
+        "purpose": { "type": "string", "minLength": 1 },
+        "interpretation": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "editingRules": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "name"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": {
+            "type": "string",
+            "description": "UML node kind (built-in: class, note, shape; or custom registered kind)."
+          },
+          "name": { "type": "string" },
+          "stereotype": { "type": "string" },
+          "text": { "type": "string" },
+          "shape": {
+            "type": "string",
+            "enum": ["ellipse", "rectangle", "rhombus", "trapezoid", "parallelogram"],
+            "description": "Geometric shape variant when kind is 'shape'."
+          },
+          "showAttributes": { "type": "boolean" },
+          "showOperations": { "type": "boolean" },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "visibility": { "type": "string", "enum": ["+", "-", "#", "~"] },
+                "name": { "type": "string" },
+                "type": { "type": "string" }
+              },
+              "additionalProperties": true
+            }
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "visibility": { "type": "string", "enum": ["+", "-", "#", "~"] },
+                "name": { "type": "string" },
+                "signature": { "type": "string" },
+                "returnType": { "type": "string" },
+                "parameters": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name"],
+                    "properties": {
+                      "id": { "type": "string", "minLength": 1 },
+                      "name": { "type": "string" },
+                      "type": { "type": "string" }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "source", "target"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "association",
+              "dependency",
+              "generalization",
+              "realization",
+              "aggregation",
+              "composition"
+            ]
+          },
+          "source": {
+            "type": "object",
+            "required": ["nodeId"],
+            "properties": {
+              "nodeId": { "type": "string", "minLength": 1 },
+              "multiplicity": { "type": "string" }
+            },
+            "additionalProperties": true
+          },
+          "target": {
+            "type": "object",
+            "required": ["nodeId"],
+            "properties": {
+              "nodeId": { "type": "string", "minLength": 1 },
+              "multiplicity": { "type": "string" }
+            },
+            "additionalProperties": true
+          },
+          "label": { "type": "string" },
+          "visual": {
+            "type": "object",
+            "properties": {
+              "line": { "type": "string", "enum": ["solid", "dashed"] },
+              "routing": { "type": "string", "enum": ["straight", "bezier"] },
+              "start": {
+                "type": "object",
+                "required": ["shape"],
+                "properties": {
+                  "shape": {
+                    "type": "string",
+                    "enum": ["none", "circle", "diamond", "square", "triangle", "open-arrow"]
+                  },
+                  "fill": { "type": "string", "enum": ["hollow", "filled"] },
+                  "size": { "type": "number", "minimum": 4, "maximum": 36 }
+                },
+                "additionalProperties": true
+              },
+              "end": {
+                "type": "object",
+                "required": ["shape"],
+                "properties": {
+                  "shape": {
+                    "type": "string",
+                    "enum": ["none", "circle", "diamond", "square", "triangle", "open-arrow"]
+                  },
+                  "fill": { "type": "string", "enum": ["hollow", "filled"] },
+                  "size": { "type": "number", "minimum": 4, "maximum": 36 }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "layout": {
+      "type": "object",
+      "required": ["nodes", "edges"],
+      "properties": {
+        "nodes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "width": { "type": "number", "minimum": 40 },
+              "height": { "type": "number", "minimum": 30 }
+            },
+            "additionalProperties": true
+          }
+        },
+        "edges": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "version": false,
+    "schemaVersion": false,
+    "formatVersion": false,
+    "instructionsVersion": false
+  },
+  "additionalProperties": true
+}

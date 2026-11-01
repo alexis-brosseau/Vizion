@@ -1,0 +1,133 @@
+{
+  "name": "vizion",
+  "displayName": "Vizion - Visual Editors",
+  "description": "Custom visual editor for unversioned .uml.viz JSON documents with embedded AI guidance.",
+  "version": "0.1.0",
+  "publisher": "Vizionary",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.88.0"
+  },
+  "categories": [
+    "Visualization",
+    "Custom Editors",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCustomEditor:vizion.uml",
+    "onCommand:vizion.newUmlDiagram",
+    "onCommand:vizion.initializeCurrentDocument"
+  ],
+  "main": "./dist/extension.cjs",
+  "contributes": {
+    "languages": [
+      {
+        "id": "json",
+        "filenamePatterns": [
+          "*.uml.viz"
+        ]
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": "*.uml.viz",
+        "url": "./schemas/uml.schema.json"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "vizion.uml",
+        "displayName": "UML Editor",
+        "priority": "default",
+        "selector": [
+          {
+            "filenamePattern": "*.uml.viz"
+          }
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "vizion.newUmlDiagram",
+        "title": "New UML Diagram",
+        "category": "Vizion",
+        "icon": "$(type-hierarchy-sub)"
+      },
+      {
+        "command": "vizion.initializeCurrentDocument",
+        "title": "Initialize Current Empty Vizion Document",
+        "category": "Vizion",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "vizion.openCurrentAsText",
+        "title": "Open Current Vizion Document as JSON Text",
+        "category": "Vizion",
+        "icon": "$(code)"
+      },
+      {
+        "command": "vizion.fitCanvasToContent",
+        "title": "Fit Canvas to Content",
+        "category": "Vizion",
+        "icon": "$(screen-full)"
+      },
+      {
+        "command": "vizion.resetCanvasZoom",
+        "title": "Reset Canvas Zoom (100%)",
+        "category": "Vizion",
+        "icon": "$(zoom-in)"
+      },
+      {
+        "command": "vizion.exportCurrentSvg",
+        "title": "Export Current Diagram as SVG",
+        "category": "Vizion",
+        "icon": "$(export)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "vizion.newUmlDiagram",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "vizion.openCurrentAsText",
+          "when": "activeCustomEditorId == 'vizion.uml'",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vizion.fitCanvasToContent",
+          "when": "activeCustomEditorId == 'vizion.uml'",
+          "group": "navigation@2"
+        },
+        {
+          "command": "vizion.exportCurrentSvg",
+          "when": "activeCustomEditorId == 'vizion.uml'",
+          "group": "navigation@3"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "package": "vsce package --no-dependencies --allow-missing-repository"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.88.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.24.0",
+    "svelte": "^5.16.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

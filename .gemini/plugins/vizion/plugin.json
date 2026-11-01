@@ -1,0 +1,13 @@
+{
+  "name": "vizion",
+  "displayName": "Vizion UML & Sketch Documents",
+  "description": "Author, interpret, and safely edit unversioned .uml.viz and .sketch.viz visual documents following Vizion's embedded AI guidance and schema rules.",
+  "version": "0.1.0",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Create a domain architecture diagram in .vizion/architecture/domain.uml.viz",
+    "Add a PaymentService class and connect it to Order in domain.uml.viz",
+    "Sketch an onboarding user flow in .vizion/ideas/onboarding.sketch.viz"
+  ]
+}
+

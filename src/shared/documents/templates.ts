@@ -1,0 +1,84 @@
+import type { UmlDocument, VizionDocumentKind } from './types';
+
+/**
+ * Extracts a clean human-readable title from a filename or URI path.
+ */
+export function deriveDefaultTitle(filenameOrPath: string, _kind: VizionDocumentKind = 'uml'): string {
+  const base = filenameOrPath.split(/[\\/]/).pop() ?? '';
+  const stripped = base
+    .replace(/\.uml\.viz$/i, '')
+    .replace(/\.viz$/i, '')
+    .trim();
+
+  if (!stripped) {
+    return 'Domain';
+  }
+
+  // Convert kebab-case or snake_case into Title Case words
+  return stripped
+    .split(/[-_.\s]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
+ * Generates the unversioned default UML document per Section 4.1 of the implementation plan.
+ */
+export function createDefaultUmlDocument(title = 'Domain'): UmlDocument {
+  return {
+    format: 'vizion',
+    kind: 'uml',
+    title: title || 'Domain',
+    ai: {
+      purpose: 'Describe classes, notes, shapes, and explicitly typed relationships.',
+      interpretation: [
+        'Document Structure: Standalone unversioned JSON document. Root required fields are: "format" (must be "vizion"), "kind" (must be "uml"), "title" (string), "ai" (guidance object with "purpose", "interpretation", "editingRules"), "nodes" (array), "edges" (array), and "layout" (object with "nodes" and "edges"). NEVER add version fields like "version" or "schemaVersion".',
+        'Node Types & Properties ("nodes[]"): Each node must have "id" (unique string) and "kind" ("class" | "shape" | "note"). Optional common fields: "name" (display label string), "stereotype" (architectural role string, e.g. "entity", "service", "value", "aggregate", "controller"). For "note" nodes, prose is stored in "text" (markdown/plain text).',
+        'Geometric Shapes ("kind": "shape"): Must specify "shape" geometry as one of: "ellipse" | "rectangle" | "rhombus" | "trapezoid" | "parallelogram". The node "name" is rendered as the centered label.',
+        'Class Members & Compartments ("kind": "class"): Supports "attributes" array and "operations" array. Section visibility can be toggled via boolean flags "showAttributes" and "showOperations" (default true).',
+        'Attributes Format: Each attribute object requires "id" (unique string), "visibility" (one of: "+" [public], "-" [private], "#" [protected], "~" [package/internal]), "name" (string), and "type" (type string e.g. "string", "number", "Date").',
+        'Operations Format: Each operation object requires "id" (unique string), "visibility" ("+" | "-" | "#" | "~"), "name" (method name string), "returnType" (return type string, e.g. "void", "Promise<T>", "boolean"), "signature" (e.g. "(id: string, count: number)"), and "parameters" array of argument objects ({ "id": string, "name": string, "type": string }).',
+        'Relationships ("edges[]"): Defines connections between nodes. Required fields: "id" (unique string), "kind" (relationship semantic type: "association" | "dependency" | "generalization" | "realization" | "aggregation" | "composition"), "source" ({ "nodeId": string, "multiplicity"?: string }), and "target" ({ "nodeId": string, "multiplicity"?: string }). Optional "label" (string rendered at midpoint).',
+        'Endpoint Multiplicities: Expressed as cardinality strings on endpoints: "source.multiplicity" and "target.multiplicity" (e.g. "1", "*", "0..1", "1..*", "0..n", or omit/empty if none).',
+        'Visual Presentation ("edge.visual"): Optional visual options: "line" ("solid" | "dashed"), "routing" ("straight" | "bezier"), and endpoint decorations "start" / "end" ({ "shape": "none" | "circle" | "diamond" | "square" | "triangle" | "open-arrow", "fill"?: "hollow" | "filled", "size"?: number }). Only closed shapes support "fill". Standard semantic defaults: generalization = hollow triangle end; realization = dashed with hollow triangle end; aggregation = hollow diamond start; composition = filled diamond start; dependency = dashed with open-arrow end; association = solid line with none ends.',
+        'Canvas Layout ("layout.nodes"): Bounding box for every node keyed by nodeId: { "x": number, "y": number, "width": number, "height": number }. Coordinates snap to a 20px grid (multiples of 20). Width >= 100, height >= 60 for classes; width >= 80, height >= 50 for shapes; width >= 120, height >= 60 for notes.',
+        'Architectural Model Scope: This diagram is a selective architectural view. Absence of elements or relationships does not imply absence in the underlying implementation code.'
+      ],
+      editingRules: [
+        'Strict JSON Conformity: Output strictly valid standard JSON with 2-space indentation. Never use JavaScript comments, trailing commas, single quotes, or unquoted identifiers.',
+        'Never Add Versioning: This format is permanently unversioned. Do NOT output "version", "schemaVersion", "formatVersion", or "instructionsVersion" at root or in any sub-object.',
+        'Referential Integrity: Every "source.nodeId" and "target.nodeId" in "edges[]" MUST exactly match an existing node "id" in "nodes[]". When removing a node from "nodes[]", you must atomically delete all edges referencing its ID.',
+        'Layout Synchronization: Every node added to "nodes[]" MUST have a corresponding bounding box in "layout.nodes[nodeId]" ({ "x": number, "y": number, "width": number, "height": number }) aligned to a 20px grid. When deleting a node, delete its layout entry.',
+        'Preserve Existing Identifiers: Never alter existing "id" strings when updating nodes, edges, attributes, operations, or parameters. When creating new entities, generate clean, unique kebab-case IDs (e.g., "node-order-service", "edge-order-payment-1", "order-attr-status", "order-op-cancel", "cancel-arg-reason").',
+        'Allowed Enums & Data Values: Strictly use only documented enum values — node kinds: "class"|"shape"|"note"; shapes: "ellipse"|"rectangle"|"rhombus"|"trapezoid"|"parallelogram"; edge kinds: "association"|"dependency"|"generalization"|"realization"|"aggregation"|"composition"; visibilities: "+"|"-"|"#"|"~"; endpoint shapes: "none"|"circle"|"diamond"|"square"|"triangle"|"open-arrow"; fills: "hollow"|"filled".',
+        'Preserve Unknown & Custom Fields: Preserve all unrecognized top-level and nested properties, annotations, extension keys, and this "ai" section intact across edits.',
+        'Non-Interference with Source Code: Do not modify repository application source code when asked to edit this architecture diagram, unless the user explicitly requests code changes.'
+      ]
+    },
+    nodes: [],
+    edges: [],
+    layout: {
+      nodes: {},
+      edges: {}
+    }
+  };
+}
+
+/**
+ * Serializes a newly initialized default document with clean 2-space indentation.
+ */
+export function serializeDefaultDocument(kind: VizionDocumentKind, filenameOrPath: string): string {
+  const title = deriveDefaultTitle(filenameOrPath, kind);
+  const doc = createDefaultUmlDocument(title);
+  return JSON.stringify(doc, null, 2) + '\n';
+}
+
+/**
+ * Checks whether a document text is empty or whitespace-only (including optional UTF-8 BOM).
+ * Note: `{}`, `null`, `[]`, and JSON strings are NOT empty.
+ */
+export function isEmptyOrWhitespaceDocument(text: string): boolean {
+  const withoutBom = text.replace(/^\uFEFF/, '');
+  return withoutBom.trim().length === 0;
+}

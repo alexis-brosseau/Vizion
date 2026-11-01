@@ -1,0 +1,11 @@
+node_modules/**
+src/**
+test/**
+scripts/**
+.vscode/**
+.vizion/**
+*.map
+*.vsix
+tsconfig.json
+Vizion-VS-Code-UML-Sketch-Implementation-Plan.md
+
