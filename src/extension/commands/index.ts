@@ -115,11 +115,6 @@ export function registerVizionCommands(
     vscode.commands.registerCommand('vizion.resetCanvasZoom', () => {
       const active = registry.getActiveCoordinator();
       active?.broadcastCommand('resetZoom', true);
-    }),
-
-    vscode.commands.registerCommand('vizion.exportCurrentSvg', () => {
-      const active = registry.getActiveCoordinator();
-      active?.broadcastCommand('requestSvgExport', true);
     })
   );
 }

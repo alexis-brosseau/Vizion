@@ -8,10 +8,13 @@
     UmlNodeLayout,
     UmlOperation,
     UmlParameter,
-    UmlShapeGeometry
+    UmlShapeGeometry,
+    UmlVisibility
   } from '../../shared/documents/types';
   import {
+    computeShapeBoundaryIntersection,
     computeUmlEdgeGeometry,
+    getMultiplicityLabelPoint,
     GRID_SIZE,
     normalizeDragRect,
     rectsIntersect,
@@ -23,7 +26,11 @@
   import {
     buildOperationSignature,
     extractOperationParameters,
-    formatVisibilitySign
+    formatAttributesToText,
+    formatOperationsToText,
+    formatVisibilitySign,
+    parseAttributesFromText,
+    parseOperationsFromText
   } from '../../shared/operations';
   import {
     getEndpointShape,
@@ -32,7 +39,6 @@
     UML_SHAPE_GEOMETRIES
   } from '../../shared/registry/uml-registry';
   import { postToHost } from '../bridge';
-  import VisibilityPicker from '../common/VisibilityPicker.svelte';
   import type { VizionWebviewStore } from '../state.svelte';
   import UmlInspector from './UmlInspector.svelte';
 
@@ -61,13 +67,19 @@
         currentWorld: Point2D;
         initialLayouts: Record<string, UmlNodeLayout>;
         clickedNodeId?: string;
+        isShift?: boolean;
       }
     | {
         mode: 'resizing';
         nodeId: string;
+        handleDirection?: 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
+        handleOffset?: number;
         startWorld: Point2D;
         currentWorld: Point2D;
         initialBox: UmlNodeLayout;
+        minWidth?: number;
+        minHeight?: number;
+        childBounds?: { minX: number; minY: number; maxX: number; maxY: number };
       }
     | {
         mode: 'connecting';
@@ -76,13 +88,58 @@
         currentWorld: Point2D;
       };
 
+  type FrameResizeSide = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
+
   let gesture = $state<UmlGestureState>({ mode: 'idle' });
   let spacePressed = $state<boolean>(false);
   let inlineEditingNodeId = $state<string | null>(null);
   let inlineNodeNameDraft = $state<string>('');
   let inlineNodeStereotypeDraft = $state<string>('');
+  let inlineNodeTextDraft = $state<string>('');
+  let inlineNodeAttributesDraft = $state<string>('');
+  let inlineNodeOperationsDraft = $state<string>('');
   let inlineEditingEdgeId = $state<string | null>(null);
   let inlineEdgeLabelDraft = $state<string>('');
+  let lastPointerWorldPos = $state<Point2D | null>(null);
+  let lastSyncedNodeJson = $state<string>('');
+
+  $effect(() => {
+    if (inlineEditingNodeId && doc) {
+      const target = doc.nodes.find((n) => n.id === inlineEditingNodeId);
+      if (target) {
+        const json = JSON.stringify({
+          name: target.name,
+          stereotype: target.stereotype,
+          attributes: target.attributes,
+          operations: target.operations,
+          text: target.text
+        });
+        if (json !== lastSyncedNodeJson) {
+          lastSyncedNodeJson = json;
+          inlineNodeNameDraft = target.name ?? '';
+          inlineNodeStereotypeDraft =
+            target.kind === 'note' || target.kind === 'shape' ? '' : (target.stereotype ?? '');
+          inlineNodeTextDraft = target.text ?? '';
+          inlineNodeAttributesDraft = formatAttributesToText(target.attributes ?? []);
+          inlineNodeOperationsDraft = formatOperationsToText(target.operations ?? []);
+        }
+      } else {
+        inlineEditingNodeId = null;
+        lastSyncedNodeJson = '';
+      }
+    } else {
+      lastSyncedNodeJson = '';
+    }
+  });
+
+  function focusInput(el: HTMLElement) {
+    requestAnimationFrame(() => {
+      el.focus();
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+        el.select();
+      }
+    });
+  }
   let inlineEditingMultiplicity = $state<{
     edgeId: string;
     end: 'start' | 'end';
@@ -131,19 +188,118 @@
   const gridPosX = $derived(store.viewport.panX - gridSpacing / 2);
   const gridPosY = $derived(store.viewport.panY - gridSpacing / 2);
 
+  const nodeElements = new Map<string, HTMLElement>();
+
+  function registerNodeElement(el: HTMLElement, id: string) {
+    nodeElements.set(id, el);
+    return {
+      update(newId: string) {
+        if (newId !== id) {
+          nodeElements.delete(id);
+          id = newId;
+          nodeElements.set(id, el);
+        }
+      },
+      destroy() {
+        nodeElements.delete(id);
+      }
+    };
+  }
+
+  const FRAME_PAD_LEFT = 20;
+  const FRAME_PAD_RIGHT = 20;
+  const FRAME_PAD_TOP = 28;
+  const FRAME_PAD_BOTTOM = 20;
+
+  function getNodeMinContentSize(nodeId: string): { minWidth: number; minHeight: number } {
+    const el = nodeElements.get(nodeId);
+    const node = doc?.nodes.find((n) => n.id === nodeId);
+    if (!node) {
+      return { minWidth: 100, minHeight: 60 };
+    }
+
+    if (node.kind === 'shape') {
+      return { minWidth: 80, minHeight: 60 };
+    }
+
+    if (node.kind === 'frame') {
+      return { minWidth: 160, minHeight: 120 };
+    }
+
+    let contentHeight = 0;
+    if (el) {
+      for (let i = 0; i < el.children.length; i++) {
+        const child = el.children[i] as HTMLElement;
+        if (
+          child.classList.contains('vz-connect-port') ||
+          child.classList.contains('vz-resize-handle')
+        ) {
+          continue;
+        }
+        contentHeight += child.offsetHeight;
+      }
+      contentHeight += 4;
+    }
+
+    const isEditing = inlineEditingNodeId === nodeId;
+
+    if (isEditing) {
+      if (node.kind === 'note') {
+        const lineCount = Math.max(4, (inlineNodeTextDraft || node.text || '').split('\n').length);
+        const editingH = 55 + 24 + lineCount * 18 + 20;
+        contentHeight = Math.max(contentHeight, editingH);
+      } else {
+        const editAttrsRows = Math.max(3, (node.attributes ?? []).length + 1);
+        const editOpsRows = Math.max(3, (node.operations ?? []).length + 1);
+        const headerH = 100;
+        const attrsH = node.showAttributes !== false ? 30 + editAttrsRows * 20 : 30;
+        const opsH = node.showOperations !== false ? 30 + editOpsRows * 20 : 30;
+        contentHeight = Math.max(contentHeight, headerH + attrsH + opsH + 10);
+      }
+    } else if (contentHeight <= 4) {
+      if (node.kind === 'note') {
+        const lineCount = (node.text || node.name || '').split('\n').length;
+        contentHeight = 36 + 16 + Math.max(1, lineCount) * 18 + 4;
+      } else {
+        const headerH = (node.stereotype ? 18 : 0) + 36;
+        const attrsCount = (node.attributes ?? []).length;
+        const opsCount = (node.operations ?? []).length;
+        const attrsH = node.showAttributes !== false && attrsCount > 0 ? 12 + attrsCount * 19 : 0;
+        const opsH = node.showOperations !== false && opsCount > 0 ? 12 + opsCount * 19 : 0;
+        contentHeight = headerH + attrsH + opsH + 4;
+      }
+    }
+
+    // A node cannot shrink smaller if it cannot fit into the next grid point.
+    // Snap UP to the next grid point that completely contains the content.
+    const minGridHeight = Math.max(60, Math.ceil(contentHeight / GRID_SIZE) * GRID_SIZE);
+    let minGridWidth = node.kind === 'note' ? 100 : 120;
+    if (isEditing) {
+      minGridWidth = node.kind === 'note' ? 200 : 240;
+    }
+
+    return { minWidth: minGridWidth, minHeight: minGridHeight };
+  }
+
   // Compute live layout boxes including optimistic layouts and grid-snapped gesture preview
-  const effectiveNodeLayouts = $derived.by<Record<string, UmlNodeLayout>>(() => {
+  const effectiveNodeLayouts = $derived.by(() => {
     if (!doc) return {};
     const base: Record<string, UmlNodeLayout> = {};
     doc.nodes.forEach((n, idx) => {
       const persisted = doc.layout.nodes[n.id] ?? {
         x: 80 + (idx % 3) * 260,
         y: 80 + Math.floor(idx / 3) * 190,
-        width: 220,
-        height: 140
+        width: n.kind === 'frame' ? 260 : 220,
+        height: n.kind === 'frame' ? 180 : 140
       };
       // Use optimistic layout while waiting for the host snapshot so nodes never snap back
-      base[n.id] = store.optimisticUmlLayouts[n.id] ?? persisted;
+      const raw = store.optimisticUmlLayouts[n.id] ?? persisted;
+      const minSize = getNodeMinContentSize(n.id);
+      base[n.id] = {
+        ...raw,
+        width: Math.max(minSize.minWidth, snapToGrid(raw.width, GRID_SIZE)),
+        height: Math.max(minSize.minHeight, snapToGrid(raw.height, GRID_SIZE))
+      };
     });
 
     if (gesture.mode === 'moving') {
@@ -158,14 +314,108 @@
           y: snapToGrid(init.y + snappedDy, GRID_SIZE)
         };
       }
+
+      // If Shift+dragging elements inside a frame, show live expansion preview
+      if (gesture.isShift) {
+        for (const n of doc.nodes) {
+          if (n.kind === 'frame' && n.children && n.children.length > 0) {
+            const movingChildBoxes = n.children
+              .filter((cid) => cid in gesture.initialLayouts)
+              .map((cid) => base[cid])
+              .filter((b): b is UmlNodeLayout => Boolean(b));
+            if (movingChildBoxes.length > 0) {
+              const curBox = base[n.id];
+              if (curBox) {
+                const cMinX = Math.min(...movingChildBoxes.map((b) => b.x));
+                const cMinY = Math.min(...movingChildBoxes.map((b) => b.y));
+                const cMaxX = Math.max(...movingChildBoxes.map((b) => b.x + b.width));
+                const cMaxY = Math.max(...movingChildBoxes.map((b) => b.y + b.height));
+                const fx = Math.min(curBox.x, snapToGrid(cMinX - FRAME_PAD_LEFT, GRID_SIZE));
+                const fy = Math.min(curBox.y, snapToGrid(cMinY - FRAME_PAD_TOP, GRID_SIZE));
+                const fRight = Math.max(curBox.x + curBox.width, snapToGrid(cMaxX + FRAME_PAD_RIGHT, GRID_SIZE));
+                const fBottom = Math.max(curBox.y + curBox.height, snapToGrid(cMaxY + FRAME_PAD_BOTTOM, GRID_SIZE));
+                base[n.id] = {
+                  x: fx,
+                  y: fy,
+                  width: Math.max(160, fRight - fx),
+                  height: Math.max(120, fBottom - fy)
+                };
+              }
+            }
+          }
+        }
+      }
     } else if (gesture.mode === 'resizing') {
       const rawDx = gesture.currentWorld.x - gesture.startWorld.x;
       const rawDy = gesture.currentWorld.y - gesture.startWorld.y;
+      const minW = gesture.minWidth ?? 120;
+      const minH = gesture.minHeight ?? 60;
+      const init = gesture.initialBox;
+      const dir = gesture.handleDirection ?? 'se';
+      const cb = gesture.childBounds;
+
+      let newX = init.x;
+      let newY = init.y;
+      let newW = init.width;
+      let newH = init.height;
+
+      if (dir === 'e' || dir === 'ne' || dir === 'se') {
+        const minRight = cb ? snapToGrid(cb.maxX + FRAME_PAD_RIGHT, GRID_SIZE) : init.x + minW;
+        const targetW = init.width + rawDx;
+        newW = Math.max(minW, minRight - init.x, snapToGrid(targetW, GRID_SIZE));
+      } else if (dir === 'w' || dir === 'nw' || dir === 'sw') {
+        const rightEdge = init.x + init.width;
+        const maxLeft = cb ? snapToGrid(cb.minX - FRAME_PAD_LEFT, GRID_SIZE) : rightEdge - minW;
+        const targetX = init.x + rawDx;
+        newX = Math.min(rightEdge - minW, maxLeft, snapToGrid(targetX, GRID_SIZE));
+        newW = rightEdge - newX;
+      }
+
+      if (dir === 's' || dir === 'sw' || dir === 'se') {
+        const minBottom = cb ? snapToGrid(cb.maxY + FRAME_PAD_BOTTOM, GRID_SIZE) : init.y + minH;
+        const targetH = init.height + rawDy;
+        newH = Math.max(minH, minBottom - init.y, snapToGrid(targetH, GRID_SIZE));
+      } else if (dir === 'n' || dir === 'nw' || dir === 'ne') {
+        const bottomEdge = init.y + init.height;
+        const maxTop = cb ? snapToGrid(cb.minY - FRAME_PAD_TOP, GRID_SIZE) : bottomEdge - minH;
+        const targetY = init.y + rawDy;
+        newY = Math.min(bottomEdge - minH, maxTop, snapToGrid(targetY, GRID_SIZE));
+        newH = bottomEdge - newY;
+      }
+
       base[gesture.nodeId] = {
-        ...gesture.initialBox,
-        width: Math.max(100, snapToGrid(gesture.initialBox.width + rawDx, GRID_SIZE)),
-        height: Math.max(60, snapToGrid(gesture.initialBox.height + rawDy, GRID_SIZE))
+        x: newX,
+        y: newY,
+        width: newW,
+        height: newH
       };
+    }
+
+    // If a node inside a frame is doubleclicked to edit and grows, temporarily grow the frame so UI fits
+    if (inlineEditingNodeId) {
+      for (const n of doc.nodes) {
+        if (n.kind === 'frame' && n.children && n.children.includes(inlineEditingNodeId)) {
+          const editedBox = base[inlineEditingNodeId];
+          const curBox = base[n.id];
+          if (editedBox && curBox) {
+            const fRight = Math.max(
+              curBox.x + curBox.width,
+              snapToGrid(editedBox.x + editedBox.width + FRAME_PAD_RIGHT, GRID_SIZE)
+            );
+            const fBottom = Math.max(
+              curBox.y + curBox.height,
+              snapToGrid(editedBox.y + editedBox.height + FRAME_PAD_BOTTOM, GRID_SIZE)
+            );
+            if (fRight > curBox.x + curBox.width || fBottom > curBox.y + curBox.height) {
+              base[n.id] = {
+                ...curBox,
+                width: Math.max(curBox.width, fRight - curBox.x),
+                height: Math.max(curBox.height, fBottom - curBox.y)
+              };
+            }
+          }
+        }
+      }
     }
 
     return base;
@@ -206,9 +456,14 @@
     store.registerCanvasCallbacks({
       onFitContent: fitContent,
       onResetZoom: () => store.setViewport({ panX: 40, panY: 40, zoom: 1 }),
-      onRestoreFocus: () => viewportEl?.focus(),
-      onExportSvg: exportDiagramToSvg
+      onRestoreFocus: () => viewportEl?.focus()
     });
+  });
+
+  $effect(() => {
+    if (inlineEditingNodeId && !store.selectedIds.includes(inlineEditingNodeId)) {
+      commitInlineNodeEdit();
+    }
   });
 
   function getRelativeWorldPoint(e: PointerEvent | MouseEvent): Point2D {
@@ -306,8 +561,8 @@
     if (inlineEditingNodeId) commitInlineNodeEdit();
     if (inlineEditingEdgeId) commitInlineEdgeLabel();
     if (inlineEditingMultiplicity) commitInlineMultiplicity();
+    closeEndpointPickerPopup();
     viewportEl?.focus();
-    endpointPickerPopup = null;
 
     if (e.button === 1 || (e.button === 0 && (e.altKey || spacePressed))) {
       gesture = {
@@ -317,7 +572,11 @@
         initialPanX: store.viewport.panX,
         initialPanY: store.viewport.panY
       };
-      viewportEl?.setPointerCapture(e.pointerId);
+      try {
+        viewportEl?.setPointerCapture(e.pointerId);
+      } catch {
+        // Ignored if capture cannot be acquired
+      }
       return;
     }
 
@@ -335,7 +594,11 @@
         startWorld: pt,
         currentWorld: pt
       };
-      viewportEl?.setPointerCapture(e.pointerId);
+      try {
+        viewportEl?.setPointerCapture(e.pointerId);
+      } catch {
+        // Ignored if capture cannot be acquired
+      }
     }
   }
 
@@ -369,13 +632,13 @@
     if (inlineEditingNodeId && inlineEditingNodeId !== node.id) commitInlineNodeEdit();
     if (inlineEditingEdgeId) commitInlineEdgeLabel();
     if (inlineEditingMultiplicity) commitInlineMultiplicity();
-    endpointPickerPopup = null;
+    closeEndpointPickerPopup();
     e.stopPropagation();
     viewportEl?.focus();
 
-    const additive = e.shiftKey || e.metaKey || e.ctrlKey;
+    const additive = e.metaKey || e.ctrlKey;
     if (!store.selectedIds.includes(node.id)) {
-      store.selectSingle(node.id, additive);
+      store.selectSingle(node.id, additive || e.shiftKey);
     } else if (additive) {
       store.selectSingle(node.id, true);
       return;
@@ -385,7 +648,19 @@
 
     const pt = getRelativeWorldPoint(e);
     const initialLayouts: Record<string, UmlNodeLayout> = {};
+
+    // When dragging a frame, include its contained elements so they move together with the frame
+    const nodesToMove = new Set<string>(store.selectedIds);
     for (const id of store.selectedIds) {
+      const n = doc?.nodes.find((item) => item.id === id);
+      if (n?.kind === 'frame') {
+        for (const cid of n.children ?? []) {
+          nodesToMove.add(cid);
+        }
+      }
+    }
+
+    for (const id of nodesToMove) {
       if (effectiveNodeLayouts[id]) {
         initialLayouts[id] = { ...effectiveNodeLayouts[id] };
       }
@@ -395,24 +670,69 @@
       startWorld: pt,
       currentWorld: pt,
       initialLayouts,
-      clickedNodeId: node.id
+      clickedNodeId: node.id,
+      isShift: e.shiftKey
     };
   }
 
-  function handleResizeHandlePointerDown(e: PointerEvent, node: UmlNode): void {
+  function handleResizeHandlePointerDown(
+    e: PointerEvent,
+    node: UmlNode,
+    dir: FrameResizeSide = 'se'
+  ): void {
     if (e.button === 2) return;
     e.stopPropagation();
     if (store.isReadOnly) return;
     const pt = getRelativeWorldPoint(e);
     const box = effectiveNodeLayouts[node.id];
     if (!box) return;
+    const minSize = getNodeMinContentSize(node.id);
+    let minW = minSize.minWidth;
+    let minH = minSize.minHeight;
+    let childBounds: { minX: number; minY: number; maxX: number; maxY: number } | undefined;
+
+    if (node.kind === 'frame' && node.children && node.children.length > 0) {
+      const childBoxes = node.children
+        .map((cid) => effectiveNodeLayouts[cid])
+        .filter((b): b is UmlNodeLayout => Boolean(b));
+      if (childBoxes.length > 0) {
+        childBounds = {
+          minX: Math.min(...childBoxes.map((b) => b.x)),
+          minY: Math.min(...childBoxes.map((b) => b.y)),
+          maxX: Math.max(...childBoxes.map((b) => b.x + b.width)),
+          maxY: Math.max(...childBoxes.map((b) => b.y + b.height))
+        };
+        minW = Math.max(160, snapToGrid(childBounds.maxX + FRAME_PAD_RIGHT - box.x, GRID_SIZE));
+        minH = Math.max(120, snapToGrid(childBounds.maxY + FRAME_PAD_BOTTOM - box.y, GRID_SIZE));
+      }
+    }
+
+    const localX = pt.x - box.x;
+    const localY = pt.y - box.y;
+    const offset = dir === 'n' || dir === 's' ? localX : localY;
+
     gesture = {
       mode: 'resizing',
       nodeId: node.id,
+      handleDirection: dir,
+      handleOffset: offset,
       startWorld: pt,
       currentWorld: pt,
-      initialBox: { ...box }
+      initialBox: {
+        ...box,
+        width: Math.max(minW, snapToGrid(box.width, GRID_SIZE)),
+        height: Math.max(minH, snapToGrid(box.height, GRID_SIZE))
+      },
+      minWidth: minW,
+      minHeight: minH,
+      childBounds
     };
+
+    try {
+      viewportEl?.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignored
+    }
   }
 
   function handleConnectPortPointerDown(e: PointerEvent, node: UmlNode): void {
@@ -421,10 +741,18 @@
     if (store.isReadOnly) return;
     const pt = getRelativeWorldPoint(e);
     const box = effectiveNodeLayouts[node.id];
-    const startPoint = {
+    let startPoint = {
       x: (box?.x ?? pt.x) + (box?.width ?? 0),
       y: (box?.y ?? pt.y) + (box?.height ?? 0) / 2
     };
+    if (box && node.kind === 'shape' && node.shape) {
+      const hit = computeShapeBoundaryIntersection(
+        box,
+        { x: box.x + box.width + 1000, y: box.y + box.height / 2 },
+        node.shape
+      );
+      startPoint = hit.point;
+    }
     gesture = {
       mode: 'connecting',
       sourceNodeId: node.id,
@@ -434,6 +762,7 @@
   }
 
   function handleWindowPointerMove(e: PointerEvent): void {
+    lastPointerWorldPos = getRelativeWorldPoint(e);
     if (gesture.mode === 'idle') return;
 
     if (gesture.mode === 'panning') {
@@ -454,7 +783,11 @@
       gesture.mode === 'resizing' ||
       gesture.mode === 'connecting'
     ) {
-      gesture = { ...gesture, currentWorld: pt };
+      gesture = {
+        ...gesture,
+        currentWorld: pt,
+        ...(gesture.mode === 'moving' ? { isShift: Boolean(e.shiftKey) } : {})
+      };
     }
   }
 
@@ -462,6 +795,7 @@
     if (!doc) return undefined;
     for (let i = doc.nodes.length - 1; i >= 0; i--) {
       const n = doc.nodes[i];
+      if (n.kind === 'frame') continue;
       const box = effectiveNodeLayouts[n.id];
       if (!box) continue;
       if (
@@ -524,13 +858,24 @@
           y: snapToGrid(init.y + snappedDy, GRID_SIZE)
         };
       }
-      // Retain optimistic positions before clearing gesture so nodes never snap back
-      store.optimisticUmlLayouts = { ...store.optimisticUmlLayouts, ...updates };
+
+      const isShift = Boolean(current.isShift || e.shiftKey);
+      const dropPt = getRelativeWorldPoint(e);
+      const { layoutUpdates, childrenUpdates } = getFrameDragDropUpdates(
+        current.clickedNodeId,
+        updates,
+        current.initialLayouts,
+        dropPt,
+        isShift
+      );
+      const allUpdates = { ...updates, ...layoutUpdates };
+      store.optimisticUmlLayouts = { ...store.optimisticUmlLayouts, ...allUpdates };
       gesture = { mode: 'idle' };
 
       store.dispatchOperation({
         type: 'uml.moveResizeNodes',
-        updates
+        updates: allUpdates,
+        frameChildrenUpdates: Object.keys(childrenUpdates).length > 0 ? childrenUpdates : undefined
       });
       return;
     }
@@ -538,33 +883,69 @@
     if (current.mode === 'resizing') {
       const rawDx = current.currentWorld.x - current.startWorld.x;
       const rawDy = current.currentWorld.y - current.startWorld.y;
-      const nextWidth = Math.max(100, snapToGrid(current.initialBox.width + rawDx, GRID_SIZE));
-      const nextHeight = Math.max(60, snapToGrid(current.initialBox.height + rawDy, GRID_SIZE));
+      const minW = current.minWidth ?? 120;
+      const minH = current.minHeight ?? 60;
+      const init = current.initialBox;
+      const dir = current.handleDirection ?? 'se';
+      const cb = current.childBounds;
+
+      let newX = init.x;
+      let newY = init.y;
+      let newW = init.width;
+      let newH = init.height;
+
+      if (dir === 'e' || dir === 'ne' || dir === 'se') {
+        const minRight = cb ? snapToGrid(cb.maxX + FRAME_PAD_RIGHT, GRID_SIZE) : init.x + minW;
+        const targetW = init.width + rawDx;
+        newW = Math.max(minW, minRight - init.x, snapToGrid(targetW, GRID_SIZE));
+      } else if (dir === 'w' || dir === 'nw' || dir === 'sw') {
+        const rightEdge = init.x + init.width;
+        const maxLeft = cb ? snapToGrid(cb.minX - FRAME_PAD_LEFT, GRID_SIZE) : rightEdge - minW;
+        const targetX = init.x + rawDx;
+        newX = Math.min(rightEdge - minW, maxLeft, snapToGrid(targetX, GRID_SIZE));
+        newW = rightEdge - newX;
+      }
+
+      if (dir === 's' || dir === 'sw' || dir === 'se') {
+        const minBottom = cb ? snapToGrid(cb.maxY + FRAME_PAD_BOTTOM, GRID_SIZE) : init.y + minH;
+        const targetH = init.height + rawDy;
+        newH = Math.max(minH, minBottom - init.y, snapToGrid(targetH, GRID_SIZE));
+      } else if (dir === 'n' || dir === 'nw' || dir === 'ne') {
+        const bottomEdge = init.y + init.height;
+        const maxTop = cb ? snapToGrid(cb.minY - FRAME_PAD_TOP, GRID_SIZE) : bottomEdge - minH;
+        const targetY = init.y + rawDy;
+        newY = Math.min(bottomEdge - minH, maxTop, snapToGrid(targetY, GRID_SIZE));
+        newH = bottomEdge - newY;
+      }
 
       if (
-        nextWidth === current.initialBox.width &&
-        nextHeight === current.initialBox.height
+        newX === init.x &&
+        newY === init.y &&
+        newW === init.width &&
+        newH === init.height
       ) {
         gesture = { mode: 'idle' };
         return;
       }
 
       const nextBox: UmlNodeLayout = {
-        ...current.initialBox,
-        width: nextWidth,
-        height: nextHeight
+        x: newX,
+        y: newY,
+        width: newW,
+        height: newH
       };
+
+      const initialUpdates = { [current.nodeId]: nextBox };
+
       store.optimisticUmlLayouts = {
         ...store.optimisticUmlLayouts,
-        [current.nodeId]: nextBox
+        ...initialUpdates
       };
       gesture = { mode: 'idle' };
 
       store.dispatchOperation({
         type: 'uml.moveResizeNodes',
-        updates: {
-          [current.nodeId]: nextBox
-        }
+        updates: initialUpdates
       });
       return;
     }
@@ -574,12 +955,14 @@
       const pt = getRelativeWorldPoint(e);
       const targetNode = findHoveredTargetAt(pt);
       if (targetNode && targetNode.id !== current.sourceNodeId) {
-        // Immediately create a line (association default) without prompting
+        const sourceNode = doc?.nodes.find((n) => n.id === current.sourceNodeId);
+        const touchesNote = sourceNode?.kind === 'note' || targetNode.kind === 'note';
+        const defaultKind: UmlRelationKind = touchesNote ? 'other' : 'association';
         const edgeId = `edge-${current.sourceNodeId}-${targetNode.id}-${Date.now().toString(36).slice(-4)}`;
         store.dispatchOperation({
           type: 'uml.addEdge',
           id: edgeId,
-          kind: 'association',
+          kind: defaultKind,
           sourceNodeId: current.sourceNodeId,
           targetNodeId: targetNode.id
         });
@@ -590,8 +973,186 @@
     gesture = { mode: 'idle' };
   }
 
+  function getFrameDragDropUpdates(
+    clickedNodeId: string | undefined,
+    updates: Record<string, UmlNodeLayout>,
+    initialLayouts: Record<string, UmlNodeLayout>,
+    dropPt: Point2D,
+    isShift: boolean
+  ): {
+    layoutUpdates: Record<string, UmlNodeLayout>;
+    childrenUpdates: Record<string, string[]>;
+  } {
+    if (!doc) return { layoutUpdates: {}, childrenUpdates: {} };
+    const frames = doc.nodes.filter((n) => n.kind === 'frame');
+    if (frames.length === 0) return { layoutUpdates: {}, childrenUpdates: {} };
+
+    // If the user was moving a frame, do not auto-adopt or auto-resize
+    const clickedNode = doc.nodes.find((n) => n.id === clickedNodeId);
+    const movedFrames = Object.keys(updates).filter((id) =>
+      doc?.nodes.find((n) => n.id === id && n.kind === 'frame')
+    );
+    if (clickedNode?.kind === 'frame' || movedFrames.length > 0) {
+      return { layoutUpdates: {}, childrenUpdates: {} };
+    }
+
+    const movedNonFrameIds = Object.keys(updates).filter(
+      (id) => doc?.nodes.find((n) => n.id === id && n.kind !== 'frame')
+    );
+    if (movedNonFrameIds.length === 0) {
+      return { layoutUpdates: {}, childrenUpdates: {} };
+    }
+
+    // Check if the cursor is hovering over any frame
+    let hoveredFrame: UmlNode | undefined;
+    for (let i = doc.nodes.length - 1; i >= 0; i--) {
+      const n = doc.nodes[i];
+      if (n.kind !== 'frame') continue;
+      const fbox = effectiveNodeLayouts[n.id];
+      if (!fbox) continue;
+
+      const labelW = (n.name || 'Frame').length * 7.6 + 16;
+      const isOverLabel =
+        dropPt.x >= fbox.x + 16 &&
+        dropPt.x <= fbox.x + 16 + labelW &&
+        dropPt.y >= fbox.y - 10 &&
+        dropPt.y <= fbox.y + 10;
+
+      const isOverBody =
+        dropPt.x >= fbox.x &&
+        dropPt.x <= fbox.x + fbox.width &&
+        dropPt.y >= fbox.y &&
+        dropPt.y <= fbox.y + fbox.height;
+
+      if (isOverLabel || isOverBody) {
+        hoveredFrame = n;
+        break;
+      }
+    }
+
+    const frameChildrenMap = new Map<string, string[]>();
+    for (const fr of frames) {
+      frameChildrenMap.set(fr.id, [...(fr.children ?? [])]);
+    }
+
+    const frameLayoutUpdates: Record<string, UmlNodeLayout> = {};
+
+    if (hoveredFrame) {
+      // Check which elements were ALREADY in hoveredFrame before this drag
+      const origChildren = new Set(hoveredFrame.children ?? []);
+      const hChildren = frameChildrenMap.get(hoveredFrame.id)!;
+
+      let anyNewElementAdded = false;
+      let anyShiftExistingResized = false;
+
+      for (const nodeId of movedNonFrameIds) {
+        const initBox = initialLayouts[nodeId];
+        const frInitBox = initialLayouts[hoveredFrame.id] ?? effectiveNodeLayouts[hoveredFrame.id];
+        const wasSpatiallyInside =
+          initBox && frInitBox
+            ? initBox.x >= frInitBox.x &&
+              initBox.y >= frInitBox.y &&
+              initBox.x + initBox.width <= frInitBox.x + frInitBox.width &&
+              initBox.y + initBox.height <= frInitBox.y + frInitBox.height
+            : false;
+        const wasAlreadyInside = origChildren.has(nodeId) || wasSpatiallyInside;
+
+        if (!hChildren.includes(nodeId)) {
+          hChildren.push(nodeId);
+        }
+        if (!wasAlreadyInside) {
+          anyNewElementAdded = true;
+        } else if (isShift) {
+          anyShiftExistingResized = true;
+        }
+
+        // Remove from any other frames
+        for (const fr of frames) {
+          if (fr.id === hoveredFrame.id) continue;
+          const otherList = frameChildrenMap.get(fr.id);
+          if (otherList) {
+            const idx = otherList.indexOf(nodeId);
+            if (idx !== -1) otherList.splice(idx, 1);
+          }
+        }
+      }
+
+      // The frame auto-resizes ONLY when an element is dragged into it from outside,
+      // or when an existing element inside is Shift+dragged.
+      const shouldResize = anyNewElementAdded || anyShiftExistingResized;
+
+      if (shouldResize) {
+        const baseFrBox = initialLayouts[hoveredFrame.id] ?? doc.layout.nodes[hoveredFrame.id] ?? { x: 0, y: 0, width: 260, height: 180 };
+        let frBox = { ...baseFrBox };
+        for (const cid of hChildren) {
+          const nBox = updates[cid] ?? effectiveNodeLayouts[cid];
+          if (!nBox) continue;
+
+          const fx = Math.min(frBox.x, snapToGrid(nBox.x - FRAME_PAD_LEFT, GRID_SIZE));
+          const fy = Math.min(frBox.y, snapToGrid(nBox.y - FRAME_PAD_TOP, GRID_SIZE));
+          const fRight = Math.max(
+            frBox.x + frBox.width,
+            snapToGrid(nBox.x + nBox.width + FRAME_PAD_RIGHT, GRID_SIZE)
+          );
+          const fBottom = Math.max(
+            frBox.y + frBox.height,
+            snapToGrid(nBox.y + nBox.height + FRAME_PAD_BOTTOM, GRID_SIZE)
+          );
+
+          const fw = Math.max(160, fRight - fx);
+          const fh = Math.max(120, fBottom - fy);
+
+          if (fx !== frBox.x || fy !== frBox.y || fw !== frBox.width || fh !== frBox.height) {
+            frBox = { x: fx, y: fy, width: fw, height: fh };
+          }
+        }
+
+        const docBox = doc.layout.nodes[hoveredFrame.id];
+        if (
+          !docBox ||
+          frBox.x !== docBox.x ||
+          frBox.y !== docBox.y ||
+          frBox.width !== docBox.width ||
+          frBox.height !== docBox.height
+        ) {
+          frameLayoutUpdates[hoveredFrame.id] = frBox;
+        }
+      }
+    } else {
+      // Cursor is NOT over any frame: node is not into the frame and should overlap it.
+      // Remove moved nodes from any frames that previously contained them.
+      for (const nodeId of movedNonFrameIds) {
+        for (const fr of frames) {
+          const cList = frameChildrenMap.get(fr.id);
+          if (cList) {
+            const idx = cList.indexOf(nodeId);
+            if (idx !== -1) {
+              cList.splice(idx, 1);
+            }
+          }
+        }
+      }
+    }
+
+    const changedChildren: Record<string, string[]> = {};
+    for (const [fId, children] of frameChildrenMap.entries()) {
+      const fr = doc.nodes.find((n) => n.id === fId);
+      if (fr && JSON.stringify(fr.children ?? []) !== JSON.stringify(children)) {
+        changedChildren[fId] = children;
+      }
+    }
+
+    return {
+      layoutUpdates: frameLayoutUpdates,
+      childrenUpdates: changedChildren
+    };
+  }
+
   function deleteSelected(): void {
     if (store.isReadOnly || !doc || store.selectedIds.length === 0) return;
+    if (inlineEditingNodeId && store.selectedIds.includes(inlineEditingNodeId)) {
+      inlineEditingNodeId = null;
+    }
     const nodeIds = doc.nodes
       .filter((n) => store.selectedIds.includes(n.id))
       .map((n) => n.id);
@@ -626,16 +1187,41 @@
   }
 
   function handleKeyDown(e: KeyboardEvent): void {
+    const isMod = e.ctrlKey || e.metaKey;
+    const keyLower = e.key.toLowerCase();
     const activeTag = (document.activeElement as HTMLElement | null)?.tagName;
+    const isEditingText =
+      activeTag === 'INPUT' ||
+      activeTag === 'TEXTAREA' ||
+      activeTag === 'SELECT' ||
+      inlineEditingNodeId !== null ||
+      inlineEditingEdgeId !== null ||
+      inlineEditingMultiplicity !== null;
+
     if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') {
       if (e.key === 'Escape') {
         (document.activeElement as HTMLElement).blur();
+        return;
+      }
+      // When inside an input/textarea, prevent document-level undo/redo from running
+      // and stop propagation so browser native text undo operates inside the field.
+      if (isMod && (keyLower === 'z' || keyLower === 'y')) {
+        e.stopPropagation();
+        return;
       }
       return;
     }
 
-    const isMod = e.ctrlKey || e.metaKey;
-    const keyLower = e.key.toLowerCase();
+    // If an inline editing session is active on a node/edge, suppress host document undo/redo
+    if (isEditingText && isMod && (keyLower === 'z' || keyLower === 'y')) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    if (e.key === 'Shift' && gesture.mode === 'moving') {
+      gesture = { ...gesture, isShift: true };
+    }
 
     if (e.code === 'Space' && !isMod && !e.altKey) {
       e.preventDefault();
@@ -707,19 +1293,26 @@
 
     // Quick Node Creation Shortcuts: Alt+C (Class), Alt+N (Note), Alt+S (Shape)
     if (e.altKey && !isMod) {
+      const spawnX = lastPointerWorldPos ? snapToGrid(lastPointerWorldPos.x, GRID_SIZE) : undefined;
+      const spawnY = lastPointerWorldPos ? snapToGrid(lastPointerWorldPos.y, GRID_SIZE) : undefined;
       if (keyLower === 'c') {
         e.preventDefault();
-        store.createQuickUmlNode('class');
+        store.createQuickUmlNode('class', spawnX, spawnY);
         return;
       }
       if (keyLower === 'n') {
         e.preventDefault();
-        store.createQuickUmlNode('note');
+        store.createQuickUmlNode('note', spawnX, spawnY);
         return;
       }
       if (keyLower === 's') {
         e.preventDefault();
-        store.createQuickUmlNode('shape', undefined, undefined, 'rectangle');
+        store.createQuickUmlNode('shape', spawnX, spawnY, 'rectangle');
+        return;
+      }
+      if (keyLower === 'f') {
+        e.preventDefault();
+        store.createQuickUmlNode('frame', spawnX, spawnY);
         return;
       }
     }
@@ -733,6 +1326,9 @@
   function handleKeyUp(e: KeyboardEvent): void {
     if (e.code === 'Space') {
       spacePressed = false;
+    }
+    if (e.key === 'Shift' && gesture.mode === 'moving') {
+      gesture = { ...gesture, isShift: false };
     }
   }
 
@@ -755,6 +1351,11 @@
               label: 'Note',
               shortcut: 'Alt+N',
               action: () => store.createQuickUmlNode('note', worldPt.x, worldPt.y)
+            },
+            {
+              label: 'Frame',
+              shortcut: 'Alt+F',
+              action: () => store.createQuickUmlNode('frame', worldPt.x, worldPt.y)
             },
             {
               label: 'Shape',
@@ -793,6 +1394,20 @@
           label: 'Fit Content',
           dividerBefore: true,
           action: () => fitContent()
+        },
+        {
+          label: 'Export',
+          dividerBefore: true,
+          submenu: [
+            {
+              label: 'to Clipboard',
+              action: () => exportToClipboard()
+            },
+            {
+              label: 'as PNG',
+              action: () => exportAsPng()
+            }
+          ]
         }
       ],
       'Canvas'
@@ -801,155 +1416,49 @@
 
   function addNodeAttributeInline(node: UmlNode): void {
     const existing = node.attributes ?? [];
+    const newAttr = {
+      id: `${node.id}-attr-${Date.now().toString(36).slice(-4)}`,
+      visibility: '+' as const,
+      name: `field${existing.length + 1}`,
+      type: 'string'
+    };
     store.dispatchOperation({
       type: 'uml.updateNode',
       nodeId: node.id,
       showAttributes: true,
-      attributes: [
-        ...existing,
-        {
-          id: `${node.id}-attr-${Date.now().toString(36).slice(-4)}`,
-          visibility: '+' as const,
-          name: `field${existing.length + 1}`,
-          type: 'string'
-        }
-      ]
+      attributes: [...existing, newAttr]
     });
-  }
-
-  function updateNodeAttributeInline(
-    node: UmlNode,
-    idx: number,
-    partial: Partial<UmlAttribute>
-  ): void {
-    const existing = [...(node.attributes ?? [])];
-    existing[idx] = { ...existing[idx], ...partial };
-    store.dispatchOperation({
-      type: 'uml.updateNode',
-      nodeId: node.id,
-      attributes: existing
-    });
-  }
-
-  function removeNodeAttributeInline(node: UmlNode, idx: number): void {
-    const existing = (node.attributes ?? []).filter((_, i) => i !== idx);
-    store.dispatchOperation({
-      type: 'uml.updateNode',
-      nodeId: node.id,
-      attributes: existing
-    });
+    if (inlineEditingNodeId === node.id) {
+      inlineNodeAttributesDraft = formatAttributesToText([...existing, newAttr]);
+    }
   }
 
   function addNodeOperationInline(node: UmlNode): void {
     const existing = node.operations ?? [];
+    const newOp = {
+      id: `${node.id}-op-${Date.now().toString(36).slice(-4)}`,
+      visibility: '+' as const,
+      name: `method${existing.length + 1}`,
+      signature: '()',
+      returnType: 'void',
+      parameters: []
+    };
     store.dispatchOperation({
       type: 'uml.updateNode',
       nodeId: node.id,
       showOperations: true,
-      operations: [
-        ...existing,
-        {
-          id: `${node.id}-op-${Date.now().toString(36).slice(-4)}`,
-          visibility: '+' as const,
-          name: `method${existing.length + 1}`,
-          signature: '()',
-          returnType: 'void',
-          parameters: []
-        }
-      ]
+      operations: [...existing, newOp]
     });
-  }
-
-  function updateNodeOperationInline(
-    node: UmlNode,
-    idx: number,
-    partial: Partial<UmlOperation>
-  ): void {
-    const existing = [...(node.operations ?? [])];
-    existing[idx] = { ...existing[idx], ...partial };
-    store.dispatchOperation({
-      type: 'uml.updateNode',
-      nodeId: node.id,
-      operations: existing
-    });
-  }
-
-  function removeNodeOperationInline(node: UmlNode, idx: number): void {
-    const existing = (node.operations ?? []).filter((_, i) => i !== idx);
-    store.dispatchOperation({
-      type: 'uml.updateNode',
-      nodeId: node.id,
-      operations: existing
-    });
-  }
-
-  function addNodeOperationArgInline(node: UmlNode, opIdx: number): void {
-    const ops = [...(node.operations ?? [])];
-    const targetOp = ops[opIdx];
-    if (!targetOp) return;
-    const currentArgs = extractOperationParameters(targetOp);
-    const nextArgs: UmlParameter[] = [
-      ...currentArgs,
-      {
-        id: `${targetOp.id}-arg-${Date.now().toString(36).slice(-4)}`,
-        name: `arg${currentArgs.length + 1}`,
-        type: 'string'
-      }
-    ];
-    ops[opIdx] = {
-      ...targetOp,
-      parameters: nextArgs,
-      signature: buildOperationSignature(nextArgs)
-    };
-    store.dispatchOperation({
-      type: 'uml.updateNode',
-      nodeId: node.id,
-      operations: ops
-    });
-  }
-
-  function updateNodeOperationArgInline(
-    node: UmlNode,
-    opIdx: number,
-    argIdx: number,
-    partial: Partial<UmlParameter>
-  ): void {
-    const ops = [...(node.operations ?? [])];
-    const targetOp = ops[opIdx];
-    if (!targetOp) return;
-    const nextArgs = [...extractOperationParameters(targetOp)];
-    if (!nextArgs[argIdx]) return;
-    nextArgs[argIdx] = { ...nextArgs[argIdx], ...partial };
-    ops[opIdx] = {
-      ...targetOp,
-      parameters: nextArgs,
-      signature: buildOperationSignature(nextArgs)
-    };
-    store.dispatchOperation({
-      type: 'uml.updateNode',
-      nodeId: node.id,
-      operations: ops
-    });
-  }
-
-  function removeNodeOperationArgInline(node: UmlNode, opIdx: number, argIdx: number): void {
-    const ops = [...(node.operations ?? [])];
-    const targetOp = ops[opIdx];
-    if (!targetOp) return;
-    const nextArgs = extractOperationParameters(targetOp).filter((_, i) => i !== argIdx);
-    ops[opIdx] = {
-      ...targetOp,
-      parameters: nextArgs,
-      signature: buildOperationSignature(nextArgs)
-    };
-    store.dispatchOperation({
-      type: 'uml.updateNode',
-      nodeId: node.id,
-      operations: ops
-    });
+    if (inlineEditingNodeId === node.id) {
+      inlineNodeOperationsDraft = formatOperationsToText([...existing, newOp]);
+    }
   }
 
   function handleNodeContextMenu(e: MouseEvent, node: UmlNode): void {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('input, textarea, select, [contenteditable="true"]')) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     if (!store.selectedIds.includes(node.id)) {
@@ -957,9 +1466,11 @@
     }
 
     const kindDesc = getUmlNodeKind(node.kind);
+    const editMenuLabel =
+      node.kind === 'frame' || node.kind === 'shape' ? 'Edit Label' : 'Edit';
     const items = [
       {
-        label: 'Edit Inline',
+        label: editMenuLabel,
         action: () => {
           startInlineNodeEdit(node);
         }
@@ -1031,16 +1542,29 @@
     if (inlineEditingNodeId && inlineEditingNodeId !== node.id) {
       commitInlineNodeEdit();
     }
+    if (!store.selectedIds.includes(node.id)) {
+      store.selectSingle(node.id, false);
+    }
     inlineEditingNodeId = node.id;
+    lastSyncedNodeJson = JSON.stringify({
+      name: node.name,
+      stereotype: node.stereotype,
+      attributes: node.attributes,
+      operations: node.operations,
+      text: node.text
+    });
     inlineNodeNameDraft = node.name ?? '';
-    inlineNodeStereotypeDraft = node.kind === 'note' ? '' : (node.stereotype ?? '');
+    inlineNodeStereotypeDraft =
+      node.kind === 'note' || node.kind === 'shape' || node.kind === 'frame' ? '' : (node.stereotype ?? '');
+    inlineNodeTextDraft = node.text ?? '';
+    inlineNodeAttributesDraft = formatAttributesToText(node.attributes ?? []);
+    inlineNodeOperationsDraft = formatOperationsToText(node.operations ?? []);
   }
 
-  function commitInlineNodeEdit(node?: UmlNode): void {
+  function flushInlineNodeHeader(node?: UmlNode): void {
     const nodeId = inlineEditingNodeId;
     if (!nodeId) return;
     const targetNode = node ?? doc?.nodes.find((n) => n.id === nodeId);
-    inlineEditingNodeId = null;
     if (!targetNode) return;
 
     const nextName = inlineNodeNameDraft.trim();
@@ -1050,7 +1574,12 @@
     if (nextName !== targetNode.name) {
       updates.name = nextName;
     }
-    if (targetNode.kind !== 'note' && nextStereo !== (targetNode.stereotype ?? '')) {
+    if (
+      targetNode.kind !== 'note' &&
+      targetNode.kind !== 'shape' &&
+      targetNode.kind !== 'frame' &&
+      nextStereo !== (targetNode.stereotype ?? '')
+    ) {
       updates.stereotype = nextStereo; // An empty string triggers property deletion on the host
     }
 
@@ -1061,6 +1590,89 @@
         ...updates
       });
     }
+  }
+
+  function flushInlineNodeMembers(node?: UmlNode): void {
+    const nodeId = inlineEditingNodeId;
+    if (!nodeId) return;
+    const targetNode = node ?? doc?.nodes.find((n) => n.id === nodeId);
+    if (!targetNode || targetNode.kind === 'note' || targetNode.kind === 'shape' || targetNode.kind === 'frame') return;
+
+    const nextAttrs = parseAttributesFromText(
+      inlineNodeAttributesDraft,
+      targetNode.id,
+      targetNode.attributes ?? []
+    );
+    const nextOps = parseOperationsFromText(
+      inlineNodeOperationsDraft,
+      targetNode.id,
+      targetNode.operations ?? []
+    );
+
+    const updates: { attributes?: UmlAttribute[]; operations?: UmlOperation[] } = {};
+
+    const currAttrs = targetNode.attributes ?? [];
+    const attrsChanged =
+      nextAttrs.length !== currAttrs.length ||
+      nextAttrs.some((a, i) => {
+        const c = currAttrs[i];
+        return (
+          !c ||
+          a.name !== c.name ||
+          (a.type ?? '') !== (c.type ?? '') ||
+          (a.visibility ?? '+') !== (c.visibility ?? '+')
+        );
+      });
+    if (attrsChanged) {
+      updates.attributes = nextAttrs;
+    }
+
+    const currOps = targetNode.operations ?? [];
+    const opsChanged =
+      nextOps.length !== currOps.length ||
+      nextOps.some((o, i) => {
+        const c = currOps[i];
+        return (
+          !c ||
+          o.name !== c.name ||
+          (o.returnType ?? '') !== (c.returnType ?? '') ||
+          (o.visibility ?? '+') !== (c.visibility ?? '+') ||
+          (o.signature ?? '()') !== (c.signature ?? '()')
+        );
+      });
+    if (opsChanged) {
+      updates.operations = nextOps;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      store.dispatchOperation({
+        type: 'uml.updateNode',
+        nodeId: targetNode.id,
+        ...updates
+      });
+    }
+  }
+
+  function flushInlineNodeText(node?: UmlNode): void {
+    const nodeId = inlineEditingNodeId;
+    if (!nodeId) return;
+    const targetNode = node ?? doc?.nodes.find((n) => n.id === nodeId);
+    if (!targetNode || targetNode.kind !== 'note') return;
+
+    if (inlineNodeTextDraft !== (targetNode.text ?? '')) {
+      store.dispatchOperation({
+        type: 'uml.updateNode',
+        nodeId: targetNode.id,
+        text: inlineNodeTextDraft
+      });
+    }
+  }
+
+  function commitInlineNodeEdit(node?: UmlNode): void {
+    flushInlineNodeHeader(node);
+    flushInlineNodeMembers(node);
+    flushInlineNodeText(node);
+    inlineEditingNodeId = null;
   }
 
   function startInlineEdgeLabelEdit(edge: UmlEdge): void {
@@ -1117,6 +1729,31 @@
     }
   }
 
+  function commitEndpointMultiplicity(): void {
+    if (!endpointPickerPopup) return;
+    const { edgeId, end, multiplicityDraft } = endpointPickerPopup;
+    const targetEdge = doc?.edges.find((e) => e.id === edgeId);
+    if (targetEdge) {
+      const cleaned = (multiplicityDraft ?? '').trim();
+      const prev = end === 'start' ? (targetEdge.source.multiplicity ?? '') : (targetEdge.target.multiplicity ?? '');
+      if (cleaned !== prev) {
+        store.dispatchOperation({
+          type: 'uml.updateEdge',
+          edgeId: targetEdge.id,
+          ...(end === 'start'
+            ? { sourceMultiplicity: cleaned }
+            : { targetMultiplicity: cleaned })
+        });
+      }
+    }
+  }
+
+  function closeEndpointPickerPopup(): void {
+    if (!endpointPickerPopup) return;
+    commitEndpointMultiplicity();
+    endpointPickerPopup = null;
+  }
+
   function openEndpointPickerPopup(
     clientX: number,
     clientY: number,
@@ -1125,6 +1762,7 @@
     current: EndpointDecoration
   ): void {
     store.closeContextMenu();
+    if (endpointPickerPopup) closeEndpointPickerPopup();
     endpointPickerPopup = {
       x: Math.max(12, Math.min(clientX, window.innerWidth - 260)),
       y: Math.max(12, Math.min(clientY, window.innerHeight - 360)),
@@ -1148,7 +1786,7 @@
       clickY,
       [
         {
-          label: 'Edit Relation Label',
+          label: 'Edit Label',
           action: () => startInlineEdgeLabelEdit(edge)
         },
         {
@@ -1197,17 +1835,46 @@
             )
         },
         {
-          label:
-            (edge.visual?.routing ?? 'bezier') === 'bezier'
-              ? 'Switch to Straight Routing'
-              : 'Switch to Smooth Bézier Routing',
+          label: 'Routing',
           dividerBefore: true,
-          action: () =>
-            store.dispatchOperation({
-              type: 'uml.updateEdge',
-              edgeId: edge.id,
-              routing: (edge.visual?.routing ?? 'bezier') === 'bezier' ? 'straight' : 'bezier'
-            })
+          submenu: [
+            {
+              label: `${(edge.visual?.routing ?? 'default') === 'default' ? '✓ ' : ''}Default`,
+              action: () =>
+                store.dispatchOperation({
+                  type: 'uml.updateEdge',
+                  edgeId: edge.id,
+                  routing: 'default'
+                })
+            },
+            {
+              label: `${edge.visual?.routing === 'orthogonal' ? '✓ ' : ''}Orthogonal`,
+              action: () =>
+                store.dispatchOperation({
+                  type: 'uml.updateEdge',
+                  edgeId: edge.id,
+                  routing: 'orthogonal'
+                })
+            },
+            {
+              label: `${edge.visual?.routing === 'straight' ? '✓ ' : ''}Straight`,
+              action: () =>
+                store.dispatchOperation({
+                  type: 'uml.updateEdge',
+                  edgeId: edge.id,
+                  routing: 'straight'
+                })
+            },
+            {
+              label: `${edge.visual?.routing === 'bezier' ? '✓ ' : ''}Smooth`,
+              action: () =>
+                store.dispatchOperation({
+                  type: 'uml.updateEdge',
+                  edgeId: edge.id,
+                  routing: 'bezier'
+                })
+            }
+          ]
         },
         {
           label: 'Delete Relation',
@@ -1219,6 +1886,14 @@
       ],
       `Relation: ${edge.source.nodeId} → ${edge.target.nodeId}`
     );
+  }
+
+  function getEdgeRouting(edge: UmlEdge): UmlRoutingKind {
+    const r = edge.visual?.routing;
+    if (!r || r === 'default') {
+      return doc?.defaultRouting ?? 'orthogonal';
+    }
+    return r;
   }
 
   function renderEndpointPath(dec: EndpointDecoration | undefined): {
@@ -1262,21 +1937,6 @@
     return {
       x: tip.x - Math.cos(rad) * (size / 2),
       y: tip.y - Math.sin(rad) * (size / 2)
-    };
-  }
-
-  /**
-   * Computes a clean label position near an endpoint tip for rendering multiplicity numbers (e.g. `1`, `*`, `1..5`).
-   */
-  function getMultiplicityLabelPoint(tip: Point2D, angleDeg: number): Point2D {
-    const rad = (angleDeg * Math.PI) / 180;
-    const inwardDist = 22;
-    const perpDist = -14;
-    const dx = -Math.cos(rad) * inwardDist - Math.sin(rad) * perpDist;
-    const dy = -Math.sin(rad) * inwardDist + Math.cos(rad) * perpDist;
-    return {
-      x: tip.x + dx,
-      y: tip.y + dy
     };
   }
 
@@ -1327,46 +1987,656 @@
     }
   }
 
-  function exportDiagramToSvg(): void {
-    if (!doc) return;
+  /**
+   * Renders the diagram elements directly onto an off-screen HTML5 <canvas>
+   * with a transparent background, matching the active VS Code theme and canvas DOM styles.
+   */
+  function renderDiagramToCanvas(): { canvas: HTMLCanvasElement; width: number; height: number } | null {
+    if (!doc || doc.nodes.length === 0) return null;
+
     const layouts = Object.values(effectiveNodeLayouts);
-    let minX = 0;
-    let minY = 0;
-    let maxX = 800;
-    let maxY = 600;
-    if (layouts.length > 0) {
-      minX = Math.min(...layouts.map((b) => b.x)) - 40;
-      minY = Math.min(...layouts.map((b) => b.y)) - 40;
-      maxX = Math.max(...layouts.map((b) => b.x + b.width)) + 40;
-      maxY = Math.max(...layouts.map((b) => b.y + b.height)) + 40;
+    if (layouts.length === 0) return null;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const b of layouts) {
+      minX = Math.min(minX, b.x);
+      minY = Math.min(minY, b.y);
+      maxX = Math.max(maxX, b.x + b.width);
+      maxY = Math.max(maxY, b.y + b.height);
     }
-    const w = Math.max(400, maxX - minX);
-    const h = Math.max(300, maxY - minY);
 
-    const escapeXml = (s: string) =>
-      s
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    type EdgeGeomItem = {
+      edge: UmlEdge;
+      geom: ReturnType<typeof computeUmlEdgeGeometry>;
+      startDec: EndpointDecoration;
+      endDec: EndpointDecoration;
+      isDashed: boolean;
+      startMarker: { d: string; fill: string };
+      endMarker: { d: string; fill: string };
+      startMultPt: Point2D;
+      endMultPt: Point2D;
+    };
 
-    const nodeRectsSvg = doc.nodes
-      .map((n) => {
-        const b = effectiveNodeLayouts[n.id];
-        if (!b) return '';
-        return `<g transform="translate(${b.x}, ${b.y})">
-          <rect width="${b.width}" height="${b.height}" rx="6" fill="#1e1e1e" stroke="#569cd6" stroke-width="1.5"/>
-          <text x="${b.width / 2}" y="24" text-anchor="middle" fill="#d4d4d4" font-family="sans-serif" font-weight="bold" font-size="13">${escapeXml(n.name)}</text>
-        </g>`;
-      })
-      .join('\n');
+    const edgeItems: EdgeGeomItem[] = [];
 
-    const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${w} ${h}" width="${w}" height="${h}">
-  ${nodeRectsSvg}
-</svg>`;
+    for (const edge of doc.edges) {
+      const srcBox = effectiveNodeLayouts[edge.source.nodeId];
+      const tgtBox = effectiveNodeLayouts[edge.target.nodeId];
+      if (!srcBox || !tgtBox) continue;
 
-    postToHost({ type: 'webview.exportSvgContent', svgContent });
+      const srcNode = doc.nodes.find((n) => n.id === edge.source.nodeId);
+      const tgtNode = doc.nodes.find((n) => n.id === edge.target.nodeId);
+      const touchesNote = srcNode?.kind === 'note' || tgtNode?.kind === 'note';
+      const isDashed = (edge.visual?.line ?? (touchesNote ? 'dashed' : 'solid')) === 'dashed';
+      const startDec = edge.visual?.start ?? { shape: 'none', size: 10 };
+      const endDec = edge.visual?.end ?? { shape: 'none', size: 10 };
+
+      const geom = computeUmlEdgeGeometry(
+        srcBox,
+        tgtBox,
+        getEdgeRouting(edge),
+        startDec,
+        endDec,
+        edgeParallelOffsets[edge.id] ?? 0,
+        undefined,
+        undefined,
+        srcNode?.kind === 'shape' ? srcNode.shape : undefined,
+        tgtNode?.kind === 'shape' ? tgtNode.shape : undefined,
+        edge.label
+      );
+
+      const startMarker = renderEndpointPath(startDec);
+      const endMarker = renderEndpointPath(endDec);
+      const startMultPt = getMultiplicityLabelPoint(geom.startTip, geom.startAngleDeg, edge.source.multiplicity);
+      const endMultPt = getMultiplicityLabelPoint(geom.endTip, geom.endAngleDeg, edge.target.multiplicity);
+
+      edgeItems.push({
+        edge,
+        geom,
+        startDec,
+        endDec,
+        isDashed,
+        startMarker,
+        endMarker,
+        startMultPt,
+        endMultPt
+      });
+
+      if (edge.label) {
+        minX = Math.min(minX, geom.labelPoint.x - 50);
+        minY = Math.min(minY, geom.labelPoint.y - 20);
+        maxX = Math.max(maxX, geom.labelPoint.x + 50);
+        maxY = Math.max(maxY, geom.labelPoint.y + 20);
+      }
+      if (edge.source.multiplicity) {
+        minX = Math.min(minX, startMultPt.x - 30);
+        minY = Math.min(minY, startMultPt.y - 15);
+        maxX = Math.max(maxX, startMultPt.x + 30);
+        maxY = Math.max(maxY, startMultPt.y + 15);
+      }
+      if (edge.target.multiplicity) {
+        minX = Math.min(minX, endMultPt.x - 30);
+        minY = Math.min(minY, endMultPt.y - 15);
+        maxX = Math.max(maxX, endMultPt.x + 30);
+        maxY = Math.max(maxY, endMultPt.y + 15);
+      }
+    }
+
+    const PADDING = 40;
+    minX -= PADDING;
+    minY -= PADDING;
+    maxX += PADDING;
+    maxY += PADDING;
+
+    const width = Math.max(200, Math.ceil(maxX - minX));
+    const height = Math.max(200, Math.ceil(maxY - minY));
+
+    // Read active theme CSS variables
+    const compStyles = viewportEl ? window.getComputedStyle(viewportEl) : null;
+    const bodyStyles = typeof document !== 'undefined' ? window.getComputedStyle(document.body) : null;
+
+    function getCssVar(varName: string, fallback: string): string {
+      const v = compStyles?.getPropertyValue(varName)?.trim() ||
+        bodyStyles?.getPropertyValue(varName)?.trim();
+      return v || fallback;
+    }
+
+    const widgetBg = getCssVar('--vscode-editorWidget-background', '#252526');
+    const editorFg = getCssVar('--vscode-editor-foreground', '#cccccc');
+    const panelBorder = getCssVar('--vscode-panel-border', 'rgba(128, 128, 128, 0.35)');
+    const descFg = getCssVar('--vscode-descriptionForeground', '#999999');
+    const noteBg = getCssVar('--vscode-textBlockQuote-background', widgetBg);
+    const editorBg = getCssVar('--vscode-editor-background', '#1e1e1e');
+    const fontFamily = getCssVar(
+      '--vscode-font-family',
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+    );
+    const monoFamily = getCssVar(
+      '--vscode-editor-font-family',
+      'Consolas, "Courier New", monospace'
+    );
+    const nodeBorder = panelBorder || editorFg;
+
+    const canvas = document.createElement('canvas');
+    const scale = 2; // High-resolution retina snapshot
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    // Background remains 100% transparent (no fillRect on background)
+    ctx.scale(scale, scale);
+    ctx.translate(-minX, -minY);
+
+    function drawRoundRectPath(x: number, y: number, w: number, h: number, r: number): void {
+      ctx!.beginPath();
+      if (typeof ctx!.roundRect === 'function') {
+        ctx!.roundRect(x, y, w, h, r);
+      } else {
+        ctx!.moveTo(x + r, y);
+        ctx!.lineTo(x + w - r, y);
+        ctx!.arcTo(x + w, y, x + w, y + r, r);
+        ctx!.lineTo(x + w, y + h - r);
+        ctx!.arcTo(x + w, y + h, x + w - r, y + h, r);
+        ctx!.lineTo(x + r, y + h);
+        ctx!.arcTo(x, y + h, x, y + h - r, r);
+        ctx!.lineTo(x, y + r);
+        ctx!.arcTo(x, y, x + r, y, r);
+        ctx!.closePath();
+      }
+    }
+
+    // 1. Render Frames Layer (Rendered in background BEHIND relationships & other nodes)
+    for (const node of doc.nodes) {
+      if (node.kind !== 'frame') continue;
+      const box = effectiveNodeLayouts[node.id];
+      if (!box) continue;
+
+      ctx.save();
+      ctx.translate(box.x, box.y);
+
+      // Frame outer border (background is completely transparent, double thickness = 3)
+      drawRoundRectPath(0, 0, box.width, box.height, 6);
+      ctx.strokeStyle = nodeBorder;
+      ctx.lineWidth = 3;
+      if (node.line === 'dashed') {
+        ctx.setLineDash([8, 6]);
+      } else {
+        ctx.setLineDash([]);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Frame floating label badge above top-left corner (almost identical to relation label)
+      ctx.font = `11px ${fontFamily}`;
+      const labelText = node.name || 'Frame';
+      const labelMetrics = ctx.measureText(labelText);
+      const badgeW = Math.max(labelText.length * 7.6 + 16, labelMetrics.width + 16);
+      const badgeH = 20;
+      const badgeLeft = 16;
+      const badgeTop = -10;
+
+      drawRoundRectPath(badgeLeft, badgeTop, badgeW, badgeH, 4);
+      ctx.fillStyle = widgetBg;
+      ctx.fill();
+      ctx.strokeStyle = panelBorder;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = editorFg;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labelText, badgeLeft + badgeW / 2, badgeTop + badgeH / 2);
+
+      ctx.restore();
+    }
+
+    // 2. Render Relationships Layer (Rendered OVER frames, but BEHIND element nodes)
+    for (const item of edgeItems) {
+      const { edge, geom, isDashed, startMarker, endMarker, startDec, endDec, startMultPt, endMultPt } = item;
+
+      // Stroke line
+      ctx.save();
+      ctx.strokeStyle = editorFg;
+      ctx.lineWidth = 1.75;
+      if (isDashed) {
+        ctx.setLineDash([6, 4]);
+      } else {
+        ctx.setLineDash([]);
+      }
+      const linePath = new Path2D(geom.pathD);
+      ctx.stroke(linePath);
+      ctx.restore();
+
+      // Start endpoint marker
+      if (startMarker.d) {
+        ctx.save();
+        ctx.translate(geom.startTip.x, geom.startTip.y);
+        ctx.rotate((geom.startAngleDeg * Math.PI) / 180);
+        const mPath = new Path2D(startMarker.d);
+        if (startMarker.fill !== 'none') {
+          ctx.fillStyle = startDec.fill === 'filled' ? editorFg : editorBg;
+          ctx.fill(mPath);
+        }
+        ctx.strokeStyle = editorFg;
+        ctx.lineWidth = 1.75;
+        ctx.lineJoin = 'round';
+        ctx.stroke(mPath);
+        ctx.restore();
+      }
+
+      // End endpoint marker
+      if (endMarker.d) {
+        ctx.save();
+        ctx.translate(geom.endTip.x, geom.endTip.y);
+        ctx.rotate((geom.endAngleDeg * Math.PI) / 180);
+        const mPath = new Path2D(endMarker.d);
+        if (endMarker.fill !== 'none') {
+          ctx.fillStyle = endDec.fill === 'filled' ? editorFg : editorBg;
+          ctx.fill(mPath);
+        }
+        ctx.strokeStyle = editorFg;
+        ctx.lineWidth = 1.75;
+        ctx.lineJoin = 'round';
+        ctx.stroke(mPath);
+        ctx.restore();
+      }
+
+      // Multiplicity Badges
+      const drawMult = (pt: Point2D, text: string) => {
+        ctx.save();
+        ctx.font = `600 10.5px ${monoFamily}`;
+        const metrics = ctx.measureText(text);
+        const w = Math.max(text.length * 7.6 + 12, metrics.width + 12);
+        const h = 17;
+        const left = pt.x - w / 2;
+        const top = pt.y - 9;
+        drawRoundRectPath(left, top, w, h, 3);
+        ctx.fillStyle = editorBg;
+        ctx.globalAlpha = 0.9;
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+        ctx.strokeStyle = panelBorder;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = editorFg;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, pt.x, pt.y - 0.5);
+        ctx.restore();
+      };
+
+      if (edge.source.multiplicity) {
+        drawMult(startMultPt, edge.source.multiplicity);
+      }
+      if (edge.target.multiplicity) {
+        drawMult(endMultPt, edge.target.multiplicity);
+      }
+
+      // Edge Label
+      if (edge.label) {
+        ctx.save();
+        ctx.font = `11px ${fontFamily}`;
+        const metrics = ctx.measureText(edge.label);
+        const w = Math.max(edge.label.length * 7.6 + 16, metrics.width + 16);
+        const h = 20;
+        const left = geom.labelPoint.x - w / 2;
+        const top = geom.labelPoint.y - 10;
+        drawRoundRectPath(left, top, w, h, 4);
+        ctx.fillStyle = widgetBg;
+        ctx.fill();
+        ctx.strokeStyle = panelBorder;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = editorFg;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(edge.label, geom.labelPoint.x, geom.labelPoint.y);
+        ctx.restore();
+      }
+    }
+
+    // 3. Render Non-Frame Nodes Layer (Rendered in FRONT of frames & relationships)
+    for (const node of doc.nodes) {
+      if (node.kind === 'frame') continue;
+      const box = effectiveNodeLayouts[node.id];
+      if (!box) continue;
+
+      const domEl = nodeElements.get(node.id);
+
+      if (node.kind === 'shape') {
+        ctx.save();
+        ctx.translate(box.x, box.y);
+        const shapePathD = buildShapeSvgPath(node.shape, box.width, box.height);
+        const p = new Path2D(shapePathD);
+
+        // Subtle drop shadow matching CSS filter
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.18)';
+        ctx.shadowBlur = 5;
+        ctx.shadowOffsetY = 2;
+        ctx.fillStyle = widgetBg;
+        ctx.fill(p);
+        ctx.restore();
+
+        // Border stroke
+        ctx.strokeStyle = nodeBorder;
+        ctx.lineWidth = 1.75;
+        ctx.lineJoin = 'round';
+        ctx.stroke(p);
+
+        // Centered title text
+        ctx.fillStyle = editorFg;
+        ctx.font = `600 13px ${fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(node.name || '', box.width / 2, box.height / 2);
+        ctx.restore();
+        continue;
+      }
+
+      if (node.kind === 'note') {
+        ctx.save();
+        ctx.translate(box.x, box.y);
+
+        // Drop shadow
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.16)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 2;
+        drawRoundRectPath(0, 0, box.width, box.height, 5);
+        ctx.fillStyle = noteBg;
+        ctx.fill();
+        ctx.restore();
+
+        // Dashed border
+        drawRoundRectPath(0, 0, box.width, box.height, 5);
+        ctx.strokeStyle = nodeBorder;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Clip to rounded bounds
+        ctx.save();
+        drawRoundRectPath(0, 0, box.width, box.height, 5);
+        ctx.clip();
+
+        // Note Header (Title)
+        const domHeader = domEl?.querySelector('.vz-uml-node-header') as HTMLElement | null;
+        const headerH = domHeader ? domHeader.offsetHeight : 30;
+
+        ctx.fillStyle = editorFg;
+        ctx.font = `600 13px ${fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(node.name || '', box.width / 2, (headerH - 16) / 2);
+
+        // Divider below header
+        ctx.strokeStyle = panelBorder;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, headerH);
+        ctx.lineTo(box.width, headerH);
+        ctx.stroke();
+
+        // Note content
+        const noteContent = node.text || '';
+        ctx.fillStyle = editorFg;
+        ctx.font = `12px ${fontFamily}`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        const padX = 10;
+        const padY = headerH + 8;
+        const maxW = box.width - padX * 2;
+        const lineH = 16.8;
+
+        const lines = noteContent.split('\n');
+        let curY = padY;
+        for (const line of lines) {
+          if (curY + lineH > box.height) break;
+          if (!line) {
+            curY += lineH;
+            continue;
+          }
+          const words = line.split(' ');
+          let currentLine = '';
+          for (let i = 0; i < words.length; i++) {
+            const testLine = currentLine ? currentLine + ' ' + words[i] : words[i];
+            if (ctx.measureText(testLine).width > maxW && currentLine) {
+              ctx.fillText(currentLine, padX, curY);
+              curY += lineH;
+              if (curY + lineH > box.height) break;
+              currentLine = words[i];
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine && curY + lineH <= box.height + 4) {
+            ctx.fillText(currentLine, padX, curY);
+            curY += lineH;
+          }
+        }
+
+        ctx.restore(); // unclip
+        ctx.restore(); // untranslate
+        continue;
+      }
+
+      // Class / Interface / Entity / Other UML Nodes
+      ctx.save();
+      ctx.translate(box.x, box.y);
+
+      // Card drop shadow
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.16)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetY = 2;
+      drawRoundRectPath(0, 0, box.width, box.height, 5);
+      ctx.fillStyle = widgetBg;
+      ctx.fill();
+      ctx.restore();
+
+      // Card border
+      drawRoundRectPath(0, 0, box.width, box.height, 5);
+      ctx.strokeStyle = nodeBorder;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Clip content to rounded rect
+      ctx.save();
+      drawRoundRectPath(0, 0, box.width, box.height, 5);
+      ctx.clip();
+
+      const kindDesc = getUmlNodeKind(node.kind);
+      const stereotypeText = node.stereotype || kindDesc?.defaultStereotype || (!kindDesc ? `unsupported: ${node.kind}` : '');
+      const hasStereotype = !!stereotypeText;
+
+      const domHeader = domEl?.querySelector('.vz-uml-node-header') as HTMLElement | null;
+      const headerH = domHeader ? domHeader.offsetHeight : (hasStereotype ? 42 : 30);
+
+      let titleY: number;
+      if (hasStereotype) {
+        ctx.fillStyle = descFg;
+        ctx.font = `11px ${fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`«${stereotypeText}»`, box.width / 2, 7);
+
+        titleY = 22;
+      } else {
+        titleY = (headerH - 16) / 2;
+      }
+
+      ctx.fillStyle = editorFg;
+      ctx.font = `600 13px ${fontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(node.name || '', box.width / 2, titleY);
+
+      // Divider below header
+      ctx.strokeStyle = panelBorder;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, headerH);
+      ctx.lineTo(box.width, headerH);
+      ctx.stroke();
+
+      let curY = headerH;
+
+      // Attributes Compartment
+      const attrsVisible = node.showAttributes !== false;
+      const attrs = node.attributes ?? [];
+      if (attrsVisible && attrs.length > 0) {
+        const compPadY = 5;
+        const compPadX = 8;
+        const memberLineH = 16.7;
+        const domComp0 = domEl?.querySelectorAll('.vz-uml-compartment')[0] as HTMLElement | null;
+        const comp0H = domComp0 ? domComp0.offsetHeight : (compPadY * 2 + attrs.length * memberLineH);
+
+        let lineY = curY + compPadY;
+        for (const attr of attrs) {
+          const visSign = formatVisibilitySign(attr.visibility);
+          ctx.font = `bold 11.5px ${monoFamily}`;
+          ctx.fillStyle = editorFg;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText(visSign, compPadX, lineY);
+
+          const nameX = compPadX + 16;
+          ctx.font = `11.5px ${monoFamily}`;
+          ctx.fillText(attr.name || '', nameX, lineY);
+
+          if (attr.type) {
+            const nameW = ctx.measureText(attr.name || '').width;
+            ctx.fillStyle = descFg;
+            ctx.fillText(`: ${attr.type}`, nameX + nameW, lineY);
+          }
+
+          lineY += memberLineH;
+        }
+
+        curY += comp0H;
+
+        // Divider below attributes compartment
+        ctx.strokeStyle = panelBorder;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, curY);
+        ctx.lineTo(box.width, curY);
+        ctx.stroke();
+      }
+
+      // Operations Compartment
+      const opsVisible = node.showOperations !== false;
+      const ops = node.operations ?? [];
+      if (opsVisible && ops.length > 0) {
+        const compPadY = 5;
+        const compPadX = 8;
+        const memberLineH = 16.7;
+        let lineY = curY + compPadY;
+
+        for (const op of ops) {
+          const visSign = formatVisibilitySign(op.visibility);
+          ctx.font = `bold 11.5px ${monoFamily}`;
+          ctx.fillStyle = editorFg;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText(visSign, compPadX, lineY);
+
+          const nameX = compPadX + 16;
+          ctx.font = `11.5px ${monoFamily}`;
+          const params = extractOperationParameters(op);
+          const paramsStr = params.map((p) => p.name + (p.type ? `: ${p.type}` : '')).join(', ');
+          const sigText = `${op.name || ''}(${paramsStr})`;
+          ctx.fillText(sigText, nameX, lineY);
+
+          if (op.returnType) {
+            const sigW = ctx.measureText(sigText).width;
+            ctx.fillStyle = descFg;
+            ctx.fillText(`: ${op.returnType}`, nameX + sigW, lineY);
+          }
+
+          lineY += memberLineH;
+        }
+      }
+
+      ctx.restore(); // unclip
+      ctx.restore(); // un-translate node
+    }
+
+    return { canvas, width, height };
+  }
+
+  async function exportToClipboard(): Promise<void> {
+    try {
+      const render = renderDiagramToCanvas();
+      if (!render) {
+        store.setStatusMessage('No diagram content to export.');
+        return;
+      }
+      const { canvas } = render;
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), 'image/png')
+      );
+      if (!blob) throw new Error('Canvas snapshot generation failed');
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+
+      let copied = false;
+      if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          copied = true;
+          store.setStatusMessage('Diagram image snapshot copied to clipboard.');
+        } catch (clipErr) {
+          console.warn('Direct webview clipboard.write failed, falling back to host clipboard:', clipErr);
+        }
+      }
+
+      if (!copied) {
+        postToHost({
+          type: 'webview.copyImageToClipboard',
+          base64Data: base64
+        });
+        store.setStatusMessage('Diagram image snapshot copied to clipboard.');
+      }
+    } catch (err) {
+      console.error('Failed to copy diagram image to clipboard', err);
+      store.setStatusMessage('Failed to copy diagram snapshot to clipboard.');
+    }
+  }
+
+  async function exportAsPng(): Promise<void> {
+    try {
+      const render = renderDiagramToCanvas();
+      if (!render) {
+        store.setStatusMessage('No diagram content to export.');
+        return;
+      }
+      const { canvas } = render;
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+      postToHost({
+        type: 'webview.exportFile',
+        format: 'png',
+        base64Data: base64
+      });
+    } catch (err) {
+      console.error('Failed to export as PNG', err);
+      store.setStatusMessage('Failed to export as PNG.');
+    }
   }
 </script>
 
@@ -1407,18 +2677,11 @@
       role="application"
       aria-label="Vizion UML Canvas"
       onwheel={handleWheel}
+      onpointermove={(e) => {
+        lastPointerWorldPos = getRelativeWorldPoint(e);
+      }}
       onpointerdown={handleCanvasPointerDown}
       oncontextmenu={handleCanvasContextMenu}
-      ondblclick={(e) => {
-        if (store.isReadOnly) return;
-        if (
-          e.target === viewportEl ||
-          (e.target as HTMLElement)?.classList.contains('vz-canvas-bg')
-        ) {
-          const pt = getRelativeWorldPoint(e);
-          store.createQuickUmlNode('class', pt.x, pt.y);
-        }
-      }}
     >
       <!-- Floating Zoom Pill on Top-Left of Canvas (Scroll on pill to adjust zoom by ±1%) -->
       <div class="vz-floating-zoom" onwheel={handleZoomPillWheel}>
@@ -1458,7 +2721,77 @@
       </div>
 
       {#if doc}
-        <!-- SVG Layer for Edges, Tangent-Oriented Endpoint Markers, Multiplicities (Rendered BEHIND nodes) -->
+        <!-- HTML Layer for Frame Nodes (Rendered in background BEHIND relations) -->
+        <div
+          class="vz-html-frames"
+          style="transform: translate({store.viewport.panX}px, {store.viewport.panY}px) scale({store.viewport.zoom});"
+        >
+          {#each doc.nodes.filter((n) => n.kind === 'frame') as node (node.id)}
+            {@const box = effectiveNodeLayouts[node.id]}
+            {@const isSelected = store.selectedIds.includes(node.id)}
+            {@const isInlineEditing = inlineEditingNodeId === node.id}
+            {#if box}
+              <div
+                use:registerNodeElement={node.id}
+                class="vz-uml-node kind-frame"
+                class:selected={isSelected}
+                class:inline-editing={isInlineEditing}
+                class:dashed={node.line === 'dashed'}
+                style="left: {box.x}px; top: {box.y}px; width: {box.width}px; height: {box.height}px;"
+                role="button"
+                tabindex="0"
+                aria-label="UML frame {node.name}"
+                onpointerdown={(e) => handleNodePointerDown(e, node)}
+                oncontextmenu={(e) => handleNodeContextMenu(e, node)}
+                ondblclick={(e) => {
+                  e.stopPropagation();
+                  if (store.isReadOnly || e.shiftKey || e.ctrlKey || e.metaKey) return;
+                  startInlineNodeEdit(node);
+                }}
+              >
+                {#if !store.isReadOnly}
+                  <!-- Frame Border Hit Zones for Resizing 1 side -->
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <div
+                    class="vz-frame-edge-hit top"
+                    title="Drag to resize top side"
+                    onpointerdown={(e) => handleResizeHandlePointerDown(e, node, 'n')}
+                  ></div>
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <div
+                    class="vz-frame-edge-hit bottom"
+                    title="Drag to resize bottom side"
+                    onpointerdown={(e) => handleResizeHandlePointerDown(e, node, 's')}
+                  ></div>
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <div
+                    class="vz-frame-edge-hit left"
+                    title="Drag to resize left side"
+                    onpointerdown={(e) => handleResizeHandlePointerDown(e, node, 'w')}
+                  ></div>
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <div
+                    class="vz-frame-edge-hit right"
+                    title="Drag to resize right side"
+                    onpointerdown={(e) => handleResizeHandlePointerDown(e, node, 'e')}
+                  ></div>
+                {/if}
+
+                <!-- Resize Handle on Bottom-Right Corner -->
+                {#if isSelected && !store.isReadOnly}
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <div
+                    class="vz-resize-handle"
+                    title="Drag to resize frame (snaps to 20px grid)"
+                    onpointerdown={(e) => handleResizeHandlePointerDown(e, node, 'se')}
+                  ></div>
+                {/if}
+              </div>
+            {/if}
+          {/each}
+        </div>
+
+        <!-- SVG Layer for Edges, Tangent-Oriented Endpoint Markers, Multiplicities (Rendered OVER frames, but BEHIND element nodes) -->
         <svg class="vz-svg-layer vz-svg-relations vz-svg-overlay" aria-label="UML Relationships">
           <g
             transform="translate({store.viewport.panX}, {store.viewport.panY}) scale({store.viewport.zoom})"
@@ -1476,10 +2809,15 @@
                 {@const geom = computeUmlEdgeGeometry(
                   srcBox,
                   tgtBox,
-                  edge.visual?.routing ?? 'bezier',
+                  getEdgeRouting(edge),
                   startDec,
                   endDec,
-                  edgeParallelOffsets[edge.id] ?? 0
+                  edgeParallelOffsets[edge.id] ?? 0,
+                  undefined,
+                  undefined,
+                  srcNode?.kind === 'shape' ? srcNode.shape : undefined,
+                  tgtNode?.kind === 'shape' ? tgtNode.shape : undefined,
+                  edge.label
                 )}
                 {@const startMarker = renderEndpointPath(startDec)}
                 {@const endMarker = renderEndpointPath(endDec)}
@@ -1495,11 +2833,13 @@
                 )}
                 {@const startMultPt = getMultiplicityLabelPoint(
                   geom.startTip,
-                  geom.startAngleDeg
+                  geom.startAngleDeg,
+                  edge.source.multiplicity
                 )}
                 {@const endMultPt = getMultiplicityLabelPoint(
                   geom.endTip,
-                  geom.endAngleDeg
+                  geom.endAngleDeg,
+                  edge.target.multiplicity
                 )}
                 {@const isEdgeSelected =
                   store.selectedIds.includes(edge.id) ||
@@ -1520,6 +2860,7 @@
                     class="vz-edge-hit"
                     onclick={(e) => {
                       e.stopPropagation();
+                      if (inlineEditingNodeId) commitInlineNodeEdit();
                       store.selectSingle(edge.id, e.shiftKey || e.metaKey || e.ctrlKey);
                     }}
                     ondblclick={(e) => {
@@ -1565,6 +2906,7 @@
                       transform="translate({startMultPt.x}, {startMultPt.y})"
                       onclick={(e) => {
                         e.stopPropagation();
+                        if (inlineEditingNodeId) commitInlineNodeEdit();
                         store.selectSingle(edge.id, false);
                       }}
                       ondblclick={(e) => {
@@ -1596,6 +2938,7 @@
                       transform="translate({endMultPt.x}, {endMultPt.y})"
                       onclick={(e) => {
                         e.stopPropagation();
+                        if (inlineEditingNodeId) commitInlineNodeEdit();
                         store.selectSingle(edge.id, false);
                       }}
                       ondblclick={(e) => {
@@ -1627,6 +2970,7 @@
                       transform="translate({geom.labelPoint.x}, {geom.labelPoint.y})"
                       onclick={(e) => {
                         e.stopPropagation();
+                        if (inlineEditingNodeId) commitInlineNodeEdit();
                         store.selectSingle(edge.id, e.shiftKey || e.metaKey || e.ctrlKey);
                       }}
                       ondblclick={(e) => {
@@ -1637,18 +2981,55 @@
                     >
                       <rect
                         x={-(edge.label.length * 3.8 + 8)}
-                        y="-11"
+                        y="-10"
                         width={edge.label.length * 7.6 + 16}
                         height="20"
                         rx="4"
                         class="vz-edge-label-bg"
                       />
-                      <text text-anchor="middle" dy="3" class="vz-edge-label-text">
+                      <text text-anchor="middle" dominant-baseline="central" class="vz-edge-label-text">
                         {edge.label}
                       </text>
                     </g>
                   {/if}
                 </g>
+              {/if}
+            {/each}
+
+            <!-- Frame Floating Labels (identical to relation labels) -->
+            {#each doc.nodes.filter((n) => n.kind === 'frame') as frame (frame.id)}
+              {@const fbox = effectiveNodeLayouts[frame.id]}
+              {#if fbox}
+                {@const labelText = frame.name || 'Frame'}
+                {@const labelW = labelText.length * 7.6 + 16}
+                {#if inlineEditingNodeId !== frame.id}
+                  <g
+                    class="vz-edge-label-group vz-frame-label-group"
+                    transform="translate({fbox.x + 16}, {fbox.y})"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Edit frame label {labelText}"
+                    onpointerdown={(e) => {
+                      handleNodePointerDown(e, frame);
+                    }}
+                    ondblclick={(e) => {
+                      e.stopPropagation();
+                      if (!store.isReadOnly) startInlineNodeEdit(frame);
+                    }}
+                  >
+                    <rect
+                      x="0"
+                      y="-10"
+                      width={labelW}
+                      height="20"
+                      rx="4"
+                      class="vz-edge-label-bg"
+                    />
+                    <text x={labelW / 2} y="0" text-anchor="middle" dominant-baseline="central" class="vz-edge-label-text">
+                      {labelText}
+                    </text>
+                  </g>
+                {/if}
               {/if}
             {/each}
           </g>
@@ -1659,20 +3040,25 @@
           class="vz-html-world"
           style="transform: translate({store.viewport.panX}px, {store.viewport.panY}px) scale({store.viewport.zoom});"
         >
-          {#each doc.nodes as node (node.id)}
+          {#each doc.nodes.filter((n) => n.kind !== 'frame') as node (node.id)}
             {@const box = effectiveNodeLayouts[node.id]}
             {@const isSelected = store.selectedIds.includes(node.id)}
             {@const isInlineEditing = inlineEditingNodeId === node.id}
             {@const kindDesc = getUmlNodeKind(node.kind)}
-            {@const attrsVisible = node.showAttributes !== false}
-            {@const opsVisible = node.showOperations !== false}
+            {@const attrsExplicitlyShown = node.showAttributes !== false}
+            {@const opsExplicitlyShown = node.showOperations !== false}
+            {@const hasAttrs = (node.attributes ?? []).length > 0}
+            {@const hasOps = (node.operations ?? []).length > 0}
+            {@const attrsVisible = isInlineEditing ? attrsExplicitlyShown : (attrsExplicitlyShown && hasAttrs)}
+            {@const opsVisible = isInlineEditing ? opsExplicitlyShown : (opsExplicitlyShown && hasOps)}
             {#if box}
               <div
+                use:registerNodeElement={node.id}
                 class="vz-uml-node kind-{node.kind}"
                 class:selected={isSelected}
                 class:inline-editing={isInlineEditing}
                 class:unsupported={!kindDesc}
-                style="left: {box.x}px; top: {box.y}px; width: {box.width}px; min-height: {box.height}px; {node.kind === 'shape' ? `height: ${box.height}px;` : ''}"
+                style="left: {box.x}px; top: {box.y}px; width: {box.width}px; height: {box.height}px; min-height: {box.height}px;"
                 role="button"
                 tabindex="0"
                 aria-label="UML {node.kind} {node.name}"
@@ -1705,23 +3091,10 @@
                       <input
                         type="text"
                         class="vz-inline-input vz-shape-inline-input"
-                        autofocus
+                        use:focusInput
                         bind:value={inlineNodeNameDraft}
-                        onblur={() => commitInlineNodeEdit(node)}
-                        onkeydown={(ke) => {
-                          if (ke.key === 'Enter') {
-                            commitInlineNodeEdit(node);
-                          } else if (ke.key === 'Escape') {
-                            inlineEditingNodeId = null;
-                          }
-                        }}
-                      />
-                      <input
-                        type="text"
-                        class="vz-inline-input vz-inline-stereotype-input"
-                        placeholder="«stereotype»"
-                        bind:value={inlineNodeStereotypeDraft}
-                        onblur={() => commitInlineNodeEdit(node)}
+                        onblur={() => flushInlineNodeHeader(node)}
+                        onchange={() => flushInlineNodeHeader(node)}
                         onkeydown={(ke) => {
                           if (ke.key === 'Enter') {
                             commitInlineNodeEdit(node);
@@ -1732,47 +3105,76 @@
                       />
                     {:else}
                       <div class="vz-uml-node-title">{node.name}</div>
-                      {#if node.stereotype}
-                        <div class="vz-uml-stereotype">«{node.stereotype}»</div>
-                      {/if}
                     {/if}
                   </div>
                 {:else}
                   <div class="vz-uml-node-header">
                     {#if isInlineEditing}
-                      <!-- svelte-ignore a11y_autofocus -->
-                      <input
-                        type="text"
-                        class="vz-inline-input"
-                        autofocus
-                        bind:value={inlineNodeNameDraft}
-                        onblur={() => commitInlineNodeEdit(node)}
-                        onkeydown={(ke) => {
-                          if (ke.key === 'Enter') {
-                            commitInlineNodeEdit(node);
-                          } else if (ke.key === 'Escape') {
-                            inlineEditingNodeId = null;
-                          }
-                        }}
-                      />
-                      {#if node.kind !== 'note'}
-                        <input
-                          type="text"
-                          class="vz-inline-input vz-inline-stereotype-input"
-                          placeholder="«stereotype»"
-                          bind:value={inlineNodeStereotypeDraft}
-                          onblur={() => commitInlineNodeEdit(node)}
-                          onkeydown={(ke) => {
-                            if (ke.key === 'Enter') {
-                              commitInlineNodeEdit(node);
-                            } else if (ke.key === 'Escape') {
-                              inlineEditingNodeId = null;
-                            }
-                          }}
-                        />
+                      {#if node.kind === 'note'}
+                        <div class="vz-inline-field">
+                          <div class="vz-inline-sec-hdr">
+                            <span>Name</span>
+                          </div>
+                          <input
+                            type="text"
+                            class="vz-inline-input"
+                            bind:value={inlineNodeNameDraft}
+                            onblur={() => flushInlineNodeHeader(node)}
+                            onchange={() => flushInlineNodeHeader(node)}
+                            onkeydown={(ke) => {
+                              if (ke.key === 'Enter') {
+                                commitInlineNodeEdit(node);
+                              } else if (ke.key === 'Escape') {
+                                inlineEditingNodeId = null;
+                              }
+                            }}
+                          />
+                        </div>
+                      {:else}
+                        <div class="vz-inline-fields">
+                          <div class="vz-inline-field">
+                            <div class="vz-inline-sec-hdr">
+                              <span>Name</span>
+                            </div>
+                            <input
+                              type="text"
+                              class="vz-inline-input"
+                              placeholder="Name"
+                              bind:value={inlineNodeNameDraft}
+                              onblur={() => flushInlineNodeHeader(node)}
+                              onchange={() => flushInlineNodeHeader(node)}
+                              onkeydown={(ke) => {
+                                if (ke.key === 'Enter') {
+                                  commitInlineNodeEdit(node);
+                                } else if (ke.key === 'Escape') {
+                                  inlineEditingNodeId = null;
+                                }
+                              }}
+                            />
+                          </div>
+                          <div class="vz-inline-field">
+                            <div class="vz-inline-sec-hdr">
+                              <span>Stereotype</span>
+                            </div>
+                            <input
+                              type="text"
+                              class="vz-inline-input"
+                              placeholder="e.g. entity, service"
+                              bind:value={inlineNodeStereotypeDraft}
+                              onblur={() => flushInlineNodeHeader(node)}
+                              onchange={() => flushInlineNodeHeader(node)}
+                              onkeydown={(ke) => {
+                                if (ke.key === 'Enter') {
+                                  commitInlineNodeEdit(node);
+                                } else if (ke.key === 'Escape') {
+                                  inlineEditingNodeId = null;
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
                       {/if}
                     {:else}
-                      <div class="vz-uml-node-title">{node.name}</div>
                       {#if node.kind !== 'note' && (node.stereotype || kindDesc?.defaultStereotype)}
                         <div class="vz-uml-stereotype">
                           «{node.stereotype || kindDesc?.defaultStereotype}»
@@ -1780,32 +3182,23 @@
                       {:else if !kindDesc}
                         <div class="vz-uml-stereotype">«unsupported: {node.kind}»</div>
                       {/if}
+                      <div class="vz-uml-node-title">{node.name}</div>
                     {/if}
                   </div>
 
                   {#if node.kind === 'note'}
                     {#if isInlineEditing}
                       <div class="vz-uml-note-body">
+                        <div class="vz-inline-sec-hdr">
+                          <span>Content</span>
+                        </div>
                         <textarea
                           class="vz-inline-textarea"
                           rows="4"
                           placeholder="Note content…"
-                          value={node.text ?? ''}
-                          onblur={(ev) => {
-                            if (ev.currentTarget.value !== (node.text ?? '')) {
-                              store.dispatchOperation({
-                                type: 'uml.updateNode',
-                                nodeId: node.id,
-                                text: ev.currentTarget.value
-                              });
-                            }
-                          }}
-                          onchange={(ev) =>
-                            store.dispatchOperation({
-                              type: 'uml.updateNode',
-                              nodeId: node.id,
-                              text: ev.currentTarget.value
-                            })}
+                          bind:value={inlineNodeTextDraft}
+                          onblur={() => flushInlineNodeText(node)}
+                          onchange={() => flushInlineNodeText(node)}
                           onkeydown={(ke) => {
                             if (ke.key === 'Escape') inlineEditingNodeId = null;
                           }}
@@ -1841,62 +3234,17 @@
                             </button>
                           </div>
                           {#if attrsVisible}
-                            {#each node.attributes ?? [] as attr, idx (attr.id)}
-                              <div class="vz-inline-member-row">
-                                <VisibilityPicker
-                                  compact={true}
-                                  value={attr.visibility ?? '+'}
-                                  ariaLabel="Attribute visibility"
-                                  onSelect={(nextVis) =>
-                                    updateNodeAttributeInline(node, idx, { visibility: nextVis })}
-                                />
-                                <input
-                                  type="text"
-                                  class="vz-inline-cell-input"
-                                  value={attr.name}
-                                  placeholder="name"
-                                  onblur={(ev) => {
-                                    if (ev.currentTarget.value !== attr.name) {
-                                      updateNodeAttributeInline(node, idx, { name: ev.currentTarget.value });
-                                    }
-                                  }}
-                                  onchange={(ev) =>
-                                    updateNodeAttributeInline(node, idx, {
-                                      name: ev.currentTarget.value
-                                    })}
-                                />
-                                <input
-                                  type="text"
-                                  class="vz-inline-cell-input"
-                                  value={attr.type ?? ''}
-                                  placeholder="type"
-                                  onblur={(ev) => {
-                                    if (ev.currentTarget.value !== (attr.type ?? '')) {
-                                      updateNodeAttributeInline(node, idx, { type: ev.currentTarget.value });
-                                    }
-                                  }}
-                                  onchange={(ev) =>
-                                    updateNodeAttributeInline(node, idx, {
-                                      type: ev.currentTarget.value
-                                    })}
-                                />
-                                <button
-                                  type="button"
-                                  class="vz-inline-del-btn"
-                                  title="Remove attribute"
-                                  onclick={() => removeNodeAttributeInline(node, idx)}
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            {/each}
-                            <button
-                              type="button"
-                              class="vz-inline-add-btn"
-                              onclick={() => addNodeAttributeInline(node)}
-                            >
-                              ＋ Attribute
-                            </button>
+                            <textarea
+                              class="vz-inline-textarea"
+                              rows={Math.max(3, (node.attributes ?? []).length + 1)}
+                              placeholder="+ name: type&#10;- privateField: string"
+                              bind:value={inlineNodeAttributesDraft}
+                              onblur={() => flushInlineNodeMembers(node)}
+                              onchange={() => flushInlineNodeMembers(node)}
+                              onkeydown={(ke) => {
+                                if (ke.key === 'Escape') inlineEditingNodeId = null;
+                              }}
+                            ></textarea>
                           {/if}
                         {:else}
                           {#each node.attributes ?? [] as attr (attr.id)}
@@ -1936,125 +3284,24 @@
                             </button>
                           </div>
                           {#if opsVisible}
-                            {#each node.operations ?? [] as op, idx (op.id)}
-                              {@const opArgs = extractOperationParameters(op)}
-                              <div class="vz-inline-op-block">
-                                <div class="vz-inline-member-row">
-                                  <VisibilityPicker
-                                    compact={true}
-                                    value={op.visibility ?? '+'}
-                                    ariaLabel="Operation visibility"
-                                    onSelect={(nextVis) =>
-                                      updateNodeOperationInline(node, idx, { visibility: nextVis })}
-                                  />
-                                  <input
-                                    type="text"
-                                    class="vz-inline-cell-input"
-                                    value={op.name}
-                                    placeholder="method"
-                                    onblur={(ev) => {
-                                      if (ev.currentTarget.value !== op.name) {
-                                        updateNodeOperationInline(node, idx, { name: ev.currentTarget.value });
-                                      }
-                                    }}
-                                    onchange={(ev) =>
-                                      updateNodeOperationInline(node, idx, {
-                                        name: ev.currentTarget.value
-                                      })}
-                                  />
-                                  <input
-                                    type="text"
-                                    class="vz-inline-cell-input"
-                                    value={op.returnType ?? ''}
-                                    placeholder="return"
-                                    onblur={(ev) => {
-                                      if (ev.currentTarget.value !== (op.returnType ?? '')) {
-                                        updateNodeOperationInline(node, idx, { returnType: ev.currentTarget.value });
-                                      }
-                                    }}
-                                    onchange={(ev) =>
-                                      updateNodeOperationInline(node, idx, {
-                                        returnType: ev.currentTarget.value
-                                      })}
-                                  />
-                                  <button
-                                    type="button"
-                                    class="vz-inline-del-btn"
-                                    title="Remove operation"
-                                    onclick={() => removeNodeOperationInline(node, idx)}
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-
-                                <!-- Inline Operation Arguments -->
-                                <div class="vz-inline-params-wrap">
-                                  {#each opArgs as argItem, aIdx (argItem.id)}
-                                    <div class="vz-inline-param-row">
-                                      <input
-                                        type="text"
-                                        class="vz-inline-cell-input"
-                                        value={argItem.name}
-                                        placeholder="argName"
-                                        onblur={(ev) => {
-                                          if (ev.currentTarget.value !== argItem.name) {
-                                            updateNodeOperationArgInline(node, idx, aIdx, { name: ev.currentTarget.value });
-                                          }
-                                        }}
-                                        onchange={(ev) =>
-                                          updateNodeOperationArgInline(node, idx, aIdx, {
-                                            name: ev.currentTarget.value
-                                          })}
-                                      />
-                                      <input
-                                        type="text"
-                                        class="vz-inline-cell-input"
-                                        value={argItem.type ?? ''}
-                                        placeholder="argType"
-                                        onblur={(ev) => {
-                                          if (ev.currentTarget.value !== (argItem.type ?? '')) {
-                                            updateNodeOperationArgInline(node, idx, aIdx, { type: ev.currentTarget.value });
-                                          }
-                                        }}
-                                        onchange={(ev) =>
-                                          updateNodeOperationArgInline(node, idx, aIdx, {
-                                            type: ev.currentTarget.value
-                                          })}
-                                      />
-                                      <button
-                                        type="button"
-                                        class="vz-inline-del-btn"
-                                        title="Remove argument"
-                                        onclick={() =>
-                                          removeNodeOperationArgInline(node, idx, aIdx)}
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
-                                  {/each}
-                                  <button
-                                    type="button"
-                                    class="vz-inline-add-btn vz-param-add-btn"
-                                    onclick={() => addNodeOperationArgInline(node, idx)}
-                                  >
-                                    ＋ Argument
-                                  </button>
-                                </div>
-                              </div>
-                            {/each}
-                            <button
-                              type="button"
-                              class="vz-inline-add-btn"
-                              onclick={() => addNodeOperationInline(node)}
-                            >
-                              ＋ Operation
-                            </button>
+                            <textarea
+                              class="vz-inline-textarea"
+                              rows={Math.max(3, (node.operations ?? []).length + 1)}
+                              placeholder="+ method(): returnType&#10;+ execute(arg: type)"
+                              bind:value={inlineNodeOperationsDraft}
+                              onblur={() => flushInlineNodeMembers(node)}
+                              onchange={() => flushInlineNodeMembers(node)}
+                              onkeydown={(ke) => {
+                                if (ke.key === 'Escape') inlineEditingNodeId = null;
+                              }}
+                            ></textarea>
                           {/if}
                         {:else}
                           {#each node.operations ?? [] as op (op.id)}
+                            {@const params = extractOperationParameters(op)}
                             <div class="vz-uml-member">
                               <span class="vz-vis">{formatVisibilitySign(op.visibility)}</span>
-                              <span>{op.name}{op.signature ?? '()'}</span>
+                              <span>{op.name}(</span>{#each params as param, pIdx (param.id ?? pIdx)}{#if pIdx > 0}, {/if}<span>{param.name}</span>{#if param.type}<span class="vz-type">: {param.type}</span>{/if}{/each}<span>)</span>
                               {#if op.returnType}
                                 <span class="vz-type">: {op.returnType}</span>
                               {/if}
@@ -2108,13 +3355,20 @@
                   {#if srcBox && tgtBox}
                     {@const startDec = edge.visual?.start ?? { shape: 'none', size: 10 }}
                     {@const endDec = edge.visual?.end ?? { shape: 'none', size: 10 }}
+                    {@const srcNode = doc.nodes.find((n) => n.id === edge.source.nodeId)}
+                    {@const tgtNode = doc.nodes.find((n) => n.id === edge.target.nodeId)}
                     {@const geom = computeUmlEdgeGeometry(
                       srcBox,
                       tgtBox,
-                      edge.visual?.routing ?? 'bezier',
+                      getEdgeRouting(edge),
                       startDec,
                       endDec,
-                      edgeParallelOffsets[edge.id] ?? 0
+                      edgeParallelOffsets[edge.id] ?? 0,
+                      undefined,
+                      undefined,
+                      srcNode?.kind === 'shape' ? srcNode.shape : undefined,
+                      tgtNode?.kind === 'shape' ? tgtNode.shape : undefined,
+                      edge.label
                     )}
                     {@const startCenter = getEndpointVisualCenter(
                       geom.startTip,
@@ -2197,31 +3451,38 @@
 
         <!-- Inline Connection Label Editor Floating directly on the Edge Midpoint -->
         {#if inlineEditingEdgeId}
-          {@const editingEdge = doc.edges.find((e) => e.id === inlineEditingEdgeId)}
+          {@const editingEdge = inlineEditingEdgeId ? doc.edges.find((e) => e.id === inlineEditingEdgeId) : undefined}
           {#if editingEdge}
             {@const srcB = effectiveNodeLayouts[editingEdge.source.nodeId]}
             {@const tgtB = effectiveNodeLayouts[editingEdge.target.nodeId]}
             {#if srcB && tgtB}
+              {@const srcNode = doc.nodes.find((n) => n.id === editingEdge.source.nodeId)}
+              {@const tgtNode = doc.nodes.find((n) => n.id === editingEdge.target.nodeId)}
               {@const g = computeUmlEdgeGeometry(
                 srcB,
                 tgtB,
-                editingEdge.visual?.routing ?? 'bezier',
+                getEdgeRouting(editingEdge),
                 editingEdge.visual?.start,
                 editingEdge.visual?.end,
-                edgeParallelOffsets[editingEdge.id] ?? 0
+                edgeParallelOffsets[editingEdge.id] ?? 0,
+                undefined,
+                undefined,
+                srcNode?.kind === 'shape' ? srcNode.shape : undefined,
+                tgtNode?.kind === 'shape' ? tgtNode.shape : undefined,
+                inlineEdgeLabelDraft || editingEdge.label
               )}
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div
                 class="vz-floating-edge-label-editor"
-                style="left: {g.labelPoint.x * store.viewport.zoom + store.viewport.panX}px; top: {g.labelPoint.y * store.viewport.zoom + store.viewport.panY}px;"
+                style="left: {g.labelPoint.x * store.viewport.zoom + store.viewport.panX}px; top: {g.labelPoint.y * store.viewport.zoom + store.viewport.panY}px; width: {Math.max(64, inlineEdgeLabelDraft.length * 7.6 + 20)}px; transform: translate(-50%, -50%) scale({store.viewport.zoom}); transform-origin: center center;"
                 onpointerdown={(e) => e.stopPropagation()}
               >
                 <!-- svelte-ignore a11y_autofocus -->
                 <input
                   type="text"
                   class="vz-input"
-                  autofocus
-                  placeholder="Relation label…"
+                  use:focusInput
+                  placeholder="Label"
                   bind:value={inlineEdgeLabelDraft}
                   onblur={() => commitInlineEdgeLabel(editingEdge)}
                   onkeydown={(ke) => {
@@ -2234,39 +3495,85 @@
           {/if}
         {/if}
 
-        <!-- Inline Multiplicity Editor Floating near Start or End of Edge -->
-        {#if inlineEditingMultiplicity}
-          {@const multEdit = inlineEditingMultiplicity}
-          {@const editingEdge = doc.edges.find((e) => e.id === multEdit.edgeId)}
-          {#if editingEdge}
-            {@const srcB = effectiveNodeLayouts[editingEdge.source.nodeId]}
-            {@const tgtB = effectiveNodeLayouts[editingEdge.target.nodeId]}
-            {#if srcB && tgtB}
-              {@const g = computeUmlEdgeGeometry(
-                srcB,
-                tgtB,
-                editingEdge.visual?.routing ?? 'bezier',
-                editingEdge.visual?.start,
-                editingEdge.visual?.end,
-                edgeParallelOffsets[editingEdge.id] ?? 0
-              )}
-              {@const pt =
-                multEdit.end === 'start'
-                  ? getMultiplicityLabelPoint(g.startTip, g.startAngleDeg)
-                  : getMultiplicityLabelPoint(g.endTip, g.endAngleDeg)}
+        <!-- Inline Frame Label Editor Floating at Top-Left of Frame (exact same component as edge label editor) -->
+        {#if inlineEditingNodeId}
+          {@const editingFrame = doc.nodes.find((n) => n.id === inlineEditingNodeId && n.kind === 'frame')}
+          {#if editingFrame}
+            {@const fbox = effectiveNodeLayouts[editingFrame.id]}
+            {#if fbox}
+              {@const labelDraft = inlineNodeNameDraft !== undefined ? inlineNodeNameDraft : (editingFrame.name || 'Frame')}
+              {@const labelW = Math.max(64, labelDraft.length * 7.6 + 20)}
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div
-                class="vz-floating-edge-label-editor vz-floating-mult-editor"
-                style="left: {pt.x * store.viewport.zoom + store.viewport.panX}px; top: {pt.y * store.viewport.zoom + store.viewport.panY}px;"
+                class="vz-floating-edge-label-editor vz-floating-frame-label-editor"
+                style="left: {(fbox.x + 16) * store.viewport.zoom + store.viewport.panX}px; top: {fbox.y * store.viewport.zoom + store.viewport.panY}px; width: {labelW}px; transform: translateY(-50%) scale({store.viewport.zoom}); transform-origin: left center;"
                 onpointerdown={(e) => e.stopPropagation()}
               >
                 <!-- svelte-ignore a11y_autofocus -->
                 <input
                   type="text"
                   class="vz-input"
-                  autofocus
+                  use:focusInput
+                  placeholder="Frame"
+                  bind:value={inlineNodeNameDraft}
+                  onblur={() => commitInlineNodeEdit(editingFrame)}
+                  onkeydown={(ke) => {
+                    if (ke.key === 'Enter') commitInlineNodeEdit(editingFrame);
+                    if (ke.key === 'Escape') inlineEditingNodeId = null;
+                  }}
+                />
+              </div>
+            {/if}
+          {/if}
+        {/if}
+
+        <!-- Inline Multiplicity Editor Floating near Start or End of Edge -->
+        {#if inlineEditingMultiplicity}
+          {@const multEdit = inlineEditingMultiplicity}
+          {@const editingEdge = multEdit ? doc.edges.find((e) => e.id === multEdit.edgeId) : undefined}
+          {#if multEdit && editingEdge}
+            {@const srcB = effectiveNodeLayouts[editingEdge.source.nodeId]}
+            {@const tgtB = effectiveNodeLayouts[editingEdge.target.nodeId]}
+            {#if srcB && tgtB}
+              {@const srcNode = doc.nodes.find((n) => n.id === editingEdge.source.nodeId)}
+              {@const tgtNode = doc.nodes.find((n) => n.id === editingEdge.target.nodeId)}
+              {@const g = computeUmlEdgeGeometry(
+                srcB,
+                tgtB,
+                getEdgeRouting(editingEdge),
+                editingEdge.visual?.start,
+                editingEdge.visual?.end,
+                edgeParallelOffsets[editingEdge.id] ?? 0,
+                undefined,
+                undefined,
+                srcNode?.kind === 'shape' ? srcNode.shape : undefined,
+                tgtNode?.kind === 'shape' ? tgtNode.shape : undefined,
+                editingEdge.label
+              )}
+              {@const pt =
+                multEdit && multEdit.end === 'start'
+                  ? getMultiplicityLabelPoint(g.startTip, g.startAngleDeg, multEdit.draft || editingEdge.source.multiplicity)
+                  : multEdit
+                    ? getMultiplicityLabelPoint(g.endTip, g.endAngleDeg, multEdit.draft || editingEdge.target.multiplicity)
+                    : { x: 0, y: 0 }}
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                class="vz-floating-edge-label-editor vz-floating-mult-editor"
+                style="left: {pt.x * store.viewport.zoom + store.viewport.panX}px; top: {pt.y * store.viewport.zoom + store.viewport.panY}px; width: {Math.max(38, (multEdit?.draft?.length ?? 0) * 8 + 14)}px; transform: translate(-50%, -50%) scale({store.viewport.zoom}); transform-origin: center center;"
+                onpointerdown={(e) => e.stopPropagation()}
+              >
+                <!-- svelte-ignore a11y_autofocus -->
+                <input
+                  type="text"
+                  class="vz-input"
+                  use:focusInput
                   placeholder="1, *"
-                  bind:value={inlineEditingMultiplicity.draft}
+                  value={multEdit?.draft ?? ''}
+                  oninput={(e) => {
+                    if (inlineEditingMultiplicity) {
+                      inlineEditingMultiplicity.draft = e.currentTarget.value;
+                    }
+                  }}
                   onblur={() => commitInlineMultiplicity(editingEdge)}
                   onkeydown={(ke) => {
                     if (ke.key === 'Enter') commitInlineMultiplicity(editingEdge);
@@ -2293,27 +3600,19 @@
                 type="text"
                 class="vz-input-mini"
                 placeholder="e.g. 1, *, 1..5, 2..*"
-                bind:value={endpointPickerPopup.multiplicityDraft}
-                onchange={(ev) => {
-                  const val = ev.currentTarget.value.trim();
-                  store.dispatchOperation({
-                    type: 'uml.updateEdge',
-                    edgeId: popup.edgeId,
-                    ...(popup.end === 'start'
-                      ? { sourceMultiplicity: val }
-                      : { targetMultiplicity: val })
-                  });
+                value={popup.multiplicityDraft}
+                oninput={(ev) => {
+                  if (endpointPickerPopup) {
+                    endpointPickerPopup.multiplicityDraft = ev.currentTarget.value;
+                  }
+                }}
+                onchange={() => {
+                  commitEndpointMultiplicity();
                 }}
                 onkeydown={(ke) => {
                   if (ke.key === 'Enter') {
-                    const val = ke.currentTarget.value.trim();
-                    store.dispatchOperation({
-                      type: 'uml.updateEdge',
-                      edgeId: popup.edgeId,
-                      ...(popup.end === 'start'
-                        ? { sourceMultiplicity: val }
-                        : { targetMultiplicity: val })
-                    });
+                    closeEndpointPickerPopup();
+                  } else if (ke.key === 'Escape') {
                     endpointPickerPopup = null;
                   }
                 }}
@@ -2330,6 +3629,7 @@
                   class:active={isActive}
                   title={choice.label}
                   onclick={() => {
+                    commitEndpointMultiplicity();
                     store.dispatchOperation({
                       type: 'uml.updateEndpoint',
                       edgeId: popup.edgeId,

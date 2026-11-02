@@ -1,6 +1,7 @@
 import { computeMinimalJsonEdits, type JsonMutationPatch, type TextSpanEdit } from '../documents/json-patch';
 import { parseAndValidateDocument } from '../documents/validator';
 import {
+  detectMatchingRelationPreset,
   getEndpointShape,
   getUmlNodeKind,
   getUmlRelationPreset
@@ -10,6 +11,7 @@ import type {
   UmlAttribute,
   UmlDocument,
   UmlEdge,
+  UmlEdgeRouting,
   UmlLineStyle,
   UmlNode,
   UmlNodeLayout,
@@ -20,6 +22,8 @@ import type {
   UmlShapeGeometry,
   UmlVisibility
 } from '../documents/types';
+import { EXTENSION_VERSION } from '../documents/version';
+import { runDocumentMigrations } from '../documents/migrations';
 
 // ============================================================================
 // Visibility & Operation Argument Helpers
@@ -85,6 +89,174 @@ export function buildOperationSignature(params: UmlParameter[]): string {
   return `(${formatted.join(', ')})`;
 }
 
+/**
+ * Formats a list of attributes into line-by-line UML format.
+ */
+export function formatAttributesToText(attributes: UmlAttribute[]): string {
+  return attributes
+    .map((attr) => {
+      const vis = attr.visibility ?? '+';
+      const typeStr = attr.type ? `: ${attr.type}` : '';
+      return `${vis} ${attr.name}${typeStr}`;
+    })
+    .join('\n');
+}
+
+/**
+ * Parses attributes line-by-line from text, removing non-matching lines.
+ */
+export function parseAttributesFromText(
+  text: string,
+  nodeId: string,
+  existingAttrs: UmlAttribute[] = []
+): UmlAttribute[] {
+  const lines = text.split(/\r?\n/);
+  const result: UmlAttribute[] = [];
+  const ATTR_REGEX = /^\s*([+\-#~＋－])?\s*([a-zA-Z_$][\w$-]*)(?:\s*:\s*(.+?))?\s*$/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const match = line.match(ATTR_REGEX);
+    if (!match) continue; // remove non matching lines
+
+    let rawVis = match[1];
+    let vis: UmlVisibility = '+';
+    if (rawVis === '-' || rawVis === '－') vis = '-';
+    else if (rawVis === '#') vis = '#';
+    else if (rawVis === '~') vis = '~';
+    else vis = '+';
+
+    const name = match[2].trim();
+    const type = match[3] ? match[3].trim() : undefined;
+
+    const existing = existingAttrs[result.length];
+    const id = existing?.id ?? `${nodeId}-attr-${Date.now().toString(36)}-${result.length + 1}`;
+
+    result.push({
+      id,
+      visibility: vis,
+      name,
+      ...(type ? { type } : {})
+    });
+  }
+  return result;
+}
+
+/**
+ * Formats a list of operations into line-by-line UML format.
+ */
+export function formatOperationsToText(operations: UmlOperation[]): string {
+  return operations
+    .map((op) => {
+      const vis = op.visibility ?? '+';
+      const sig =
+        op.parameters && op.parameters.length > 0
+          ? buildOperationSignature(op.parameters)
+          : (op.signature ?? '()');
+      const retStr = op.returnType ? `: ${op.returnType}` : '';
+      return `${vis} ${op.name}${sig}${retStr}`;
+    })
+    .join('\n');
+}
+
+/**
+ * Parses operations line-by-line from text, removing non-matching lines.
+ */
+export function parseOperationsFromText(
+  text: string,
+  nodeId: string,
+  existingOps: UmlOperation[] = []
+): UmlOperation[] {
+  const lines = text.split(/\r?\n/);
+  const result: UmlOperation[] = [];
+  const OP_REGEX = /^\s*([+\-#~＋－])?\s*([a-zA-Z_$][\w$-]*)\s*(?:\((.*?)\))?(?:\s*:\s*(.+?))?\s*$/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const match = line.match(OP_REGEX);
+    if (!match) continue; // remove non matching lines
+
+    let rawVis = match[1];
+    let vis: UmlVisibility = '+';
+    if (rawVis === '-' || rawVis === '－') vis = '-';
+    else if (rawVis === '#') vis = '#';
+    else if (rawVis === '~') vis = '~';
+    else vis = '+';
+
+    const name = match[2].trim();
+    const rawParams = match[3];
+    const returnType = match[4] ? match[4].trim() : undefined;
+
+    const existing = existingOps[result.length];
+    const id = existing?.id ?? `${nodeId}-op-${Date.now().toString(36)}-${result.length + 1}`;
+
+    const parameters: UmlParameter[] = [];
+    if (rawParams !== undefined && rawParams.trim().length > 0) {
+      const parts = rawParams.split(',');
+      for (let pIdx = 0; pIdx < parts.length; pIdx++) {
+        const pTrimmed = parts[pIdx].trim();
+        if (!pTrimmed) continue;
+        const colonIdx = pTrimmed.indexOf(':');
+        let pName = pTrimmed;
+        let pType = '';
+        if (colonIdx !== -1) {
+          pName = pTrimmed.slice(0, colonIdx).trim();
+          pType = pTrimmed.slice(colonIdx + 1).trim();
+        }
+        if (pName.length > 0) {
+          parameters.push({
+            id: `${id}-param-${pIdx + 1}`,
+            name: pName,
+            ...(pType ? { type: pType } : {})
+          });
+        }
+      }
+    }
+
+    const signature =
+      rawParams !== undefined
+        ? `(${parameters.map((p) => (p.type ? `${p.name}: ${p.type}` : p.name)).join(', ')})`
+        : '()';
+
+    result.push({
+      id,
+      visibility: vis,
+      name,
+      signature,
+      ...(returnType ? { returnType } : {}),
+      parameters
+    });
+  }
+  return result;
+}
+
+/**
+ * Resolves whether an edge's visual appearance matches a built-in semantic UML relation kind.
+ * If styling does not match any semantic preset, returns 'other' (or preserves 'association'
+ * for undirected, directional, or bidirectional solid associations).
+ */
+export function resolveMatchingRelation(
+  currentKind: UmlRelationKind,
+  line: string | undefined,
+  start: EndpointDecoration | undefined,
+  end: EndpointDecoration | undefined
+): UmlRelationKind {
+  const match = detectMatchingRelationPreset(line, start, end);
+  if (match) {
+    return match;
+  }
+  const isStartAssoc =
+    (start?.shape ?? 'none') === 'none' || (start?.shape ?? 'none') === 'open-arrow';
+  const isEndAssoc =
+    (end?.shape ?? 'none') === 'none' || (end?.shape ?? 'none') === 'open-arrow';
+  if (line !== 'dashed' && isStartAssoc && isEndAssoc) {
+    return 'association';
+  }
+  return 'other';
+}
+
 // ============================================================================
 // Semantic Operation Payloads
 // ============================================================================
@@ -93,7 +265,12 @@ export type UmlOperationPayload =
   | {
       type: 'uml.updateMetadata';
       title?: string;
+      description?: string;
       purpose?: string;
+      defaultRouting?: UmlRoutingKind;
+    }
+  | {
+      type: 'uml.migrateDocument';
     }
   | {
       type: 'uml.addNode';
@@ -106,6 +283,7 @@ export type UmlOperationPayload =
       height?: number;
       text?: string;
       shape?: UmlShapeGeometry;
+      children?: string[];
     }
   | {
       type: 'uml.updateNode';
@@ -114,6 +292,8 @@ export type UmlOperationPayload =
       stereotype?: string;
       text?: string;
       shape?: UmlShapeGeometry;
+      children?: string[];
+      line?: 'solid' | 'dashed';
       showAttributes?: boolean;
       showOperations?: boolean;
       attributes?: UmlAttribute[];
@@ -122,6 +302,7 @@ export type UmlOperationPayload =
   | {
       type: 'uml.moveResizeNodes';
       updates: Record<string, UmlNodeLayout>;
+      frameChildrenUpdates?: Record<string, string[]>;
     }
   | {
       type: 'uml.deleteEntities';
@@ -139,11 +320,12 @@ export type UmlOperationPayload =
   | {
       type: 'uml.addEdge';
       id: string;
-      kind: UmlRelationKind;
+      kind?: UmlRelationKind;
       sourceNodeId: string;
       targetNodeId: string;
       label?: string;
       line?: UmlLineStyle;
+      routing?: UmlEdgeRouting;
     }
   | {
       type: 'uml.updateEdge';
@@ -156,7 +338,7 @@ export type UmlOperationPayload =
       targetMultiplicity?: string;
       reverseDirection?: boolean;
       line?: UmlLineStyle;
-      routing?: UmlRoutingKind;
+      routing?: UmlEdgeRouting;
     }
   | {
       type: 'uml.updateEndpoint';
@@ -212,9 +394,31 @@ export function applyUmlOperationToText(
       if (op.title !== undefined && op.title.trim().length > 0) {
         patches.push({ path: ['title'], value: op.title.trim() });
       }
-      if (op.purpose !== undefined) {
-        patches.push({ path: ['ai', 'purpose'], value: op.purpose.trim() });
+      if (op.description !== undefined) {
+        patches.push({ path: ['description'], value: op.description.trim() });
+      } else if (op.purpose !== undefined) {
+        patches.push({ path: ['description'], value: op.purpose.trim() });
       }
+      if (op.defaultRouting !== undefined) {
+        patches.push({ path: ['defaultRouting'], value: op.defaultRouting });
+      }
+      break;
+    }
+
+    case 'uml.migrateDocument': {
+      const { doc: migratedDoc, appliedSteps } = runDocumentMigrations(doc);
+      if (appliedSteps.length === 0 && doc.version === EXTENSION_VERSION) {
+        return { ok: false, error: 'Document is already up to date.' };
+      }
+      patches.push({ path: ['version'], value: EXTENSION_VERSION });
+      if (migratedDoc.description !== undefined) {
+        patches.push({ path: ['description'], value: migratedDoc.description });
+      }
+      if (doc.ai && 'purpose' in doc.ai) {
+        patches.push({ path: ['ai', 'purpose'], value: undefined });
+      }
+      patches.push({ path: ['ai', 'interpretation'], value: migratedDoc.ai.interpretation });
+      patches.push({ path: ['ai', 'editingRules'], value: migratedDoc.ai.editingRules });
       break;
     }
 
@@ -223,7 +427,7 @@ export function applyUmlOperationToText(
         return { ok: false, error: `Node ID "${op.id}" already exists.` };
       }
       const descriptor = getUmlNodeKind(op.kind);
-      const width = Math.max(60, Math.round(op.width ?? descriptor?.defaultWidth ?? 210));
+      const width = Math.max(60, Math.round(op.width ?? descriptor?.defaultWidth ?? 240));
       const height = Math.max(45, Math.round(op.height ?? descriptor?.defaultHeight ?? 140));
 
       const newNode: UmlNode = {
@@ -240,6 +444,8 @@ export function applyUmlOperationToText(
         newNode.text = op.text ?? 'Design note...';
       } else if (op.kind === 'shape') {
         newNode.shape = op.shape ?? 'rectangle';
+      } else if (op.kind === 'frame') {
+        newNode.children = op.children ?? [];
       } else if (descriptor?.hasCompartments !== false) {
         newNode.attributes = [
           {
@@ -249,16 +455,7 @@ export function applyUmlOperationToText(
             type: 'string'
           }
         ];
-        newNode.operations = [
-          {
-            id: `${op.id}-op-1`,
-            visibility: '+',
-            name: 'validate',
-            signature: '()',
-            returnType: 'boolean',
-            parameters: []
-          }
-        ];
+        newNode.operations = [];
       }
 
       const layoutBox: UmlNodeLayout = {
@@ -309,6 +506,12 @@ export function applyUmlOperationToText(
       if (op.shape !== undefined) {
         patches.push({ path: ['nodes', idx, 'shape'], value: op.shape });
       }
+      if (op.children !== undefined) {
+        patches.push({ path: ['nodes', idx, 'children'], value: op.children });
+      }
+      if (op.line !== undefined) {
+        patches.push({ path: ['nodes', idx, 'line'], value: op.line === 'solid' ? undefined : op.line });
+      }
       if (op.showAttributes !== undefined) {
         patches.push({ path: ['nodes', idx, 'showAttributes'], value: op.showAttributes });
       }
@@ -341,6 +544,17 @@ export function applyUmlOperationToText(
           }
         });
       }
+      if (op.frameChildrenUpdates) {
+        for (const [frameId, children] of Object.entries(op.frameChildrenUpdates)) {
+          const idx = doc.nodes.findIndex((n) => n.id === frameId);
+          if (idx !== -1) {
+            patches.push({
+              path: ['nodes', idx, 'children'],
+              value: children
+            });
+          }
+        }
+      }
       break;
     }
 
@@ -356,7 +570,17 @@ export function applyUmlOperationToText(
       }
 
       if (delNodes.size > 0) {
-        const remainingNodes = doc.nodes.filter((n) => !delNodes.has(n.id));
+        const remainingNodes = doc.nodes
+          .filter((n) => !delNodes.has(n.id))
+          .map((n) => {
+            if (n.kind === 'frame' && n.children) {
+              const cleanedChildren = n.children.filter((cid) => !delNodes.has(cid));
+              if (cleanedChildren.length !== n.children.length) {
+                return { ...n, children: cleanedChildren };
+              }
+            }
+            return n;
+          });
         patches.push({ path: ['nodes'], value: remainingNodes });
         for (const nodeId of delNodes) {
           if (nodeId in doc.layout.nodes) {
@@ -401,7 +625,8 @@ export function applyUmlOperationToText(
           const freshNameMap: Record<string, string> = {
             class: `Class${nextNum}`,
             note: `Note ${nextNum}`,
-            shape: `Shape ${nextNum}`
+            shape: `Shape ${nextNum}`,
+            frame: `Frame ${nextNum}`
           };
           const freshId = `${node.kind}-${Date.now().toString(36).slice(-4)}-${clonedNodes.length + 1}`;
           existingNodeIds.delete(newId);
@@ -465,6 +690,11 @@ export function applyUmlOperationToText(
             id: newId,
             name: `${node.name}Copy`
           };
+          if (node.children) {
+            clonedNode.children = node.children
+              .map((cid) => nodeIdMap.get(cid))
+              .filter((cid): cid is string => Boolean(cid));
+          }
           if (attrCopy) clonedNode.attributes = attrCopy;
           if (opCopy) clonedNode.operations = opCopy;
           clonedNodes.push(clonedNode);
@@ -482,12 +712,8 @@ export function applyUmlOperationToText(
           value: {
             x: Math.round((origLayout.x + offsetX) / 20) * 20,
             y: Math.round((origLayout.y + offsetY) / 20) * 20,
-            width: stripCustom
-              ? (descriptor?.defaultWidth ?? 210)
-              : origLayout.width,
-            height: stripCustom
-              ? (descriptor?.defaultHeight ?? 140)
-              : origLayout.height
+            width: origLayout.width,
+            height: origLayout.height
           }
         });
       }
@@ -531,7 +757,7 @@ export function applyUmlOperationToText(
             ? {
                 visual: {
                   line: preset?.line ?? 'solid',
-                  routing: preset?.routing ?? 'bezier',
+                  routing: preset?.routing ?? 'default',
                   start: { ...(preset?.start ?? { shape: 'none', size: 10 }) },
                   end: { ...(preset?.end ?? { shape: 'none', size: 10 }) }
                 }
@@ -561,14 +787,18 @@ export function applyUmlOperationToText(
       if (!targetNode) {
         return { ok: false, error: `Target node "${op.targetNodeId}" does not exist.` };
       }
+      if (sourceNode.kind === 'frame' || targetNode.kind === 'frame') {
+        return { ok: false, error: 'Frames cannot have relationships.' };
+      }
 
-      const preset = getUmlRelationPreset(op.kind);
       const touchesNote = sourceNode.kind === 'note' || targetNode.kind === 'note';
+      const edgeKind = op.kind ?? (touchesNote ? 'other' : 'association');
+      const preset = getUmlRelationPreset(edgeKind);
       const defaultLine = touchesNote ? 'dashed' : (preset?.line ?? 'solid');
 
       const newEdge: UmlEdge = {
         id: op.id,
-        kind: op.kind,
+        kind: edgeKind,
         source: {
           nodeId: op.sourceNodeId
         },
@@ -578,7 +808,7 @@ export function applyUmlOperationToText(
         ...(op.label ? { label: op.label } : {}),
         visual: {
           line: op.line ?? defaultLine,
-          routing: preset?.routing ?? 'bezier',
+          routing: op.routing ?? preset?.routing ?? 'default',
           start: { ...(preset?.start ?? { shape: 'none', size: 10 }) },
           end: { ...(preset?.end ?? { shape: 'none', size: 10 }) }
         }
@@ -612,8 +842,12 @@ export function applyUmlOperationToText(
       }
 
       if (op.sourceNodeId !== undefined) {
-        if (!doc.nodes.some((n) => n.id === op.sourceNodeId)) {
+        const sNode = doc.nodes.find((n) => n.id === op.sourceNodeId);
+        if (!sNode) {
           return { ok: false, error: `Node "${op.sourceNodeId}" does not exist.` };
+        }
+        if (sNode.kind === 'frame') {
+          return { ok: false, error: 'Frames cannot have relationships.' };
         }
         patches.push({
           path: ['edges', idx, 'source', 'nodeId'],
@@ -621,8 +855,12 @@ export function applyUmlOperationToText(
         });
       }
       if (op.targetNodeId !== undefined) {
-        if (!doc.nodes.some((n) => n.id === op.targetNodeId)) {
+        const tNode = doc.nodes.find((n) => n.id === op.targetNodeId);
+        if (!tNode) {
           return { ok: false, error: `Node "${op.targetNodeId}" does not exist.` };
+        }
+        if (tNode.kind === 'frame') {
+          return { ok: false, error: 'Frames cannot have relationships.' };
         }
         patches.push({
           path: ['edges', idx, 'target', 'nodeId'],
@@ -651,29 +889,31 @@ export function applyUmlOperationToText(
         patches.push({ path: ['edges', idx, 'kind'], value: op.kind });
         const preset = getUmlRelationPreset(op.kind);
         if (preset) {
-          const effectiveSource = op.sourceNodeId ?? existing.source.nodeId;
-          const effectiveTarget = op.targetNodeId ?? existing.target.nodeId;
-          const sourceNode = doc.nodes.find((n) => n.id === effectiveSource);
-          const targetNode = doc.nodes.find((n) => n.id === effectiveTarget);
-          const touchesNote = sourceNode?.kind === 'note' || targetNode?.kind === 'note';
-          const defaultLine = touchesNote ? 'dashed' : preset.line;
           patches.push({
             path: ['edges', idx, 'visual'],
             value: {
               ...(existing.visual ?? {}),
-              line: defaultLine,
+              line: preset.line,
               routing: existing.visual?.routing ?? preset.routing,
               start: { ...preset.start },
               end: { ...preset.end }
             }
           });
         }
-      }
-      if (op.line !== undefined) {
+      } else if (op.line !== undefined) {
         patches.push({
           path: ['edges', idx, 'visual', 'line'],
           value: op.line
         });
+        const nextKind = resolveMatchingRelation(
+          existing.kind,
+          op.line,
+          existing.visual?.start,
+          existing.visual?.end
+        );
+        if (nextKind !== existing.kind) {
+          patches.push({ path: ['edges', idx, 'kind'], value: nextKind });
+        }
       }
       if (op.routing !== undefined) {
         patches.push({
@@ -719,7 +959,7 @@ export function applyUmlOperationToText(
           path: ['edges', idx, 'visual'],
           value: {
             line: preset?.line ?? 'solid',
-            routing: preset?.routing ?? 'bezier',
+            routing: preset?.routing ?? 'default',
             start: op.end === 'start' ? cleanedDecoration : { ...(preset?.start ?? { shape: 'none', size: 10 }) },
             end: op.end === 'end' ? cleanedDecoration : { ...(preset?.end ?? { shape: 'none', size: 10 }) }
           }
@@ -729,6 +969,19 @@ export function applyUmlOperationToText(
           path: ['edges', idx, 'visual', op.end],
           value: cleanedDecoration
         });
+      }
+
+      const currentEdge = doc.edges[idx];
+      const startDec = op.end === 'start' ? cleanedDecoration : currentEdge.visual?.start;
+      const endDec = op.end === 'end' ? cleanedDecoration : currentEdge.visual?.end;
+      const nextKind = resolveMatchingRelation(
+        currentEdge.kind,
+        currentEdge.visual?.line,
+        startDec,
+        endDec
+      );
+      if (nextKind !== currentEdge.kind) {
+        patches.push({ path: ['edges', idx, 'kind'], value: nextKind });
       }
       break;
     }

@@ -37,7 +37,7 @@ export interface HostToWebviewOperationAckMessage {
 
 export interface HostToWebviewCommandMessage {
   type: 'host.command';
-  command: 'fitContent' | 'resetZoom' | 'restoreCanvasFocus' | 'requestSvgExport';
+  command: 'fitContent' | 'resetZoom' | 'restoreCanvasFocus';
 }
 
 export type HostToWebviewMessage =
@@ -112,6 +112,14 @@ export type WebviewToHostMessage =
       type: 'webview.redo';
     }
   | {
-      type: 'webview.exportSvgContent';
-      svgContent: string;
+      type: 'webview.exportFile';
+      format: 'png';
+      base64Data: string;
+    }
+  | {
+      type: 'webview.copyImageToClipboard';
+      base64Data: string;
+    }
+  | {
+      type: 'webview.checkForExtensionUpdate';
     };

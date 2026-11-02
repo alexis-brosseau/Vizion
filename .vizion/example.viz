@@ -1,35 +1,61 @@
 {
   "format": "vizion",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "kind": "uml",
-  "title": "E-Commerce Domain Model",
+  "title": "E-Commerce Architecture & Fulfillment",
+  "description": "Comprehensive reference model showcasing frames, domain entities, shape nodes, notes, and typed relationships.",
   "ai": {
-    "purpose": "Describe classes, notes, shapes, and explicitly typed relationships for the core e-commerce domain.",
     "interpretation": [
-      "Document Structure: Standalone unversioned JSON document. Root required fields are: \"format\" (must be \"vizion\"), \"kind\" (must be \"uml\"), \"title\" (string), \"ai\" (guidance object with \"purpose\", \"interpretation\", \"editingRules\"), \"nodes\" (array), \"edges\" (array), and \"layout\" (object with \"nodes\" and \"edges\"). NEVER add version fields like \"version\" or \"schemaVersion\".",
-      "Node Types & Properties (\"nodes[]\"): Each node must have \"id\" (unique string) and \"kind\" (\"class\" | \"shape\" | \"note\"). Optional common fields: \"name\" (display label string), \"stereotype\" (architectural role string, e.g. \"entity\", \"service\", \"value\", \"aggregate\", \"controller\"). For \"note\" nodes, prose is stored in \"text\" (markdown/plain text).",
+      "Document Structure: JSON document with schema version tracking. Root fields are: \"format\" (\"vizion\"), \"version\" (matching extension version), \"kind\" (\"uml\"), \"title\" (string), \"description\" (optional/recommended string describing diagram context), \"defaultRouting\" (\"orthogonal\" | \"straight\" | \"bezier\"), \"ai\" (guidance object with \"interpretation\", \"editingRules\"), \"nodes\" (array), \"edges\" (array), and \"layout\" (object with \"nodes\" and \"edges\").",
+      "Node Types & Properties (\"nodes[]\"): Each node must have \"id\" (unique string) and \"kind\" (\"class\" | \"shape\" | \"note\" | \"frame\"). Optional common fields: \"name\" (display label string), \"stereotype\" (architectural role string, e.g. \"entity\", \"service\", \"value\", \"aggregate\", \"controller\"). For \"note\" nodes, prose is stored in \"text\" (markdown/plain text).",
+      "Frame Containers (\"kind\": \"frame\"): Visual container grouping enclosed elements with semi-transparent background. The label floats above the top-left corner. Contained element node IDs are listed in \"children\". Contained elements move together with the frame. An element is added to a frame when dragged into it with the cursor over the frame, which auto-resizes the frame to fit it. Dragging an element already inside the frame does not auto-resize the frame unless Shift is held (allowing elements to be dragged out of the frame). If the cursor is not over the frame, the element can overlap without being inside. Relations can enter and leave frames and are rendered on top of the frame. Frames cannot have relations of their own.",
       "Geometric Shapes (\"kind\": \"shape\"): Must specify \"shape\" geometry as one of: \"ellipse\" | \"rectangle\" | \"rhombus\" | \"trapezoid\" | \"parallelogram\". The node \"name\" is rendered as the centered label.",
       "Class Members & Compartments (\"kind\": \"class\"): Supports \"attributes\" array and \"operations\" array. Section visibility can be toggled via boolean flags \"showAttributes\" and \"showOperations\" (default true).",
       "Attributes Format: Each attribute object requires \"id\" (unique string), \"visibility\" (one of: \"+\" [public], \"-\" [private], \"#\" [protected], \"~\" [package/internal]), \"name\" (string), and \"type\" (type string e.g. \"string\", \"number\", \"Date\").",
       "Operations Format: Each operation object requires \"id\" (unique string), \"visibility\" (\"+\" | \"-\" | \"#\" | \"~\"), \"name\" (method name string), \"returnType\" (return type string, e.g. \"void\", \"Promise<T>\", \"boolean\"), \"signature\" (e.g. \"(id: string, count: number)\"), and \"parameters\" array of argument objects ({ \"id\": string, \"name\": string, \"type\": string }).",
-      "Relationships (\"edges[]\"): Defines connections between nodes. Required fields: \"id\" (unique string), \"kind\" (relationship semantic type: \"association\" | \"dependency\" | \"generalization\" | \"realization\" | \"aggregation\" | \"composition\"), \"source\" ({ \"nodeId\": string, \"multiplicity\"?: string }), and \"target\" ({ \"nodeId\": string, \"multiplicity\"?: string }). Optional \"label\" (string rendered at midpoint).",
+      "Relationships (\"edges[]\"): Defines connections between nodes. Required fields: \"id\" (unique string), \"kind\" (relationship semantic type: \"association\" | \"dependency\" | \"generalization\" | \"realization\" | \"aggregation\" | \"composition\"), \"source\" ({ \"nodeId\": string, \"multiplicity\"?: string }), and \"target\" ({ \"nodeId\": string, \"multiplicity\"?: string }). Optional \"label\" (string rendered at midpoint). Frames cannot be endpoints for edges.",
       "Endpoint Multiplicities: Expressed as cardinality strings on endpoints: \"source.multiplicity\" and \"target.multiplicity\" (e.g. \"1\", \"*\", \"0..1\", \"1..*\", \"0..n\", or omit/empty if none).",
-      "Visual Presentation (\"edge.visual\"): Optional visual options: \"line\" (\"solid\" | \"dashed\"), \"routing\" (\"straight\" | \"bezier\"), and endpoint decorations \"start\" / \"end\" ({ \"shape\": \"none\" | \"circle\" | \"diamond\" | \"square\" | \"triangle\" | \"open-arrow\", \"fill\"?: \"hollow\" | \"filled\", \"size\"?: number }). Only closed shapes support \"fill\". Standard semantic defaults: generalization = hollow triangle end; realization = dashed with hollow triangle end; aggregation = hollow diamond start; composition = filled diamond start; dependency = dashed with open-arrow end; association = solid line with none ends.",
-      "Canvas Layout (\"layout.nodes\"): Bounding box for every node keyed by nodeId: { \"x\": number, \"y\": number, \"width\": number, \"height\": number }. Coordinates snap to a 20px grid (multiples of 20). Width >= 100, height >= 60 for classes; width >= 80, height >= 50 for shapes; width >= 120, height >= 60 for notes.",
+      "Visual Presentation (\"edge.visual\"): Optional visual options: \"line\" (\"solid\" | \"dashed\"), \"routing\" (\"straight\" | \"bezier\" | \"orthogonal\"), and endpoint decorations \"start\" / \"end\" ({ \"shape\": \"none\" | \"circle\" | \"diamond\" | \"square\" | \"triangle\" | \"open-arrow\", \"fill\"?: \"hollow\" | \"filled\", \"size\"?: number }). Only closed shapes support \"fill\". Standard semantic defaults: generalization = hollow triangle end; realization = dashed with hollow triangle end; aggregation = hollow diamond start; composition = filled diamond start; dependency = dashed with open-arrow end; association = solid line with none ends.",
+      "Canvas Layout (\"layout.nodes\"): Bounding box for every node keyed by nodeId: { \"x\": number, \"y\": number, \"width\": number, \"height\": number }. Coordinates snap to a 20px grid (multiples of 20). Width >= 100, height >= 60 for classes; width >= 80, height >= 50 for shapes; width >= 120, height >= 60 for notes; width >= 160, height >= 100 for frames.",
       "Architectural Model Scope: This diagram is a selective architectural view. Absence of elements or relationships does not imply absence in the underlying implementation code."
     ],
     "editingRules": [
       "Strict JSON Conformity: Output strictly valid standard JSON with 2-space indentation. Never use JavaScript comments, trailing commas, single quotes, or unquoted identifiers.",
-      "Never Add Versioning: This format is permanently unversioned. Do NOT output \"version\", \"schemaVersion\", \"formatVersion\", or \"instructionsVersion\" at root or in any sub-object.",
-      "Referential Integrity: Every \"source.nodeId\" and \"target.nodeId\" in \"edges[]\" MUST exactly match an existing node \"id\" in \"nodes[]\". When removing a node from \"nodes[]\", you must atomically delete all edges referencing its ID.",
+      "Document Versioning: The root \"version\" field must match the Vizion extension version. Do NOT output alternate version fields like \"schemaVersion\", \"formatVersion\", or \"instructionsVersion\".",
+      "Referential Integrity: Every \"source.nodeId\" and \"target.nodeId\" in \"edges[]\" MUST exactly match an existing node \"id\" in \"nodes[]\", and cannot reference a \"frame\" node. When removing a node from \"nodes[]\", you must atomically delete all edges referencing its ID.",
+      "Frame Containment & Integrity: Frame nodes cannot have edges of their own. Every node listed in a frame's \"children\" MUST exist in \"nodes[]\". Elements can overlap a frame without being in its children; a node is only contained in a frame if listed in its \"children\", which happens when an element is dragged into the frame with the cursor hovering over it.",
       "Layout Synchronization: Every node added to \"nodes[]\" MUST have a corresponding bounding box in \"layout.nodes[nodeId]\" ({ \"x\": number, \"y\": number, \"width\": number, \"height\": number }) aligned to a 20px grid. When deleting a node, delete its layout entry.",
       "Preserve Existing Identifiers: Never alter existing \"id\" strings when updating nodes, edges, attributes, operations, or parameters. When creating new entities, generate clean, unique kebab-case IDs (e.g., \"node-order-service\", \"edge-order-payment-1\", \"order-attr-status\", \"order-op-cancel\", \"cancel-arg-reason\").",
-      "Allowed Enums & Data Values: Strictly use only documented enum values — node kinds: \"class\"|\"shape\"|\"note\"; shapes: \"ellipse\"|\"rectangle\"|\"rhombus\"|\"trapezoid\"|\"parallelogram\"; edge kinds: \"association\"|\"dependency\"|\"generalization\"|\"realization\"|\"aggregation\"|\"composition\"; visibilities: \"+\"|\"-\"|\"#\"|\"~\"; endpoint shapes: \"none\"|\"circle\"|\"diamond\"|\"square\"|\"triangle\"|\"open-arrow\"; fills: \"hollow\"|\"filled\".",
+      "Allowed Enums & Data Values: Strictly use only documented enum values — node kinds: \"class\"|\"shape\"|\"note\"|\"frame\"; shapes: \"ellipse\"|\"rectangle\"|\"rhombus\"|\"trapezoid\"|\"parallelogram\"; edge kinds: \"association\"|\"dependency\"|\"generalization\"|\"realization\"|\"aggregation\"|\"composition\"; visibilities: \"+\"|\"-\"|\"#\"|\"~\"; endpoint shapes: \"none\"|\"circle\"|\"diamond\"|\"square\"|\"triangle\"|\"open-arrow\"; fills: \"hollow\"|\"filled\".",
       "Preserve Unknown & Custom Fields: Preserve all unrecognized top-level and nested properties, annotations, extension keys, and this \"ai\" section intact across edits.",
       "Non-Interference with Source Code: Do not modify repository application source code when asked to edit this architecture diagram, unless the user explicitly requests code changes."
     ]
   },
+  "defaultRouting": "orthogonal",
   "nodes": [
+    {
+      "id": "order-context-frame",
+      "kind": "frame",
+      "name": "Core Order Context",
+      "line": "solid",
+      "children": [
+        "customer",
+        "order",
+        "line-item"
+      ]
+    },
+    {
+      "id": "security-subsystem-frame",
+      "kind": "frame",
+      "name": "Payment & Security Subsystem",
+      "line": "dashed",
+      "children": [
+        "payment-service",
+        "fraud-eval",
+        "security-note",
+        "invoice"
+      ]
+    },
     {
       "id": "customer",
       "kind": "class",
@@ -39,19 +65,19 @@
       "showOperations": true,
       "attributes": [
         {
-          "id": "customer-attr-1",
+          "id": "cust-attr-1",
           "visibility": "+",
           "name": "id",
           "type": "string"
         },
         {
-          "id": "customer-attr-2",
+          "id": "cust-attr-2",
           "visibility": "+",
           "name": "email",
           "type": "string"
         },
         {
-          "id": "customer-attr-3",
+          "id": "cust-attr-3",
           "visibility": "-",
           "name": "loyaltyTier",
           "type": "string"
@@ -59,21 +85,16 @@
       ],
       "operations": [
         {
-          "id": "customer-op-1",
+          "id": "cust-op-1",
           "visibility": "+",
           "name": "placeOrder",
-          "signature": "(items: LineItem[], couponCode: string)",
+          "signature": "(items: LineItem[])",
           "returnType": "Order",
           "parameters": [
             {
-              "id": "customer-op-1-param-1",
+              "id": "cust-op-1-p1",
               "name": "items",
               "type": "LineItem[]"
-            },
-            {
-              "id": "customer-op-1-param-2",
-              "name": "couponCode",
-              "type": "string"
             }
           ]
         }
@@ -103,7 +124,7 @@
           "id": "order-attr-3",
           "visibility": "+",
           "name": "status",
-          "type": "string"
+          "type": "OrderStatus"
         }
       ],
       "operations": [
@@ -118,13 +139,13 @@
         {
           "id": "order-op-2",
           "visibility": "+",
-          "name": "checkout",
-          "signature": "(paymentMethodId: string)",
-          "returnType": "boolean",
+          "name": "submitPayment",
+          "signature": "(methodId: string)",
+          "returnType": "Promise<boolean>",
           "parameters": [
             {
-              "id": "order-op-2-param-1",
-              "name": "paymentMethodId",
+              "id": "order-op-2-p1",
+              "name": "methodId",
               "type": "string"
             }
           ]
@@ -180,7 +201,7 @@
         {
           "id": "ps-attr-1",
           "visibility": "-",
-          "name": "providerName",
+          "name": "gatewayToken",
           "type": "string"
         }
       ],
@@ -189,16 +210,16 @@
           "id": "ps-op-1",
           "visibility": "+",
           "name": "authorize",
-          "signature": "(amountCents: number, currency: string)",
+          "signature": "(amount: number, currency: string)",
           "returnType": "Receipt",
           "parameters": [
             {
-              "id": "ps-op-1-param-1",
-              "name": "amountCents",
+              "id": "ps-op-1-p1",
+              "name": "amount",
               "type": "number"
             },
             {
-              "id": "ps-op-1-param-2",
+              "id": "ps-op-1-p2",
               "name": "currency",
               "type": "string"
             }
@@ -207,21 +228,68 @@
       ]
     },
     {
-      "id": "fraud-check",
+      "id": "fraud-eval",
       "kind": "shape",
       "shape": "rhombus",
-      "name": "Fraud Check"
+      "name": "Risk Evaluator"
     },
     {
-      "id": "domain-note",
+      "id": "security-note",
       "kind": "note",
-      "name": "Domain Invariant",
-      "text": "Orders must contain at least one LineItem before PaymentService.authorize() is invoked."
+      "name": "PCI Compliance Note",
+      "text": "Cardholder credentials must never hit disk unencrypted. Multi-region redundancy required."
+    },
+    {
+      "id": "invoice",
+      "kind": "class",
+      "name": "InvoiceRecord",
+      "stereotype": "document",
+      "showAttributes": true,
+      "showOperations": false,
+      "attributes": [
+        {
+          "id": "inv-attr-1",
+          "visibility": "+",
+          "name": "invoiceNumber",
+          "type": "string"
+        },
+        {
+          "id": "inv-attr-2",
+          "visibility": "+",
+          "name": "taxCents",
+          "type": "number"
+        }
+      ],
+      "operations": []
+    },
+    {
+      "id": "dispatch-queue",
+      "kind": "shape",
+      "shape": "parallelogram",
+      "name": "Fulfillment Queue"
+    },
+    {
+      "id": "warehouse-hub",
+      "kind": "shape",
+      "shape": "trapezoid",
+      "name": "Regional Hub"
+    },
+    {
+      "id": "inventory-cluster",
+      "kind": "shape",
+      "shape": "ellipse",
+      "name": "Inventory DB"
+    },
+    {
+      "id": "architecture-note",
+      "kind": "note",
+      "name": "Event Consistency",
+      "text": "Order creation generates an asynchronous domain event consumed by Fulfillment & Inventory."
     }
   ],
   "edges": [
     {
-      "id": "edge-customer-order",
+      "id": "rel-customer-places-order",
       "kind": "association",
       "source": {
         "nodeId": "customer",
@@ -234,7 +302,7 @@
       "label": "places",
       "visual": {
         "line": "solid",
-        "routing": "bezier",
+        "routing": "orthogonal",
         "start": {
           "shape": "none",
           "size": 10
@@ -246,7 +314,7 @@
       }
     },
     {
-      "id": "edge-order-lineitem",
+      "id": "rel-order-contains-lineitem",
       "kind": "composition",
       "source": {
         "nodeId": "order",
@@ -259,7 +327,7 @@
       "label": "contains",
       "visual": {
         "line": "solid",
-        "routing": "bezier",
+        "routing": "orthogonal",
         "start": {
           "shape": "diamond",
           "fill": "filled",
@@ -272,7 +340,7 @@
       }
     },
     {
-      "id": "edge-order-payment",
+      "id": "rel-order-uses-payment",
       "kind": "dependency",
       "source": {
         "nodeId": "order"
@@ -283,7 +351,7 @@
       "label": "uses",
       "visual": {
         "line": "dashed",
-        "routing": "bezier",
+        "routing": "orthogonal",
         "start": {
           "shape": "none",
           "size": 10
@@ -295,18 +363,18 @@
       }
     },
     {
-      "id": "edge-payment-fraud",
+      "id": "rel-payment-verifies-fraud",
       "kind": "association",
       "source": {
         "nodeId": "payment-service"
       },
       "target": {
-        "nodeId": "fraud-check"
+        "nodeId": "fraud-eval"
       },
-      "label": "evaluates",
+      "label": "checks",
       "visual": {
         "line": "solid",
-        "routing": "bezier",
+        "routing": "orthogonal",
         "start": {
           "shape": "none",
           "size": 10
@@ -318,17 +386,112 @@
       }
     },
     {
-      "id": "edge-domain-note-payment-service-y7xo",
+      "id": "rel-payment-generates-invoice",
       "kind": "association",
       "source": {
-        "nodeId": "domain-note"
+        "nodeId": "payment-service"
       },
       "target": {
-        "nodeId": "payment-service"
+        "nodeId": "invoice"
+      },
+      "label": "issues",
+      "visual": {
+        "line": "solid",
+        "routing": "orthogonal",
+        "start": {
+          "shape": "none",
+          "size": 10
+        },
+        "end": {
+          "shape": "open-arrow",
+          "size": 11
+        }
+      }
+    },
+    {
+      "id": "rel-lineitem-reserves-inventory",
+      "kind": "realization",
+      "source": {
+        "nodeId": "line-item"
+      },
+      "target": {
+        "nodeId": "inventory-cluster"
+      },
+      "label": "reserves stock",
+      "visual": {
+        "line": "dashed",
+        "routing": "orthogonal",
+        "start": {
+          "shape": "none",
+          "size": 10
+        },
+        "end": {
+          "shape": "triangle",
+          "fill": "hollow",
+          "size": 12
+        }
+      }
+    },
+    {
+      "id": "rel-inventory-feeds-dispatch",
+      "kind": "association",
+      "source": {
+        "nodeId": "inventory-cluster",
+        "multiplicity": "1"
+      },
+      "target": {
+        "nodeId": "dispatch-queue",
+        "multiplicity": "1"
+      },
+      "label": "enqueues",
+      "visual": {
+        "line": "solid",
+        "routing": "orthogonal",
+        "start": {
+          "shape": "none",
+          "size": 10
+        },
+        "end": {
+          "shape": "open-arrow",
+          "size": 11
+        }
+      }
+    },
+    {
+      "id": "rel-dispatch-routes-hub",
+      "kind": "dependency",
+      "source": {
+        "nodeId": "dispatch-queue"
+      },
+      "target": {
+        "nodeId": "warehouse-hub"
+      },
+      "label": "routes shipment",
+      "visual": {
+        "line": "dashed",
+        "routing": "orthogonal",
+        "start": {
+          "shape": "none",
+          "size": 10
+        },
+        "end": {
+          "shape": "open-arrow",
+          "size": 11
+        }
+      }
+    },
+    {
+      "id": "rel-note-attaches-order",
+      "kind": "association",
+      "source": {
+        "nodeId": "architecture-note"
+      },
+      "target": {
+        "nodeId": "order"
       },
       "visual": {
         "line": "dashed",
-        "routing": "bezier",
+        "routing": "orthogonal",
         "start": {
           "shape": "none",
           "size": 10
@@ -342,41 +505,83 @@
   ],
   "layout": {
     "nodes": {
+      "architecture-note": {
+        "x": 440,
+        "y": 40,
+        "width": 280,
+        "height": 120
+      },
+      "order-context-frame": {
+        "x": -20,
+        "y": 220,
+        "width": 1280,
+        "height": 340
+      },
       "customer": {
-        "x": 60,
-        "y": 60,
-        "width": 240,
-        "height": 180
+        "x": 40,
+        "y": 280,
+        "width": 260,
+        "height": 220
       },
       "order": {
-        "x": 500,
-        "y": 60,
-        "width": 240,
-        "height": 180
+        "x": 420,
+        "y": 280,
+        "width": 320,
+        "height": 220
       },
       "line-item": {
         "x": 920,
-        "y": 60,
-        "width": 220,
-        "height": 180
+        "y": 280,
+        "width": 280,
+        "height": 220
+      },
+      "inventory-cluster": {
+        "x": 1420,
+        "y": 340,
+        "width": 180,
+        "height": 100
+      },
+      "dispatch-queue": {
+        "x": 1420,
+        "y": 560,
+        "width": 180,
+        "height": 100
+      },
+      "warehouse-hub": {
+        "x": 1420,
+        "y": 760,
+        "width": 180,
+        "height": 100
+      },
+      "security-subsystem-frame": {
+        "x": 0,
+        "y": 640,
+        "width": 880,
+        "height": 500
       },
       "payment-service": {
-        "x": 500,
-        "y": 340,
-        "width": 240,
-        "height": 140
+        "x": 440,
+        "y": 700,
+        "width": 280,
+        "height": 180
       },
-      "fraud-check": {
-        "x": 940,
-        "y": 360,
+      "fraud-eval": {
+        "x": 60,
+        "y": 740,
         "width": 180,
+        "height": 100
+      },
+      "security-note": {
+        "x": 60,
+        "y": 960,
+        "width": 320,
         "height": 120
       },
-      "domain-note": {
-        "x": 200,
-        "y": 340,
-        "width": 200,
-        "height": 140
+      "invoice": {
+        "x": 460,
+        "y": 960,
+        "width": 240,
+        "height": 120
       }
     },
     "edges": {}

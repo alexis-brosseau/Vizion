@@ -11,7 +11,7 @@
     },
     "version": {
       "type": "string",
-      "description": "Vizion document version, matching the extension version (e.g. 0.1.1)."
+      "description": "Vizion document version, matching the extension version (e.g. 0.2.0)."
     },
     "kind": {
       "const": "uml",
@@ -22,11 +22,15 @@
       "minLength": 1,
       "description": "Human-readable diagram title."
     },
+    "description": {
+      "type": "string",
+      "description": "Optional human-readable description of diagram purpose and domain context."
+    },
     "ai": {
       "type": "object",
-      "required": ["purpose", "interpretation", "editingRules"],
+      "required": ["interpretation", "editingRules"],
       "properties": {
-        "purpose": { "type": "string", "minLength": 1 },
+        "purpose": { "type": "string" },
         "interpretation": {
           "type": "array",
           "items": { "type": "string" }
@@ -38,6 +42,11 @@
       },
       "additionalProperties": true
     },
+    "defaultRouting": {
+      "type": "string",
+      "enum": ["orthogonal", "bezier", "straight"],
+      "description": "Default routing style for relations in this document."
+    },
     "nodes": {
       "type": "array",
       "items": {
@@ -47,7 +56,7 @@
           "id": { "type": "string", "minLength": 1 },
           "kind": {
             "type": "string",
-            "description": "UML node kind (built-in: class, note, shape; or custom registered kind)."
+            "description": "UML node kind (built-in: class, note, shape, frame; or custom registered kind)."
           },
           "name": { "type": "string" },
           "stereotype": { "type": "string" },
@@ -56,6 +65,16 @@
             "type": "string",
             "enum": ["ellipse", "rectangle", "rhombus", "trapezoid", "parallelogram"],
             "description": "Geometric shape variant when kind is 'shape'."
+          },
+          "children": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Contained element node IDs when kind is 'frame'."
+          },
+          "line": {
+            "type": "string",
+            "enum": ["solid", "dashed"],
+            "description": "Border line style for containers/frames."
           },
           "showAttributes": { "type": "boolean" },
           "showOperations": { "type": "boolean" },
@@ -120,7 +139,9 @@
               "generalization",
               "realization",
               "aggregation",
-              "composition"
+              "composition",
+              "other",
+              "none"
             ]
           },
           "source": {
@@ -146,7 +167,7 @@
             "type": "object",
             "properties": {
               "line": { "type": "string", "enum": ["solid", "dashed"] },
-              "routing": { "type": "string", "enum": ["straight", "bezier"] },
+              "routing": { "type": "string", "enum": ["default", "straight", "bezier", "orthogonal"] },
               "start": {
                 "type": "object",
                 "required": ["shape"],

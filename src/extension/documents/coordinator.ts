@@ -110,7 +110,7 @@ export class DocumentCoordinator implements vscode.Disposable {
   }
 
   public broadcastCommand(
-    command: 'fitContent' | 'resetZoom' | 'restoreCanvasFocus' | 'requestSvgExport',
+    command: 'fitContent' | 'resetZoom' | 'restoreCanvasFocus',
     onlyActive = false
   ): void {
     const msg: HostToWebviewMessage = { type: 'host.command', command };
@@ -250,8 +250,23 @@ export class DocumentCoordinator implements vscode.Disposable {
         break;
       }
 
-      case 'webview.exportSvgContent': {
-        await this.saveExportedSvg(msg.svgContent);
+      case 'webview.exportFile': {
+        await this.exportDiagramPng(msg.base64Data);
+        break;
+      }
+
+      case 'webview.copyImageToClipboard': {
+        await this.copyImageToClipboard(msg.base64Data);
+        break;
+      }
+
+      case 'webview.checkForExtensionUpdate': {
+        try {
+          await vscode.commands.executeCommand('workbench.extensions.action.checkForUpdates');
+          await vscode.commands.executeCommand('workbench.extensions.search', '@installed Vizion');
+        } catch {
+          void vscode.window.showInformationMessage('Please check the Extensions view for the latest Vizion update.');
+        }
         break;
       }
     }
@@ -525,7 +540,9 @@ export class DocumentCoordinator implements vscode.Disposable {
         ? 'Architecture Note'
         : chosenKind === 'shape'
           ? 'Shape'
-          : 'DomainEntity';
+          : chosenKind === 'frame'
+            ? 'Frame'
+            : 'DomainEntity';
 
     const enteredName = await vscode.window.showInputBox({
       title: `Vizion UML: New ${chosenKind.toUpperCase()} Name`,
@@ -759,7 +776,7 @@ export class DocumentCoordinator implements vscode.Disposable {
   ): Promise<void> {
     const titleMap = {
       node: 'Rename UML Node',
-      edgeLabel: 'Edit Relation Label',
+      edgeLabel: 'Edit Label',
       documentTitle: 'Rename Document Title'
     };
 
@@ -808,21 +825,34 @@ export class DocumentCoordinator implements vscode.Disposable {
     });
   }
 
-  private async saveExportedSvg(svgContent: string): Promise<void> {
-    const defaultUri = vscode.Uri.file(
-      this.document.uri.fsPath.replace(/(?:\.uml)?\.viz$/i, '.svg')
-    );
-    const targetUri = await vscode.window.showSaveDialog({
-      title: 'Export Vizion Diagram as SVG',
-      defaultUri,
-      filters: { 'SVG Vector Image': ['svg'] }
-    });
-    if (!targetUri) return;
+  private async exportDiagramPng(base64Data: string): Promise<void> {
+    const originalFsPath = this.document.uri.fsPath;
+    const targetFsPath = originalFsPath.replace(/(?:\.uml)?\.viz$/i, '.png');
+    const targetUri = vscode.Uri.file(targetFsPath);
 
-    await vscode.workspace.fs.writeFile(targetUri, Buffer.from(svgContent, 'utf8'));
-    void vscode.window.showInformationMessage(
-      `Exported SVG to ${ vscode.workspace.asRelativePath(targetUri) }`
-    );
+    const bytes = Buffer.from(base64Data, 'base64');
+    await vscode.workspace.fs.writeFile(targetUri, bytes);
+    const relName = vscode.workspace.asRelativePath(targetUri);
+    void vscode.window.showInformationMessage(`Exported diagram PNG to ${relName}`);
+  }
+
+  private async copyImageToClipboard(base64Data: string): Promise<void> {
+    const buffer = Buffer.from(base64Data, 'base64');
+    try {
+      if (process.platform === 'linux') {
+        const { spawn } = await import('node:child_process');
+        const proc = spawn('wl-copy', ['-t', 'image/png']);
+        proc.stdin.write(buffer);
+        proc.stdin.end();
+        await new Promise<void>((resolve, reject) => {
+          proc.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`wl-copy exited with ${code}`))));
+          proc.on('error', reject);
+        });
+        void vscode.window.showInformationMessage('Diagram image snapshot copied to clipboard');
+      }
+    } catch {
+      // Ignore if host tool is not available
+    }
   }
 
   private restoreFocus(panel: vscode.WebviewPanel | undefined): void {

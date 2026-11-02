@@ -2,7 +2,7 @@
   "name": "vizion",
   "displayName": "Vizion",
   "description": "Custom UML editor for .viz JSON documents with embedded AI guidance.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "Vizionary",
   "license": "MIT",
   "engines": {
@@ -76,12 +76,6 @@
         "title": "Reset Canvas Zoom (100%)",
         "category": "Vizion",
         "icon": "$(zoom-in)"
-      },
-      {
-        "command": "vizion.exportCurrentSvg",
-        "title": "Export Current Diagram as SVG",
-        "category": "Vizion",
-        "icon": "$(export)"
       }
     ],
     "menus": {
@@ -95,11 +89,6 @@
           "command": "vizion.fitCanvasToContent",
           "when": "activeCustomEditorId == 'vizion.uml'",
           "group": "navigation@2"
-        },
-        {
-          "command": "vizion.exportCurrentSvg",
-          "when": "activeCustomEditorId == 'vizion.uml'",
-          "group": "navigation@3"
         }
       ]
     }

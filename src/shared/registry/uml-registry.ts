@@ -2,6 +2,7 @@ import type {
   EndpointDecoration,
   EndpointFillMode,
   EndpointShapeKind,
+  UmlEdgeRouting,
   UmlLineStyle,
   UmlRelationKind,
   UmlRoutingKind,
@@ -47,7 +48,7 @@ export interface UmlRelationPreset {
   label: string;
   description: string;
   line: UmlLineStyle;
-  routing: UmlRoutingKind;
+  routing: UmlEdgeRouting;
   start: EndpointDecoration;
   end: EndpointDecoration;
 }
@@ -98,11 +99,52 @@ export function registerUmlRelationPreset(preset: UmlRelationPreset): void {
 }
 
 export function getUmlRelationPreset(kind: UmlRelationKind): UmlRelationPreset | undefined {
+  if (kind === 'none') {
+    return relationPresetRegistry.get('other');
+  }
   return relationPresetRegistry.get(kind);
 }
 
 export function listUmlRelationPresets(): UmlRelationPreset[] {
   return Array.from(relationPresetRegistry.values());
+}
+
+/**
+ * Detects whether an edge's visual styling matches a built-in semantic UML relation kind.
+ * Returns null if the visual properties do not match any built-in semantic relation.
+ */
+export function detectMatchingRelationPreset(
+  line: string | undefined,
+  start: EndpointDecoration | undefined,
+  end: EndpointDecoration | undefined
+): UmlRelationKind | null {
+  const isDashed = line === 'dashed';
+  const startShape = start?.shape ?? 'none';
+  const startFill = start?.fill ?? 'hollow';
+  const endShape = end?.shape ?? 'none';
+  const endFill = end?.fill ?? 'hollow';
+
+  if (isDashed && startShape === 'none' && endShape === 'open-arrow') {
+    return 'dependency';
+  }
+  if (isDashed && startShape === 'none' && endShape === 'triangle' && endFill === 'hollow') {
+    return 'realization';
+  }
+  if (!isDashed && startShape === 'none' && endShape === 'triangle' && endFill === 'hollow') {
+    return 'generalization';
+  }
+  if (!isDashed && startShape === 'diamond' && startFill === 'hollow' && endShape === 'none') {
+    return 'aggregation';
+  }
+  if (!isDashed && startShape === 'diamond' && startFill === 'filled' && endShape === 'none') {
+    return 'composition';
+  }
+  const isStartAssoc = startShape === 'none' || startShape === 'open-arrow';
+  const isEndAssoc = endShape === 'none' || endShape === 'open-arrow';
+  if (!isDashed && isStartAssoc && isEndAssoc) {
+    return 'association';
+  }
+  return null;
 }
 
 // ============================================================================
@@ -198,7 +240,7 @@ registerUmlNodeKind({
   kind: 'class',
   label: 'Class',
   description: 'Standard UML class with attributes and operations compartments',
-  defaultWidth: 210,
+  defaultWidth: 240,
   defaultHeight: 140,
   hasCompartments: true
 });
@@ -221,6 +263,15 @@ registerUmlNodeKind({
   hasCompartments: false
 });
 
+registerUmlNodeKind({
+  kind: 'frame',
+  label: 'Frame',
+  description: 'Container frame with label that automatically encloses contained elements',
+  defaultWidth: 260,
+  defaultHeight: 180,
+  hasCompartments: false
+});
+
 // ============================================================================
 // Built-in UML Relation Presets
 // ============================================================================
@@ -230,7 +281,7 @@ registerUmlRelationPreset({
   label: 'Association',
   description: 'Structural link between classes (solid line, no endpoint markers by default)',
   line: 'solid',
-  routing: 'bezier',
+  routing: 'default',
   start: { shape: 'none', size: 10 },
   end: { shape: 'none', size: 10 }
 });
@@ -240,7 +291,7 @@ registerUmlRelationPreset({
   label: 'Dependency',
   description: 'Uses/depends-on relationship (dashed line, open arrow at target)',
   line: 'dashed',
-  routing: 'bezier',
+  routing: 'default',
   start: { shape: 'none', size: 10 },
   end: { shape: 'open-arrow', size: 11 }
 });
@@ -250,7 +301,7 @@ registerUmlRelationPreset({
   label: 'Generalization (Inheritance)',
   description: 'Subclasses a general classifier (solid line, hollow triangle at target)',
   line: 'solid',
-  routing: 'bezier',
+  routing: 'default',
   start: { shape: 'none', size: 10 },
   end: { shape: 'triangle', fill: 'hollow', size: 12 }
 });
@@ -260,7 +311,7 @@ registerUmlRelationPreset({
   label: 'Realization (Implements)',
   description: 'Implements a specification contract (dashed line, hollow triangle at target)',
   line: 'dashed',
-  routing: 'bezier',
+  routing: 'default',
   start: { shape: 'none', size: 10 },
   end: { shape: 'triangle', fill: 'hollow', size: 12 }
 });
@@ -270,7 +321,7 @@ registerUmlRelationPreset({
   label: 'Aggregation',
   description: 'Whole-part weak ownership (solid line, hollow diamond at source)',
   line: 'solid',
-  routing: 'bezier',
+  routing: 'default',
   start: { shape: 'diamond', fill: 'hollow', size: 13 },
   end: { shape: 'none', size: 10 }
 });
@@ -280,7 +331,17 @@ registerUmlRelationPreset({
   label: 'Composition',
   description: 'Whole-part strong lifecycle ownership (solid line, filled diamond at source)',
   line: 'solid',
-  routing: 'bezier',
+  routing: 'default',
   start: { shape: 'diamond', fill: 'filled', size: 13 },
+  end: { shape: 'none', size: 10 }
+});
+
+registerUmlRelationPreset({
+  kind: 'other',
+  label: 'Other',
+  description: 'Generic relation without semantic UML decoration',
+  line: 'dashed',
+  routing: 'default',
+  start: { shape: 'none', size: 10 },
   end: { shape: 'none', size: 10 }
 });

@@ -2,6 +2,17 @@
 * {
   box-sizing: border-box;
 }
+:root {
+  color-scheme: light dark;
+}
+body.vscode-dark,
+body.vscode-high-contrast {
+  color-scheme: dark;
+}
+body.vscode-light,
+body.vscode-high-contrast-light {
+  color-scheme: light;
+}
 html,
 body,
 #app,
@@ -243,24 +254,6 @@ body,
   color: #ffffff;
   color: color-mix(in srgb, var(--vscode-editor-foreground) 100%, #ffffff 35%);
 }
-.vz-add-dropdown-submenu {
-  position: absolute;
-  right: 100%;
-  top: -4px;
-  margin-right: 2px;
-  min-width: 190px;
-  background-color: var(--vscode-editor-background);
-  background-color: color-mix(in srgb, var(--vscode-editor-background) 82%, #000000 18%);
-  color: var(--vscode-menu-foreground, var(--vscode-editor-foreground));
-  border: 1px solid var(--vscode-menu-border, var(--vscode-focusBorder, rgba(128, 128, 128, 0.45)));
-  border-radius: 6px;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.6);
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  z-index: 115;
-}
 .vz-add-dropdown {
   position: absolute;
   right: 0;
@@ -413,6 +406,49 @@ body,
   overflow-y: auto;
   flex: 1;
 }
+.vz-outline-twisty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  color: var(--vscode-icon-foreground, var(--vscode-descriptionForeground));
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 9px;
+}
+.vz-outline-twisty:hover {
+  color: var(--vscode-editor-foreground);
+}
+.vz-outline-twisty-spacer {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.vz-outline-sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  padding-left: 14px;
+  position: relative;
+}
+.vz-outline-sublist::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 0;
+  bottom: 4px;
+  width: 1px;
+  background-color: var(--vscode-tree-indentGuidesStroke, rgba(128, 128, 128, 0.2));
+}
+.vz-outline-item.nested {
+  padding-left: 4px;
+}
 .vz-outline-item {
   width: 100%;
   display: flex;
@@ -528,10 +564,9 @@ body,
   flex-shrink: 0;
 }
 .vz-dropdown-section-label {
-  padding: 2px 8px 1px 8px;
-  font-size: 10px;
+  padding: 4px 8px 2px 8px;
+  font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
   color: var(--vscode-descriptionForeground);
 }
 .vz-shape-mini-tag {
@@ -661,6 +696,131 @@ body,
   background-color: var(--vscode-textBlockQuote-background, var(--vscode-editorWidget-background));
   border-style: dashed;
 }
+.vz-uml-node.kind-note .vz-inline-textarea,
+.vz-uml-node.kind-note .vz-inline-input,
+.vz-uml-note-body .vz-inline-textarea {
+  background-color: var(--vscode-textBlockQuote-background, var(--vscode-editorWidget-background)) !important;
+  color: var(--vscode-editor-foreground);
+}
+.vz-html-frames {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.vz-uml-node.kind-frame {
+  background-color: transparent !important;
+  border: 3px solid var(--vscode-panel-border, var(--vscode-editor-foreground));
+  border-radius: 6px;
+  box-shadow: none;
+  cursor: grab;
+  pointer-events: auto;
+}
+.vz-uml-node.kind-frame.dashed {
+  border-style: dashed;
+}
+.vz-uml-node.kind-frame.selected {
+  border-color: var(--vscode-focusBorder);
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.25);
+}
+.vz-frame-edge-hit {
+  position: absolute;
+  z-index: 5;
+}
+.vz-frame-edge-hit.top {
+  top: -6px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  cursor: ns-resize;
+}
+.vz-frame-edge-hit.bottom {
+  bottom: -6px;
+  left: 0;
+  right: 14px;
+  height: 12px;
+  cursor: ns-resize;
+}
+.vz-frame-edge-hit.left {
+  left: -6px;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: ew-resize;
+}
+.vz-frame-edge-hit.right {
+  right: -6px;
+  top: 0;
+  bottom: 14px;
+  width: 12px;
+  cursor: ew-resize;
+}
+.vz-frame-label {
+  position: absolute;
+  top: -11px;
+  left: 12px;
+  background-color: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+  border-radius: 4px;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  max-width: calc(100% - 24px);
+  user-select: none;
+  cursor: grab;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.vz-uml-node.kind-frame.selected .vz-frame-label {
+  border-color: var(--vscode-focusBorder);
+}
+.vz-frame-label-text {
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--vscode-editor-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vz-frame-inline-input,
+.vz-frame-inline-input:focus,
+.vz-frame-inline-input:focus-visible {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 0 4px;
+  background: var(--vscode-input-background) !important;
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-focusBorder) !important;
+  border-radius: 2px;
+  text-align: left;
+}
+.vz-contained-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.vz-contained-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: var(--vscode-input-background, rgba(128, 128, 128, 0.1));
+  font-size: 12px;
+}
+.vz-contained-name {
+  font-weight: 500;
+  color: var(--vscode-editor-foreground);
+}
+.vz-empty-hint {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+  padding: 4px 0;
+}
 .vz-uml-node.kind-shape {
   background: transparent;
   border: none;
@@ -704,13 +864,38 @@ body,
   align-items: center;
   justify-content: center;
 }
-.vz-shape-inline-input {
+.vz-inline-input {
+  text-align: center;
+}
+.vz-shape-inline-input,
+.vz-shape-inline-input:focus,
+.vz-shape-inline-input:focus-visible {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
   text-align: center;
   max-width: 140px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--vscode-editor-foreground);
+  padding: 0;
+  caret-color: var(--vscode-editor-foreground);
 }
 .vz-uml-node.unsupported {
   border-style: dotted;
   border-color: var(--vscode-editorWarning-foreground, orange);
+}
+.vz-inline-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+.vz-inline-field {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
 }
 .vz-uml-node-header {
   padding: 7px 10px;
@@ -773,17 +958,26 @@ body,
   z-index: 25;
   border-color: var(--vscode-focusBorder);
 }
+.vz-uml-node.inline-editing .vz-uml-note-body {
+  white-space: normal;
+}
 .vz-inline-textarea {
   width: 100%;
-  min-height: 60px;
+  box-sizing: border-box;
+  min-height: 48px;
   padding: 4px 6px;
   background-color: var(--vscode-input-background);
   color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-focusBorder);
+  border: 1px solid var(--vscode-input-border, var(--vscode-contrastBorder, rgba(128, 128, 128, 0.35)));
   border-radius: 3px;
   font-family: inherit;
   font-size: 12px;
+  line-height: 1.4;
   resize: vertical;
+}
+.vz-uml-compartment .vz-inline-textarea {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11.5px;
 }
 .vz-inline-member-row {
   display: grid;
@@ -840,22 +1034,23 @@ body,
 }
 .vz-floating-edge-label-editor {
   position: absolute;
-  transform: translate(-50%, -50%);
-  width: 80px;
-  min-width: 70px;
-  max-width: 95px;
   z-index: 40;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-}
-.vz-floating-mult-editor {
-  width: 68px;
-  min-width: 58px;
-  max-width: 80px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 .vz-floating-edge-label-editor .vz-input {
-  padding: 3px 4px;
+  height: 20px;
+  padding: 1px 4px;
   text-align: center;
   font-size: 11px;
+  line-height: 18px;
+  box-sizing: border-box;
+}
+.vz-floating-mult-editor .vz-input {
+  height: 18px;
+  padding: 0 2px;
+  font-size: 11px;
+  line-height: 16px;
+  box-sizing: border-box;
 }
 .vz-endpoint-popup {
   position: fixed;
@@ -1137,6 +1332,40 @@ body,
   flex-direction: column;
   gap: 10px;
 }
+.vz-migration-banner {
+  background-color: var(--vscode-editorWarning-background, rgba(234, 179, 8, 0.12));
+  border: 1px solid var(--vscode-editorWarning-border, var(--vscode-editorWarning-foreground, #eab308));
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vz-migration-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vz-migration-icon {
+  font-size: 13px;
+}
+.vz-migration-title {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--vscode-editorWarning-foreground, var(--vscode-editor-foreground));
+}
+.vz-migration-text {
+  font-size: 11px;
+  color: var(--vscode-editor-foreground);
+  margin: 0;
+  line-height: 1.35;
+}
+.vz-migration-btn {
+  margin-top: 4px;
+  align-self: flex-start;
+  padding: 3px 8px;
+  font-size: 11px;
+}
 .vz-field {
   display: flex;
   flex-direction: column;
@@ -1175,32 +1404,82 @@ body,
   resize: vertical;
   min-height: 48px;
 }
+.vz-inspector-members-textarea {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  overflow-x: hidden;
+  tab-size: 2;
+  min-height: 80px;
+}
+::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
+::-webkit-resizer,
+textarea::-webkit-resizer,
+.vz-textarea::-webkit-resizer,
+.vz-inline-textarea::-webkit-resizer {
+  background-color: transparent;
+  border: none;
+  outline: none;
+  background-image:
+    linear-gradient(
+      135deg,
+      transparent 0%,
+      transparent 50%,
+      rgba(128, 128, 128, 0.45) 50%,
+      rgba(128, 128, 128, 0.45) 60%,
+      transparent 60%,
+      transparent 75%,
+      rgba(128, 128, 128, 0.45) 75%,
+      rgba(128, 128, 128, 0.45) 85%,
+      transparent 85%);
+  background-repeat: no-repeat;
+  background-position: bottom 2px right 2px;
+  background-size: 7px 7px;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.35));
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--vscode-scrollbarSlider-hoverBackground, rgba(128, 128, 128, 0.65));
+}
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--vscode-scrollbarSlider-activeBackground, rgba(128, 128, 128, 0.85));
+}
 .vz-input-mini {
   height: 26px;
   padding: 3px 6px;
   font-family: var(--vscode-editor-font-family, monospace);
   font-size: 11.5px;
 }
-.vz-compartment-section,
-.vz-endpoint-box,
-.vz-ai-card {
-  padding: 8px;
-  border-radius: 4px;
-  border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.25));
-  background-color: var(--vscode-editor-background);
+.vz-inspector-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
-.vz-compartment-section.sec-hidden {
-  opacity: 0.68;
+.vz-section-divider {
+  height: 1px;
+  background-color: var(--vscode-panel-border, rgba(128, 128, 128, 0.25));
+  margin: 6px 0 4px 0;
 }
-.vz-compartment-header {
+.vz-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
-  font-weight: 600;
 }
 .vz-eye-toggle-btn {
   width: 24px;

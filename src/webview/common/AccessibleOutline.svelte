@@ -38,13 +38,26 @@
     }
   }
 
+  function keepDropdownInView(node: HTMLElement) {
+    const rect = node.getBoundingClientRect();
+    if (rect.left < 8) {
+      node.style.left = '8px';
+      node.style.right = 'auto';
+    }
+    if (rect.bottom > window.innerHeight - 8) {
+      const overflowY = rect.bottom - (window.innerHeight - 8);
+      node.style.top = `${26 - overflowY}px`;
+    }
+  }
+
   const umlCreationOptions: {
-    kind: 'class' | 'note';
+    kind: 'class' | 'note' | 'frame';
     label: string;
     shortcut: string;
   }[] = [
     { kind: 'class', label: 'Class', shortcut: 'Alt+C' },
-    { kind: 'note', label: 'Note', shortcut: 'Alt+N' }
+    { kind: 'note', label: 'Note', shortcut: 'Alt+N' },
+    { kind: 'frame', label: 'Frame', shortcut: 'Alt+F' }
   ];
 
   const allItems = $derived.by(() => {
@@ -90,6 +103,8 @@
           isEdge: true,
           sourceName,
           targetName,
+          sourceNodeId: e.source.nodeId,
+          targetNodeId: e.target.nodeId,
           edgeLabel,
           edgeKind: e.kind,
           isDashed,
@@ -114,28 +129,40 @@
     return [];
   });
 
+  function matchesItemQuery(item: any, q: string): boolean {
+    if (!q) return true;
+    if (item.isEdge) {
+      return (
+        (item.sourceName || '').toLowerCase().includes(q) ||
+        (item.targetName || '').toLowerCase().includes(q) ||
+        (item.edgeLabel || '').toLowerCase().includes(q) ||
+        (item.edgeKind || '').toLowerCase().includes(q) ||
+        item.id.toLowerCase().includes(q)
+      );
+    }
+    return (
+      (item.label || '').toLowerCase().includes(q) ||
+      (item.stereotype || '').toLowerCase().includes(q) ||
+      `«${(item.stereotype || '').toLowerCase()}»`.includes(q) ||
+      (item.iconKey || '').toLowerCase().includes(q) ||
+      item.id.toLowerCase().includes(q)
+    );
+  }
+
   const filteredItems = $derived.by(() => {
     const q = store.outlineSearchQuery.trim().toLowerCase();
     if (!q) return allItems;
-    return allItems.filter((item) => {
-      if (item.isEdge) {
-        return (
-          item.sourceName.toLowerCase().includes(q) ||
-          item.targetName.toLowerCase().includes(q) ||
-          item.edgeLabel.toLowerCase().includes(q) ||
-          item.edgeKind.toLowerCase().includes(q) ||
-          item.id.toLowerCase().includes(q)
-        );
-      }
-      return (
-        item.label.toLowerCase().includes(q) ||
-        item.stereotype.toLowerCase().includes(q) ||
-        `«${item.stereotype.toLowerCase()}»`.includes(q) ||
-        item.iconKey.toLowerCase().includes(q) ||
-        item.id.toLowerCase().includes(q)
-      );
-    });
+    return allItems.filter((item) => matchesItemQuery(item, q));
   });
+
+  function handleExplorerContextMenu(e: MouseEvent): void {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('input, textarea, select, [contenteditable="true"]')) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  }
 
   function openItemContextMenu(e: MouseEvent, itemId: string, itemLabel: string): void {
     e.preventDefault();
@@ -268,6 +295,10 @@
       <rect x="2" y="2" width="12" height="12" rx="1.5" stroke-width="1.3" />
       <line x1="2" y1="6" x2="14" y2="6" stroke-width="1.1" />
       <line x1="2" y1="10" x2="14" y2="10" stroke-width="1.1" />
+    {:else if item.iconKey === 'frame'}
+      <!-- Frame with top-left label tab -->
+      <rect x="2" y="2" width="12" height="12" rx="1.5" stroke-width="1.3" />
+      <path d="M2 6 h5 v-4" stroke-width="1.1" />
     {:else if item.iconKey === 'note'}
       <!-- Folded corner note -->
       <path d="M3 2 h7 l3 3 v8 a1 1 0 0 1 -1 1 h-9 a1 1 0 0 1 -1 -1 v-10 a1 1 0 0 1 1 -1 z" stroke-width="1.3" />
@@ -291,11 +322,48 @@
   </svg>
 {/snippet}
 
+{#snippet outlineItemButton(item: any)}
+  {@const isSelected = store.selectedIds.includes(item.id)}
+  <button
+    type="button"
+    class="vz-outline-item"
+    class:selected={isSelected}
+    title={item.tooltip}
+    onclick={(e) => store.selectSingle(item.id, e.shiftKey || e.metaKey || e.ctrlKey)}
+    oncontextmenu={(e) => openItemContextMenu(e, item.id, item.contextLabel)}
+  >
+    <span class="vz-outline-icon" title={item.iconTitle} aria-hidden="true">
+      {@render itemIcon(item)}
+    </span>
+    {#if item.isEdge}
+      <div class="vz-outline-edge-row">
+        <span class="vz-outline-endpoint" title={item.sourceName}>{item.sourceName}</span>
+        <span class="vz-outline-connector" aria-hidden="true">
+          {#if item.edgeLabel}
+            <span class="vz-outline-connector-line" class:dashed={item.isDashed}></span>
+            <span class="vz-outline-edge-label" title={item.edgeLabel}>{item.edgeLabel}</span>
+            <span class="vz-outline-connector-line" class:dashed={item.isDashed}></span>
+          {:else}
+            <span class="vz-outline-connector-line" class:dashed={item.isDashed}></span>
+          {/if}
+        </span>
+        <span class="vz-outline-endpoint" title={item.targetName}>{item.targetName}</span>
+      </div>
+    {:else}
+      <span class="vz-outline-label">{item.label}</span>
+      {#if item.stereotype}
+        <span class="vz-outline-stereotype">«{item.stereotype}»</span>
+      {/if}
+    {/if}
+  </button>
+{/snippet}
+
 <section
   bind:this={outlineSectionEl}
   class="vz-outline-section"
   style="height: {store.elementsPaneRatio * 100}%;"
   aria-label="Elements List"
+  oncontextmenu={handleExplorerContextMenu}
 >
   <div class="vz-outline-header">
     <span class="vz-sidebar-title">Elements ({filteredItems.length})</span>
@@ -316,7 +384,7 @@
         </button>
 
         {#if showAddMenu}
-          <div class="vz-add-dropdown" role="menu">
+          <div class="vz-add-dropdown" use:keepDropdownInView role="menu">
             {#each umlCreationOptions as opt (opt.kind)}
               <button
                 type="button"
@@ -357,7 +425,7 @@
     <input
       type="search"
       class="vz-input"
-      placeholder="Search elements or «stereotypes»…"
+      placeholder="Search"
       aria-label="Search elements"
       bind:value={store.outlineSearchQuery}
     />
@@ -368,46 +436,14 @@
       {#if store.outlineSearchQuery.trim()}
         No matching elements for "{store.outlineSearchQuery}".
       {:else}
-        No elements yet. Click <strong>＋</strong> or right-click the canvas to add one.
+        No elements yet. Click <strong>＋</strong> or right-click here to add one.
       {/if}
     </div>
   {:else}
     <ul class="vz-outline-list" role="listbox" aria-label="Diagram elements">
       {#each filteredItems as item (item.id)}
-        {@const isSelected = store.selectedIds.includes(item.id)}
-        <li role="option" aria-selected={isSelected}>
-          <button
-            type="button"
-            class="vz-outline-item"
-            class:selected={isSelected}
-            title={item.tooltip}
-            onclick={(e) => store.selectSingle(item.id, e.shiftKey || e.metaKey || e.ctrlKey)}
-            oncontextmenu={(e) => openItemContextMenu(e, item.id, item.contextLabel)}
-          >
-            <span class="vz-outline-icon" title={item.iconTitle} aria-hidden="true">
-              {@render itemIcon(item)}
-            </span>
-            {#if item.isEdge}
-              <div class="vz-outline-edge-row">
-                <span class="vz-outline-endpoint" title={item.sourceName}>{item.sourceName}</span>
-                <span class="vz-outline-connector" aria-hidden="true">
-                  {#if item.edgeLabel}
-                    <span class="vz-outline-connector-line" class:dashed={item.isDashed}></span>
-                    <span class="vz-outline-edge-label" title={item.edgeLabel}>{item.edgeLabel}</span>
-                    <span class="vz-outline-connector-line" class:dashed={item.isDashed}></span>
-                  {:else}
-                    <span class="vz-outline-connector-line" class:dashed={item.isDashed}></span>
-                  {/if}
-                </span>
-                <span class="vz-outline-endpoint" title={item.targetName}>{item.targetName}</span>
-              </div>
-            {:else}
-              <span class="vz-outline-label">{item.label}</span>
-              {#if item.stereotype}
-                <span class="vz-outline-stereotype">«{item.stereotype}»</span>
-              {/if}
-            {/if}
-          </button>
+        <li role="option" aria-selected={store.selectedIds.includes(item.id)}>
+          {@render outlineItemButton(item)}
         </li>
       {/each}
     </ul>

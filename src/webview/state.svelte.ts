@@ -81,7 +81,6 @@ export class VizionWebviewStore {
   private onFitContentCallback?: () => void;
   private onResetZoomCallback?: () => void;
   private onRestoreFocusCallback?: () => void;
-  private onExportSvgCallback?: () => void;
 
   constructor(initialKind: VizionDocumentKind) {
     this.expectedKind = initialKind;
@@ -105,12 +104,10 @@ export class VizionWebviewStore {
     onFitContent?: () => void;
     onResetZoom?: () => void;
     onRestoreFocus?: () => void;
-    onExportSvg?: () => void;
   }): void {
     this.onFitContentCallback = callbacks.onFitContent;
     this.onResetZoomCallback = callbacks.onResetZoom;
     this.onRestoreFocusCallback = callbacks.onRestoreFocus;
-    this.onExportSvgCallback = callbacks.onExportSvg;
   }
 
   private applySnapshot(msg: HostToWebviewSnapshotMessage): void {
@@ -172,8 +169,6 @@ export class VizionWebviewStore {
           this.onResetZoomCallback?.();
         } else if (msg.command === 'restoreCanvasFocus') {
           this.onRestoreFocusCallback?.();
-        } else if (msg.command === 'requestSvgExport') {
-          this.onExportSvgCallback?.();
         }
         break;
       }
@@ -182,6 +177,55 @@ export class VizionWebviewStore {
 
   dispatchOperation(operation: VizionOperationPayload): string {
     const requestId = `req-${++this.requestCounter}-${Date.now()}`;
+
+    // Apply optimistic updates synchronously so local UI transitions (such as closing
+    // inline editing on Enter or canvas blur) do not temporarily flicker back to stale values.
+    if (operation.type === 'uml.updateNode' && this.umlDoc) {
+      const node = this.umlDoc.nodes.find((n) => n.id === operation.nodeId);
+      if (node) {
+        if (operation.name !== undefined) node.name = operation.name;
+        if (operation.stereotype !== undefined) {
+          if (operation.stereotype) node.stereotype = operation.stereotype;
+          else delete node.stereotype;
+        }
+        if (operation.text !== undefined) node.text = operation.text;
+        if (operation.shape !== undefined) node.shape = operation.shape;
+        if (operation.children !== undefined) node.children = [...operation.children];
+        if (operation.line !== undefined) node.line = operation.line;
+        if (operation.attributes !== undefined) node.attributes = operation.attributes;
+        if (operation.operations !== undefined) node.operations = operation.operations;
+        if (operation.showAttributes !== undefined) node.showAttributes = operation.showAttributes;
+        if (operation.showOperations !== undefined) node.showOperations = operation.showOperations;
+      }
+    } else if (operation.type === 'uml.moveResizeNodes' && this.umlDoc) {
+      if (operation.frameChildrenUpdates) {
+        for (const [frameId, children] of Object.entries(operation.frameChildrenUpdates)) {
+          const frameNode = this.umlDoc.nodes.find((n) => n.id === frameId);
+          if (frameNode) {
+            frameNode.children = [...children];
+          }
+        }
+      }
+    } else if (operation.type === 'uml.updateEdge' && this.umlDoc) {
+      const edge = this.umlDoc.edges.find((e) => e.id === operation.edgeId);
+      if (edge) {
+        if (operation.label !== undefined) edge.label = operation.label;
+        if (operation.sourceMultiplicity !== undefined) {
+          edge.source.multiplicity = operation.sourceMultiplicity;
+        }
+        if (operation.targetMultiplicity !== undefined) {
+          edge.target.multiplicity = operation.targetMultiplicity;
+        }
+        if (operation.kind !== undefined) edge.kind = operation.kind;
+      }
+    } else if (operation.type === 'uml.updateEndpoint' && this.umlDoc) {
+      const edge = this.umlDoc.edges.find((e) => e.id === operation.edgeId);
+      if (edge) {
+        if (!edge.visual) edge.visual = {};
+        edge.visual[operation.end] = { ...operation.decoration };
+      }
+    }
+
     postToHost({
       type: 'webview.operation',
       requestId,
@@ -197,6 +241,10 @@ export class VizionWebviewStore {
 
   triggerRedo(): void {
     postToHost({ type: 'webview.redo' });
+  }
+
+  checkForExtensionUpdate(): void {
+    postToHost({ type: 'webview.checkForExtensionUpdate' });
   }
 
   copySelection(): void {
@@ -237,7 +285,7 @@ export class VizionWebviewStore {
   }
 
   createQuickUmlNode(
-    kind: 'class' | 'note' | 'shape',
+    kind: 'class' | 'note' | 'shape' | 'frame',
     worldX?: number,
     worldY?: number,
     shapeGeometry: UmlShapeGeometry = 'rectangle'
@@ -246,10 +294,11 @@ export class VizionWebviewStore {
     const existingCount = this.umlDoc.nodes.filter((n) => n.kind === kind).length + 1;
     const shapeLabel =
       UML_SHAPE_GEOMETRIES.find((g) => g.kind === shapeGeometry)?.label ?? 'Shape';
-    const defaultNameMap: Record<'class' | 'note' | 'shape', string> = {
+    const defaultNameMap: Record<'class' | 'note' | 'shape' | 'frame', string> = {
       class: `Class${existingCount}`,
       note: `Note ${existingCount}`,
-      shape: `${shapeLabel} ${existingCount}`
+      shape: `${shapeLabel} ${existingCount}`,
+      frame: `Frame ${existingCount}`
     };
 
     const name = defaultNameMap[kind];

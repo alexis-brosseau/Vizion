@@ -39,7 +39,7 @@ export function buildWebviewHtml(
 
   const csp = [
     `default-src 'none'`,
-    `img-src ${webview.cspSource} data:`,
+    `img-src ${webview.cspSource} data: blob:`,
     `style-src ${webview.cspSource} 'unsafe-inline'`,
     `font-src ${webview.cspSource} data:`,
     `script-src 'nonce-${nonce}'`

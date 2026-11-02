@@ -8,9 +8,12 @@ import {
   serializeDefaultDocument
 } from '../src/shared/documents/templates';
 import { EXTENSION_VERSION } from '../src/shared/documents/version';
+import { isMigrationNeeded, isNewerVersionDocument, compareSemver, runDocumentMigrations } from '../src/shared/documents/migrations';
 import { parseAndValidateDocument } from '../src/shared/documents/validator';
 import {
+  computeShapeBoundaryIntersection,
   computeUmlEdgeGeometry,
+  getMultiplicityLabelPoint,
   normalizeDragRect,
   screenToWorld,
   simplifyStrokePoints,
@@ -20,11 +23,16 @@ import {
   applyUmlOperationToText,
   buildOperationSignature,
   extractOperationParameters,
-  formatVisibilitySign
+  formatAttributesToText,
+  formatOperationsToText,
+  formatVisibilitySign,
+  parseAttributesFromText,
+  parseOperationsFromText
 } from '../src/shared/operations';
 import {
   getEndpointShape,
   listEndpointShapes,
+  listUmlRelationPresets,
   registerEndpointShape,
   registerUmlNodeKind,
   UML_SHAPE_GEOMETRIES
@@ -39,7 +47,11 @@ describe('Vizion Document Templates & Initialization Predicates', () => {
     const keys = Object.keys(uml);
     expect(keys.indexOf('format')).toBe(0);
     expect(keys.indexOf('version')).toBe(1);
-    expect(uml.ai.purpose).toBeTruthy();
+    expect(keys.indexOf('title')).toBe(3);
+    expect(keys.indexOf('description')).toBe(4);
+    expect(keys.indexOf('ai')).toBe(5);
+    expect(keys.indexOf('defaultRouting')).toBe(6);
+    expect(uml.description).toBeTruthy();
     expect(uml.ai.interpretation.length).toBeGreaterThan(0);
     expect(uml.ai.editingRules.length).toBeGreaterThan(0);
     expect('schemaVersion' in uml).toBe(false);
@@ -158,15 +170,24 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
     const updated = applyUmlOperationToText(text, {
       type: 'uml.updateMetadata',
       title: 'Order Processing System',
-      purpose: 'Model payment processing workflows and inventory reserves.'
+      description: 'Model payment processing workflows and inventory reserves.'
     });
     expect(updated.ok).toBe(true);
     const parsed = parseAndValidateDocument(updated.updatedText!, 'uml');
     expect(parsed.ok).toBe(true);
     expect(parsed.document?.title).toBe('Order Processing System');
-    expect(parsed.document?.ai.purpose).toBe('Model payment processing workflows and inventory reserves.');
+    expect(parsed.document?.description).toBe('Model payment processing workflows and inventory reserves.');
     expect(parsed.document?.ai.interpretation.length).toBeGreaterThan(0);
     expect(parsed.document?.ai.editingRules.length).toBeGreaterThan(0);
+
+    const updatedWithRouting = applyUmlOperationToText(updated.updatedText!, {
+      type: 'uml.updateMetadata',
+      defaultRouting: 'bezier'
+    });
+    expect(updatedWithRouting.ok).toBe(true);
+    const parsedWithRouting = parseAndValidateDocument(updatedWithRouting.updatedText!, 'uml');
+    expect(parsedWithRouting.ok).toBe(true);
+    expect(parsedWithRouting.document?.defaultRouting).toBe('bezier');
   });
 
   it('preserves unknown top-level and nested properties and 4-space indentation across edits (DOC-05)', () => {
@@ -236,7 +257,7 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
     const parsed = parseAndValidateDocument(custEnd.updatedText!, 'uml');
     expect(parsed.ok).toBe(true);
     const edge = parsed.document!.edges[0];
-    expect(edge.kind).toBe('association');
+    expect(edge.kind).toBe('other');
     expect(edge.source.multiplicity).toBe('1..*');
     expect(edge.target.multiplicity).toBe('1');
     expect(edge.visual?.start).toEqual({ shape: 'circle', fill: 'hollow', size: 10 });
@@ -598,5 +619,589 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
     expect(geom.endTip.x).toBe(300);
     // Path must be trimmed inward from both hollow endpoints (112 to 288)
     expect(geom.pathD).toBe('M 112 50 L 288 50');
+    // Relation label is centered vertically and horizontally on the line (not hovering above)
+    expect(geom.labelPoint).toEqual({ x: 200, y: 50 });
+
+    // Test orthogonal routing with right-angle turns
+    const orthoGeom = computeUmlEdgeGeometry(
+      { x: 0, y: 0, width: 100, height: 100 },
+      { x: 300, y: 100, width: 100, height: 100 },
+      'orthogonal',
+      { shape: 'none', size: 10 },
+      { shape: 'none', size: 10 }
+    );
+    expect(orthoGeom.startTip).toEqual({ x: 100, y: 50 });
+    expect(orthoGeom.endTip).toEqual({ x: 300, y: 150 });
+    // Expect orthogonal path with 90° straight turns: (100, 50) -> (200, 50) -> (200, 150) -> (300, 150)
+    expect(orthoGeom.pathD).toBe('M 100 50 L 200 50 L 200 150 L 300 150');
+    expect(orthoGeom.hitPathD).toBe('M 100 50 L 200 50 L 200 150 L 300 150');
+    // Relation label sits on the middle segment (vertical, length 100 >= 28)
+    expect(orthoGeom.labelPoint).toEqual({ x: 200, y: 100 });
+
+    // When middle segment is too short to fit label height (e.g. length = 10 < 28), falls back to longest segment
+    const tightOrthoGeom = computeUmlEdgeGeometry(
+      { x: 0, y: 0, width: 100, height: 100 },
+      { x: 300, y: 10, width: 100, height: 100 },
+      'orthogonal',
+      { shape: 'none', size: 10 },
+      { shape: 'none', size: 10 }
+    );
+    // Vertical middle segment has length 10 (from 50 to 60), too short -> sits on first segment (100, 50) to (200, 50)
+    expect(tightOrthoGeom.labelPoint).toEqual({ x: 150, y: 50 });
+
+    // Test bezier (smooth) routing
+    const bezierGeom = computeUmlEdgeGeometry(
+      { x: 0, y: 0, width: 100, height: 100 },
+      { x: 300, y: 0, width: 100, height: 100 },
+      'bezier',
+      { shape: 'none', size: 10 },
+      { shape: 'none', size: 10 }
+    );
+    expect(bezierGeom.labelPoint.y).toBeCloseTo(50, 1);
+
+    // Test shape boundary intersection for geometric shapes (ellipse, rhombus)
+    const box = { x: 0, y: 0, width: 100, height: 100 };
+    // Rhombus corners act like flat borders with cardinal normals
+    const rightCornerHit = computeShapeBoundaryIntersection(box, { x: 200, y: 50 }, 'rhombus');
+    expect(rightCornerHit.point).toEqual({ x: 98, y: 50 });
+    expect(rightCornerHit.normal).toEqual({ x: 1, y: 0 });
+
+    const leftCornerHit = computeShapeBoundaryIntersection(box, { x: -100, y: 50 }, 'rhombus');
+    expect(leftCornerHit.point).toEqual({ x: 2, y: 50 });
+    expect(leftCornerHit.normal).toEqual({ x: -1, y: 0 });
+
+    const topCornerHit = computeShapeBoundaryIntersection(box, { x: 50, y: -100 }, 'rhombus');
+    expect(topCornerHit.point).toEqual({ x: 50, y: 2 });
+    expect(topCornerHit.normal).toEqual({ x: 0, y: -1 });
+
+    const bottomCornerHit = computeShapeBoundaryIntersection(box, { x: 50, y: 200 }, 'rhombus');
+    expect(bottomCornerHit.point).toEqual({ x: 50, y: 98 });
+    expect(bottomCornerHit.normal).toEqual({ x: 0, y: 1 });
+
+    // Smooth routing goes straight to a rhombus corner when aligned
+    const smoothRhombusGeom = computeUmlEdgeGeometry(
+      { x: 0, y: 0, width: 100, height: 100 },
+      { x: 300, y: 0, width: 100, height: 100 },
+      'bezier',
+      { shape: 'none', size: 10 },
+      { shape: 'none', size: 10 },
+      0,
+      undefined,
+      undefined,
+      'rectangle',
+      'rhombus'
+    );
+    expect(smoothRhombusGeom.startTip).toEqual({ x: 100, y: 50 });
+    expect(smoothRhombusGeom.endTip).toEqual({ x: 302, y: 50 });
+    // Path control points stay on y = 50 because rhombus left corner acts like a flat border (normal -1, 0)
+    expect(smoothRhombusGeom.pathD).toMatch(/^M 100 50 C \d+(\.\d+)? 50, \d+(\.\d+)? 50, 302 50$/);
+    // Rhombus top-right diagonal intersection (toward 200, 200)
+    const rhombusHit = computeShapeBoundaryIntersection(box, { x: 200, y: 200 }, 'rhombus');
+    // Bounding box corner would be (100, 100), but rhombus diamond edge is at (73.5, 73.5)
+    expect(rhombusHit.point.x).toBeLessThan(100);
+    expect(rhombusHit.point.y).toBeLessThan(100);
+    expect(Math.round(rhombusHit.point.x)).toBe(74);
+    expect(Math.round(rhombusHit.point.y)).toBe(74);
+
+    // Ellipse diagonal intersection (toward 200, 200)
+    const ellipseHit = computeShapeBoundaryIntersection(box, { x: 200, y: 200 }, 'ellipse');
+    expect(Math.round(ellipseHit.point.x)).toBe(84);
+    expect(Math.round(ellipseHit.point.y)).toBe(84);
+
+    // computeUmlEdgeGeometry with shapes connects directly to the shape boundary
+    const shapeGeom = computeUmlEdgeGeometry(
+      { x: 0, y: 0, width: 100, height: 100 },
+      { x: 200, y: 200, width: 100, height: 100 },
+      'straight',
+      { shape: 'none', size: 10 },
+      { shape: 'none', size: 10 },
+      0,
+      undefined,
+      undefined,
+      'rhombus',
+      'ellipse'
+    );
+    expect(Math.round(shapeGeom.startTip.x)).toBe(74);
+    expect(Math.round(shapeGeom.startTip.y)).toBe(74);
+    expect(Math.round(shapeGeom.endTip.x)).toBe(216);
+    expect(Math.round(shapeGeom.endTip.y)).toBe(216);
+
+    // Multiplicity label is at a fixed distance from its side to the line (never overlaps)
+    const tip = { x: 100, y: 200 };
+    const verticalAngle = 90; // line along vertical axis (x = 100)
+    const shortMult = getMultiplicityLabelPoint(tip, verticalAngle, '1');
+    const longMult = getMultiplicityLabelPoint(tip, verticalAngle, '0..*');
+    const shortHalfW = (1 * 7.6 + 12) / 2;
+    const longHalfW = (4 * 7.6 + 12) / 2;
+    // Both labels' nearest side is exactly 5px away from the relation line at x = 100
+    expect(shortMult.x - shortHalfW).toBeCloseTo(105, 1);
+    expect(longMult.x - longHalfW).toBeCloseTo(105, 1);
+  });
+
+  it('parses and formats attributes and operations line-by-line while removing non-matching lines', () => {
+    const rawAttrs = `
+      + id: string
+      - isSecret: boolean
+      # count: number
+      ~ internalTag
+      plainName: any
+      // this is a comment line that should be discarded
+      invalid???line!
+    `;
+    const parsedAttrs = parseAttributesFromText(rawAttrs, 'node-1');
+    expect(parsedAttrs).toHaveLength(5);
+    expect(parsedAttrs[0]).toMatchObject({ visibility: '+', name: 'id', type: 'string' });
+    expect(parsedAttrs[1]).toMatchObject({ visibility: '-', name: 'isSecret', type: 'boolean' });
+    expect(parsedAttrs[2]).toMatchObject({ visibility: '#', name: 'count', type: 'number' });
+    expect(parsedAttrs[3]).toMatchObject({ visibility: '~', name: 'internalTag' });
+    expect(parsedAttrs[4]).toMatchObject({ visibility: '+', name: 'plainName', type: 'any' });
+
+    const formattedAttrs = formatAttributesToText(parsedAttrs);
+    expect(formattedAttrs).toBe(
+      '+ id: string\n- isSecret: boolean\n# count: number\n~ internalTag\n+ plainName: any'
+    );
+
+    const rawOps = `
+      + save(item: Item, count: number): boolean
+      - reset()
+      # log(msg: string)
+      render(): void
+      init
+      -- not an operation
+      /* another invalid line */
+    `;
+    const parsedOps = parseOperationsFromText(rawOps, 'node-1');
+    expect(parsedOps).toHaveLength(5);
+    expect(parsedOps[0]).toMatchObject({
+      visibility: '+',
+      name: 'save',
+      returnType: 'boolean',
+      signature: '(item: Item, count: number)'
+    });
+    expect(parsedOps[0].parameters).toHaveLength(2);
+    expect(parsedOps[0].parameters![0]).toMatchObject({ name: 'item', type: 'Item' });
+    expect(parsedOps[0].parameters![1]).toMatchObject({ name: 'count', type: 'number' });
+
+    expect(parsedOps[1]).toMatchObject({ visibility: '-', name: 'reset', signature: '()' });
+    expect(parsedOps[2]).toMatchObject({ visibility: '#', name: 'log', signature: '(msg: string)' });
+    expect(parsedOps[3]).toMatchObject({ visibility: '+', name: 'render', returnType: 'void', signature: '()' });
+    expect(parsedOps[4]).toMatchObject({ visibility: '+', name: 'init', signature: '()' });
+
+    const formattedOps = formatOperationsToText(parsedOps);
+    expect(formattedOps).toContain('+ save(item: Item, count: number): boolean');
+    expect(formattedOps).toContain('- reset()');
+    expect(formattedOps).toContain('# log(msg: string)');
+    expect(formattedOps).toContain('+ render(): void');
+    expect(formattedOps).toContain('+ init()');
+  });
+
+  it('keeps custom node dimensions when duplicating with stripCustomData (Paste as new)', () => {
+    let text = serializeDefaultDocument('uml', 'paste-as-new.viz');
+    text = applyUmlOperationToText(text, {
+      type: 'uml.addNode',
+      id: 'custom-node',
+      kind: 'class',
+      name: 'CustomClass',
+      x: 60,
+      y: 60,
+      width: 380,
+      height: 260
+    }).updatedText!;
+
+    // Duplicate with stripCustomData = true ("Paste as new")
+    const dupRes = applyUmlOperationToText(text, {
+      type: 'uml.duplicateSelection',
+      nodeIds: ['custom-node'],
+      edgeIds: [],
+      offsetX: 40,
+      offsetY: 40,
+      stripCustomData: true
+    });
+    expect(dupRes.ok).toBe(true);
+
+    const doc = parseAndValidateDocument(dupRes.updatedText!, 'uml').document!;
+    expect(doc.nodes).toHaveLength(2);
+    const pastedNode = doc.nodes.find((n) => n.id !== 'custom-node')!;
+    const pastedLayout = doc.layout.nodes[pastedNode.id];
+
+    // Must keep original resized width and height
+    expect(pastedLayout).toBeDefined();
+    expect(pastedLayout.width).toBe(380);
+    expect(pastedLayout.height).toBe(260);
+    expect(pastedLayout.x).toBe(100);
+    expect(pastedLayout.y).toBe(100);
+  });
+
+  it('handles semantic relation presets, none default, automatic detection, and line style reset', () => {
+    let text = serializeDefaultDocument('uml', 'relations.viz');
+    text = applyUmlOperationToText(text, {
+      type: 'uml.addNode',
+      id: 'node-a',
+      kind: 'class',
+      name: 'ClassA',
+      x: 40,
+      y: 40
+    }).updatedText!;
+
+    text = applyUmlOperationToText(text, {
+      type: 'uml.addNode',
+      id: 'node-b',
+      kind: 'class',
+      name: 'ClassB',
+      x: 300,
+      y: 40
+    }).updatedText!;
+
+    // 1. Add edge with default kind (between classes -> association)
+    const addRes = applyUmlOperationToText(text, {
+      type: 'uml.addEdge',
+      id: 'edge-ab',
+      sourceNodeId: 'node-a',
+      targetNodeId: 'node-b'
+    });
+    expect(addRes.ok).toBe(true);
+    let doc = parseAndValidateDocument(addRes.updatedText!, 'uml').document!;
+    let edge = doc.edges[0];
+    expect(edge.kind).toBe('association');
+    expect(edge.visual?.line).toBe('solid');
+    expect(edge.visual?.routing).toBe('default');
+
+    // Test updating edge routing explicitly and resetting to default
+    const straightRes = applyUmlOperationToText(addRes.updatedText!, {
+      type: 'uml.updateEdge',
+      edgeId: 'edge-ab',
+      routing: 'straight'
+    });
+    expect(straightRes.ok).toBe(true);
+    let straightDoc = parseAndValidateDocument(straightRes.updatedText!, 'uml').document!;
+    expect(straightDoc.edges[0].visual?.routing).toBe('straight');
+
+    const defaultRes = applyUmlOperationToText(straightRes.updatedText!, {
+      type: 'uml.updateEdge',
+      edgeId: 'edge-ab',
+      routing: 'default'
+    });
+    expect(defaultRes.ok).toBe(true);
+    let defaultDoc = parseAndValidateDocument(defaultRes.updatedText!, 'uml').document!;
+    expect(defaultDoc.edges[0].visual?.routing).toBe('default');
+
+    // 2. Change kind to 'dependency' (dashed preset)
+    const depRes = applyUmlOperationToText(addRes.updatedText!, {
+      type: 'uml.updateEdge',
+      edgeId: 'edge-ab',
+      kind: 'dependency'
+    });
+    expect(depRes.ok).toBe(true);
+    doc = parseAndValidateDocument(depRes.updatedText!, 'uml').document!;
+    edge = doc.edges[0];
+    expect(edge.kind).toBe('dependency');
+    expect(edge.visual?.line).toBe('dashed');
+
+    // 3. Change kind to 'association' -> line must switch from dashed to solid
+    const assocRes = applyUmlOperationToText(depRes.updatedText!, {
+      type: 'uml.updateEdge',
+      edgeId: 'edge-ab',
+      kind: 'association'
+    });
+    expect(assocRes.ok).toBe(true);
+    doc = parseAndValidateDocument(assocRes.updatedText!, 'uml').document!;
+    edge = doc.edges[0];
+    expect(edge.kind).toBe('association');
+    expect(edge.visual?.line).toBe('solid');
+
+    // 4. Update endpoint to a shape not matching any preset (circle) -> kind becomes 'other'
+    const circleRes = applyUmlOperationToText(assocRes.updatedText!, {
+      type: 'uml.updateEndpoint',
+      edgeId: 'edge-ab',
+      end: 'start',
+      decoration: { shape: 'circle', size: 10 }
+    });
+    expect(circleRes.ok).toBe(true);
+    doc = parseAndValidateDocument(circleRes.updatedText!, 'uml').document!;
+    edge = doc.edges[0];
+    expect(edge.kind).toBe('other');
+
+    // 5. From 'other', reset start to 'none' and set end to 'triangle' (solid) -> automatically matches 'generalization'
+    const resetStart = applyUmlOperationToText(circleRes.updatedText!, {
+      type: 'uml.updateEndpoint',
+      edgeId: 'edge-ab',
+      end: 'start',
+      decoration: { shape: 'none', size: 10 }
+    });
+    const setTriangle = applyUmlOperationToText(resetStart.updatedText!, {
+      type: 'uml.updateEndpoint',
+      edgeId: 'edge-ab',
+      end: 'end',
+      decoration: { shape: 'triangle', fill: 'hollow', size: 12 }
+    });
+    expect(setTriangle.ok).toBe(true);
+    doc = parseAndValidateDocument(setTriangle.updatedText!, 'uml').document!;
+    edge = doc.edges[0];
+    expect(edge.kind).toBe('generalization');
+
+    // 6. Change line to dashed with hollow triangle -> automatically matches 'realization'
+    const dashedRes = applyUmlOperationToText(setTriangle.updatedText!, {
+      type: 'uml.updateEdge',
+      edgeId: 'edge-ab',
+      line: 'dashed'
+    });
+    expect(dashedRes.ok).toBe(true);
+    doc = parseAndValidateDocument(dashedRes.updatedText!, 'uml').document!;
+    edge = doc.edges[0];
+    expect(edge.kind).toBe('realization');
+
+    // 7. Test directional and bidirectional associations with open arrows on solid lines
+    // Set line back to solid and end to open-arrow -> directional association
+    const solidDirected = applyUmlOperationToText(dashedRes.updatedText!, {
+      type: 'uml.updateEdge',
+      edgeId: 'edge-ab',
+      line: 'solid'
+    });
+    const openArrowEnd = applyUmlOperationToText(solidDirected.updatedText!, {
+      type: 'uml.updateEndpoint',
+      edgeId: 'edge-ab',
+      end: 'end',
+      decoration: { shape: 'open-arrow', size: 11 }
+    });
+    expect(openArrowEnd.ok).toBe(true);
+    doc = parseAndValidateDocument(openArrowEnd.updatedText!, 'uml').document!;
+    edge = doc.edges[0];
+    expect(edge.kind).toBe('association');
+
+    // Set start to open-arrow as well -> bidirectional association (both ends open-arrow)
+    const openArrowBoth = applyUmlOperationToText(openArrowEnd.updatedText!, {
+      type: 'uml.updateEndpoint',
+      edgeId: 'edge-ab',
+      end: 'start',
+      decoration: { shape: 'open-arrow', size: 11 }
+    });
+    expect(openArrowBoth.ok).toBe(true);
+    doc = parseAndValidateDocument(openArrowBoth.updatedText!, 'uml').document!;
+    edge = doc.edges[0];
+    expect(edge.kind).toBe('association');
+
+    // Set end to none -> reverse directional association
+    const openArrowStartOnly = applyUmlOperationToText(openArrowBoth.updatedText!, {
+      type: 'uml.updateEndpoint',
+      edgeId: 'edge-ab',
+      end: 'end',
+      decoration: { shape: 'none', size: 10 }
+    });
+    expect(openArrowStartOnly.ok).toBe(true);
+    doc = parseAndValidateDocument(openArrowStartOnly.updatedText!, 'uml').document!;
+    edge = doc.edges[0];
+    expect(edge.kind).toBe('association');
+
+    // Dashed line with open-arrow at end matches dependency
+    const dashedDependency = applyUmlOperationToText(openArrowEnd.updatedText!, {
+      type: 'uml.updateEdge',
+      edgeId: 'edge-ab',
+      line: 'dashed'
+    });
+    expect(dashedDependency.ok).toBe(true);
+    doc = parseAndValidateDocument(dashedDependency.updatedText!, 'uml').document!;
+    edge = doc.edges[0];
+    expect(edge.kind).toBe('dependency');
+
+    // 8. Verify relation presets list ends with 'other'
+    const presets = listUmlRelationPresets();
+    const lastPreset = presets[presets.length - 1];
+    expect(lastPreset.kind).toBe('other');
+    expect(lastPreset.label).toBe('Other');
+  });
+
+  it('supports Frame container nodes and manages contained children', () => {
+    let text = serializeDefaultDocument('uml', 'test-frame');
+
+    // Add Frame node
+    const addFrameRes = applyUmlOperationToText(text, {
+      type: 'uml.addNode',
+      id: 'frame-1',
+      kind: 'frame',
+      name: 'System Boundary',
+      x: 100,
+      y: 100,
+      width: 260,
+      height: 180
+    });
+    expect(addFrameRes.ok).toBe(true);
+    text = addFrameRes.updatedText!;
+
+    // Add a child class inside the frame
+    const addClassRes = applyUmlOperationToText(text, {
+      type: 'uml.addNode',
+      id: 'class-1',
+      kind: 'class',
+      name: 'AuthService',
+      x: 130,
+      y: 150
+    });
+    expect(addClassRes.ok).toBe(true);
+    text = addClassRes.updatedText!;
+
+    // Verify class has no default operations and has larger default width (240)
+    const docAfterClass = JSON.parse(text);
+    const classNode = docAfterClass.nodes.find((n: any) => n.id === 'class-1');
+    expect(classNode.operations).toEqual([]);
+    expect(docAfterClass.layout.nodes['class-1'].width).toBe(240);
+
+    // Associate child with frame
+    const updateFrameRes = applyUmlOperationToText(text, {
+      type: 'uml.updateNode',
+      nodeId: 'frame-1',
+      children: ['class-1']
+    });
+    expect(updateFrameRes.ok).toBe(true);
+    text = updateFrameRes.updatedText!;
+
+    let doc = parseAndValidateDocument(text, 'uml').document!;
+    const frameNode = doc.nodes.find((n) => n.id === 'frame-1');
+    expect(frameNode).toBeDefined();
+    expect(frameNode?.kind).toBe('frame');
+    expect(frameNode?.children).toEqual(['class-1']);
+
+    // Verify atomic moveResizeNodes updates both layouts and frame children in one operation
+    const moveResizeRes = applyUmlOperationToText(text, {
+      type: 'uml.moveResizeNodes',
+      updates: {
+        'frame-1': { x: 120, y: 120, width: 300, height: 200 }
+      },
+      frameChildrenUpdates: {
+        'frame-1': ['class-1']
+      }
+    });
+    expect(moveResizeRes.ok).toBe(true);
+    text = moveResizeRes.updatedText!;
+    doc = parseAndValidateDocument(text, 'uml').document!;
+    expect(doc.layout.nodes['frame-1']).toEqual({ x: 120, y: 120, width: 300, height: 200 });
+    expect(doc.nodes.find((n) => n.id === 'frame-1')?.children).toEqual(['class-1']);
+
+    // Deleting the contained node automatically cleans it up from the frame's children
+    const deleteChildRes = applyUmlOperationToText(text, {
+      type: 'uml.deleteEntities',
+      nodeIds: ['class-1'],
+      edgeIds: []
+    });
+    expect(deleteChildRes.ok).toBe(true);
+    doc = parseAndValidateDocument(deleteChildRes.updatedText!, 'uml').document!;
+    const frameAfterDelete = doc.nodes.find((n) => n.id === 'frame-1');
+    expect(frameAfterDelete?.children).toEqual([]);
+  });
+
+  it('rejects creating or updating relations that connect to a frame', () => {
+    let text = serializeDefaultDocument('uml', 'test-frame-relations.viz');
+
+    // Add a class and a frame
+    text = applyUmlOperationToText(text, {
+      type: 'uml.addNode',
+      id: 'class-a',
+      kind: 'class',
+      name: 'ClassA',
+      x: 100,
+      y: 100
+    }).updatedText!;
+
+    text = applyUmlOperationToText(text, {
+      type: 'uml.addNode',
+      id: 'frame-box',
+      kind: 'frame',
+      name: 'Subsystem',
+      x: 400,
+      y: 100
+    }).updatedText!;
+
+    // Attempting to add edge with frame as source
+    const addSrcRes = applyUmlOperationToText(text, {
+      type: 'uml.addEdge',
+      id: 'edge-bad-1',
+      sourceNodeId: 'frame-box',
+      targetNodeId: 'class-a'
+    });
+    expect(addSrcRes.ok).toBe(false);
+    expect(addSrcRes.error).toBe('Frames cannot have relationships.');
+
+    // Attempting to add edge with frame as target
+    const addTgtRes = applyUmlOperationToText(text, {
+      type: 'uml.addEdge',
+      id: 'edge-bad-2',
+      sourceNodeId: 'class-a',
+      targetNodeId: 'frame-box'
+    });
+    expect(addTgtRes.ok).toBe(false);
+    expect(addTgtRes.error).toBe('Frames cannot have relationships.');
+  });
+
+  it('detects when migration is needed and migrates legacy ai.purpose, rules, and version via uml.migrateDocument', () => {
+    // Construct a legacy document with version 0.1.0 and ai.purpose
+    const legacyDoc = {
+      format: 'vizion',
+      version: '0.1.0',
+      kind: 'uml',
+      title: 'Legacy Domain',
+      ai: {
+        purpose: 'Legacy architecture purpose description.',
+        interpretation: ['Old interpretation rule.'],
+        editingRules: ['Old editing rule.']
+      },
+      nodes: [],
+      edges: [],
+      layout: { nodes: {}, edges: {} }
+    };
+
+    expect(isMigrationNeeded(legacyDoc as any)).toBe(true);
+
+    const legacyText = JSON.stringify(legacyDoc, null, 2);
+    const migrateRes = applyUmlOperationToText(legacyText, {
+      type: 'uml.migrateDocument'
+    });
+    expect(migrateRes.ok).toBe(true);
+
+    const parsed = parseAndValidateDocument(migrateRes.updatedText!, 'uml');
+    expect(parsed.ok).toBe(true);
+    const migrated = parsed.document!;
+    expect(migrated.version).toBe(EXTENSION_VERSION);
+    expect(migrated.description).toBe('Legacy architecture purpose description.');
+    expect(migrated.ai.purpose).toBeUndefined();
+    expect(migrated.ai.interpretation.length).toBeGreaterThan(1);
+    expect(migrated.ai.editingRules.length).toBeGreaterThan(1);
+
+    // After migration, no migration should be needed
+    expect(isMigrationNeeded(migrated)).toBe(false);
+  });
+
+  it('correctly compares semver and identifies newer version documents without prompting migration', () => {
+    expect(compareSemver('0.2.0', '0.2.0')).toBe(0);
+    expect(compareSemver('0.3.0', '0.2.0')).toBe(1);
+    expect(compareSemver('1.0.0', '0.2.0')).toBe(1);
+    expect(compareSemver('0.1.2', '0.2.0')).toBe(-1);
+    expect(compareSemver('0.2.1', '0.2.0')).toBe(1);
+
+    const futureDoc = {
+      format: 'vizion',
+      version: '0.3.0',
+      kind: 'uml',
+      title: 'Future Architecture',
+      ai: {
+        interpretation: [],
+        editingRules: []
+      },
+      nodes: [],
+      edges: [],
+      layout: { nodes: {}, edges: {} }
+    };
+
+    // A document with a newer version than EXTENSION_VERSION (0.2.0) should be recognized as newer
+    expect(isNewerVersionDocument(futureDoc as any)).toBe(true);
+    // And it should NOT be flagged for migration (which would downgrade it)
+    expect(isMigrationNeeded(futureDoc as any)).toBe(false);
+
+    // Current version is not newer
+    const currentDoc = { ...futureDoc, version: EXTENSION_VERSION };
+    expect(isNewerVersionDocument(currentDoc as any)).toBe(false);
+
+    // Older version is not newer
+    const olderDoc = { ...futureDoc, version: '0.1.2' };
+    expect(isNewerVersionDocument(olderDoc as any)).toBe(false);
+    expect(isMigrationNeeded(olderDoc as any)).toBe(true);
   });
 });

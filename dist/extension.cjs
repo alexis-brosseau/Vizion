@@ -45,7 +45,7 @@ var package_default = {
   name: "vizion",
   displayName: "Vizion",
   description: "Custom UML editor for .viz JSON documents with embedded AI guidance.",
-  version: "0.1.1",
+  version: "0.2.0",
   publisher: "Vizionary",
   license: "MIT",
   engines: {
@@ -119,12 +119,6 @@ var package_default = {
         title: "Reset Canvas Zoom (100%)",
         category: "Vizion",
         icon: "$(zoom-in)"
-      },
-      {
-        command: "vizion.exportCurrentSvg",
-        title: "Export Current Diagram as SVG",
-        category: "Vizion",
-        icon: "$(export)"
       }
     ],
     menus: {
@@ -138,11 +132,6 @@ var package_default = {
           command: "vizion.fitCanvasToContent",
           when: "activeCustomEditorId == 'vizion.uml'",
           group: "navigation@2"
-        },
-        {
-          command: "vizion.exportCurrentSvg",
-          when: "activeCustomEditorId == 'vizion.uml'",
-          group: "navigation@3"
         }
       ]
     }
@@ -187,32 +176,35 @@ function createDefaultUmlDocument(title = "Domain", version = EXTENSION_VERSION)
     version,
     kind: "uml",
     title: title || "Domain",
+    description: "Describe classes, notes, shapes, frames, and explicitly typed relationships.",
     ai: {
-      purpose: "Describe classes, notes, shapes, and explicitly typed relationships.",
       interpretation: [
-        'Document Structure: JSON document with schema version tracking. Root required fields are: "format" (must be "vizion"), "version" (matching extension version), "kind" (must be "uml"), "title" (string), "ai" (guidance object with "purpose", "interpretation", "editingRules"), "nodes" (array), "edges" (array), and "layout" (object with "nodes" and "edges").',
-        'Node Types & Properties ("nodes[]"): Each node must have "id" (unique string) and "kind" ("class" | "shape" | "note"). Optional common fields: "name" (display label string), "stereotype" (architectural role string, e.g. "entity", "service", "value", "aggregate", "controller"). For "note" nodes, prose is stored in "text" (markdown/plain text).',
+        'Document Structure: JSON document with schema version tracking. Root fields are: "format" ("vizion"), "version" (matching extension version), "kind" ("uml"), "title" (string), "description" (optional/recommended string describing diagram context), "defaultRouting" ("orthogonal" | "straight" | "bezier"), "ai" (guidance object with "interpretation", "editingRules"), "nodes" (array), "edges" (array), and "layout" (object with "nodes" and "edges").',
+        'Node Types & Properties ("nodes[]"): Each node must have "id" (unique string) and "kind" ("class" | "shape" | "note" | "frame"). Optional common fields: "name" (display label string), "stereotype" (architectural role string, e.g. "entity", "service", "value", "aggregate", "controller"). For "note" nodes, prose is stored in "text" (markdown/plain text).',
+        'Frame Containers ("kind": "frame"): Visual container grouping enclosed elements with semi-transparent background. The label floats above the top-left corner. Contained element node IDs are listed in "children". Contained elements move together with the frame. An element is added to a frame when dragged into it with the cursor over the frame, which auto-resizes the frame to fit it. Dragging an element already inside the frame does not auto-resize the frame unless Shift is held (allowing elements to be dragged out of the frame). If the cursor is not over the frame, the element can overlap without being inside. Relations can enter and leave frames and are rendered on top of the frame. Frames cannot have relations of their own.',
         'Geometric Shapes ("kind": "shape"): Must specify "shape" geometry as one of: "ellipse" | "rectangle" | "rhombus" | "trapezoid" | "parallelogram". The node "name" is rendered as the centered label.',
         'Class Members & Compartments ("kind": "class"): Supports "attributes" array and "operations" array. Section visibility can be toggled via boolean flags "showAttributes" and "showOperations" (default true).',
         'Attributes Format: Each attribute object requires "id" (unique string), "visibility" (one of: "+" [public], "-" [private], "#" [protected], "~" [package/internal]), "name" (string), and "type" (type string e.g. "string", "number", "Date").',
         'Operations Format: Each operation object requires "id" (unique string), "visibility" ("+" | "-" | "#" | "~"), "name" (method name string), "returnType" (return type string, e.g. "void", "Promise<T>", "boolean"), "signature" (e.g. "(id: string, count: number)"), and "parameters" array of argument objects ({ "id": string, "name": string, "type": string }).',
-        'Relationships ("edges[]"): Defines connections between nodes. Required fields: "id" (unique string), "kind" (relationship semantic type: "association" | "dependency" | "generalization" | "realization" | "aggregation" | "composition"), "source" ({ "nodeId": string, "multiplicity"?: string }), and "target" ({ "nodeId": string, "multiplicity"?: string }). Optional "label" (string rendered at midpoint).',
+        'Relationships ("edges[]"): Defines connections between nodes. Required fields: "id" (unique string), "kind" (relationship semantic type: "association" | "dependency" | "generalization" | "realization" | "aggregation" | "composition"), "source" ({ "nodeId": string, "multiplicity"?: string }), and "target" ({ "nodeId": string, "multiplicity"?: string }). Optional "label" (string rendered at midpoint). Frames cannot be endpoints for edges.',
         'Endpoint Multiplicities: Expressed as cardinality strings on endpoints: "source.multiplicity" and "target.multiplicity" (e.g. "1", "*", "0..1", "1..*", "0..n", or omit/empty if none).',
-        'Visual Presentation ("edge.visual"): Optional visual options: "line" ("solid" | "dashed"), "routing" ("straight" | "bezier"), and endpoint decorations "start" / "end" ({ "shape": "none" | "circle" | "diamond" | "square" | "triangle" | "open-arrow", "fill"?: "hollow" | "filled", "size"?: number }). Only closed shapes support "fill". Standard semantic defaults: generalization = hollow triangle end; realization = dashed with hollow triangle end; aggregation = hollow diamond start; composition = filled diamond start; dependency = dashed with open-arrow end; association = solid line with none ends.',
-        'Canvas Layout ("layout.nodes"): Bounding box for every node keyed by nodeId: { "x": number, "y": number, "width": number, "height": number }. Coordinates snap to a 20px grid (multiples of 20). Width >= 100, height >= 60 for classes; width >= 80, height >= 50 for shapes; width >= 120, height >= 60 for notes.',
+        'Visual Presentation ("edge.visual"): Optional visual options: "line" ("solid" | "dashed"), "routing" ("straight" | "bezier" | "orthogonal"), and endpoint decorations "start" / "end" ({ "shape": "none" | "circle" | "diamond" | "square" | "triangle" | "open-arrow", "fill"?: "hollow" | "filled", "size"?: number }). Only closed shapes support "fill". Standard semantic defaults: generalization = hollow triangle end; realization = dashed with hollow triangle end; aggregation = hollow diamond start; composition = filled diamond start; dependency = dashed with open-arrow end; association = solid line with none ends.',
+        'Canvas Layout ("layout.nodes"): Bounding box for every node keyed by nodeId: { "x": number, "y": number, "width": number, "height": number }. Coordinates snap to a 20px grid (multiples of 20). Width >= 100, height >= 60 for classes; width >= 80, height >= 50 for shapes; width >= 120, height >= 60 for notes; width >= 160, height >= 100 for frames.',
         "Architectural Model Scope: This diagram is a selective architectural view. Absence of elements or relationships does not imply absence in the underlying implementation code."
       ],
       editingRules: [
         "Strict JSON Conformity: Output strictly valid standard JSON with 2-space indentation. Never use JavaScript comments, trailing commas, single quotes, or unquoted identifiers.",
         'Document Versioning: The root "version" field must match the Vizion extension version. Do NOT output alternate version fields like "schemaVersion", "formatVersion", or "instructionsVersion".',
-        'Referential Integrity: Every "source.nodeId" and "target.nodeId" in "edges[]" MUST exactly match an existing node "id" in "nodes[]". When removing a node from "nodes[]", you must atomically delete all edges referencing its ID.',
+        'Referential Integrity: Every "source.nodeId" and "target.nodeId" in "edges[]" MUST exactly match an existing node "id" in "nodes[]", and cannot reference a "frame" node. When removing a node from "nodes[]", you must atomically delete all edges referencing its ID.',
+        `Frame Containment & Integrity: Frame nodes cannot have edges of their own. Every node listed in a frame's "children" MUST exist in "nodes[]". Elements can overlap a frame without being in its children; a node is only contained in a frame if listed in its "children", which happens when an element is dragged into the frame with the cursor hovering over it.`,
         'Layout Synchronization: Every node added to "nodes[]" MUST have a corresponding bounding box in "layout.nodes[nodeId]" ({ "x": number, "y": number, "width": number, "height": number }) aligned to a 20px grid. When deleting a node, delete its layout entry.',
         'Preserve Existing Identifiers: Never alter existing "id" strings when updating nodes, edges, attributes, operations, or parameters. When creating new entities, generate clean, unique kebab-case IDs (e.g., "node-order-service", "edge-order-payment-1", "order-attr-status", "order-op-cancel", "cancel-arg-reason").',
-        'Allowed Enums & Data Values: Strictly use only documented enum values \u2014 node kinds: "class"|"shape"|"note"; shapes: "ellipse"|"rectangle"|"rhombus"|"trapezoid"|"parallelogram"; edge kinds: "association"|"dependency"|"generalization"|"realization"|"aggregation"|"composition"; visibilities: "+"|"-"|"#"|"~"; endpoint shapes: "none"|"circle"|"diamond"|"square"|"triangle"|"open-arrow"; fills: "hollow"|"filled".',
+        'Allowed Enums & Data Values: Strictly use only documented enum values \u2014 node kinds: "class"|"shape"|"note"|"frame"; shapes: "ellipse"|"rectangle"|"rhombus"|"trapezoid"|"parallelogram"; edge kinds: "association"|"dependency"|"generalization"|"realization"|"aggregation"|"composition"; visibilities: "+"|"-"|"#"|"~"; endpoint shapes: "none"|"circle"|"diamond"|"square"|"triangle"|"open-arrow"; fills: "hollow"|"filled".',
         'Preserve Unknown & Custom Fields: Preserve all unrecognized top-level and nested properties, annotations, extension keys, and this "ai" section intact across edits.',
         "Non-Interference with Source Code: Do not modify repository application source code when asked to edit this architecture diagram, unless the user explicitly requests code changes."
       ]
     },
+    defaultRouting: "orthogonal",
     nodes: [],
     edges: [],
     layout: {
@@ -326,10 +318,6 @@ function registerVizionCommands(context, registry) {
     vscode.commands.registerCommand("vizion.resetCanvasZoom", () => {
       const active = registry.getActiveCoordinator();
       active?.broadcastCommand("resetZoom", true);
-    }),
-    vscode.commands.registerCommand("vizion.exportCurrentSvg", () => {
-      const active = registry.getActiveCoordinator();
-      active?.broadcastCommand("requestSvgExport", true);
     })
   );
 }
@@ -1848,10 +1836,41 @@ function registerUmlRelationPreset(preset) {
   relationPresetRegistry.set(preset.kind, preset);
 }
 function getUmlRelationPreset(kind) {
+  if (kind === "none") {
+    return relationPresetRegistry.get("other");
+  }
   return relationPresetRegistry.get(kind);
 }
 function listUmlRelationPresets() {
   return Array.from(relationPresetRegistry.values());
+}
+function detectMatchingRelationPreset(line, start, end) {
+  const isDashed = line === "dashed";
+  const startShape = start?.shape ?? "none";
+  const startFill = start?.fill ?? "hollow";
+  const endShape = end?.shape ?? "none";
+  const endFill = end?.fill ?? "hollow";
+  if (isDashed && startShape === "none" && endShape === "open-arrow") {
+    return "dependency";
+  }
+  if (isDashed && startShape === "none" && endShape === "triangle" && endFill === "hollow") {
+    return "realization";
+  }
+  if (!isDashed && startShape === "none" && endShape === "triangle" && endFill === "hollow") {
+    return "generalization";
+  }
+  if (!isDashed && startShape === "diamond" && startFill === "hollow" && endShape === "none") {
+    return "aggregation";
+  }
+  if (!isDashed && startShape === "diamond" && startFill === "filled" && endShape === "none") {
+    return "composition";
+  }
+  const isStartAssoc = startShape === "none" || startShape === "open-arrow";
+  const isEndAssoc = endShape === "none" || endShape === "open-arrow";
+  if (!isDashed && isStartAssoc && isEndAssoc) {
+    return "association";
+  }
+  return null;
 }
 registerEndpointShape({
   kind: "none",
@@ -1931,7 +1950,7 @@ registerUmlNodeKind({
   kind: "class",
   label: "Class",
   description: "Standard UML class with attributes and operations compartments",
-  defaultWidth: 210,
+  defaultWidth: 240,
   defaultHeight: 140,
   hasCompartments: true
 });
@@ -1951,12 +1970,20 @@ registerUmlNodeKind({
   defaultHeight: 90,
   hasCompartments: false
 });
+registerUmlNodeKind({
+  kind: "frame",
+  label: "Frame",
+  description: "Container frame with label that automatically encloses contained elements",
+  defaultWidth: 260,
+  defaultHeight: 180,
+  hasCompartments: false
+});
 registerUmlRelationPreset({
   kind: "association",
   label: "Association",
   description: "Structural link between classes (solid line, no endpoint markers by default)",
   line: "solid",
-  routing: "bezier",
+  routing: "default",
   start: { shape: "none", size: 10 },
   end: { shape: "none", size: 10 }
 });
@@ -1965,7 +1992,7 @@ registerUmlRelationPreset({
   label: "Dependency",
   description: "Uses/depends-on relationship (dashed line, open arrow at target)",
   line: "dashed",
-  routing: "bezier",
+  routing: "default",
   start: { shape: "none", size: 10 },
   end: { shape: "open-arrow", size: 11 }
 });
@@ -1974,7 +2001,7 @@ registerUmlRelationPreset({
   label: "Generalization (Inheritance)",
   description: "Subclasses a general classifier (solid line, hollow triangle at target)",
   line: "solid",
-  routing: "bezier",
+  routing: "default",
   start: { shape: "none", size: 10 },
   end: { shape: "triangle", fill: "hollow", size: 12 }
 });
@@ -1983,7 +2010,7 @@ registerUmlRelationPreset({
   label: "Realization (Implements)",
   description: "Implements a specification contract (dashed line, hollow triangle at target)",
   line: "dashed",
-  routing: "bezier",
+  routing: "default",
   start: { shape: "none", size: 10 },
   end: { shape: "triangle", fill: "hollow", size: 12 }
 });
@@ -1992,7 +2019,7 @@ registerUmlRelationPreset({
   label: "Aggregation",
   description: "Whole-part weak ownership (solid line, hollow diamond at source)",
   line: "solid",
-  routing: "bezier",
+  routing: "default",
   start: { shape: "diamond", fill: "hollow", size: 13 },
   end: { shape: "none", size: 10 }
 });
@@ -2001,8 +2028,17 @@ registerUmlRelationPreset({
   label: "Composition",
   description: "Whole-part strong lifecycle ownership (solid line, filled diamond at source)",
   line: "solid",
-  routing: "bezier",
+  routing: "default",
   start: { shape: "diamond", fill: "filled", size: 13 },
+  end: { shape: "none", size: 10 }
+});
+registerUmlRelationPreset({
+  kind: "other",
+  label: "Other",
+  description: "Generic relation without semantic UML decoration",
+  line: "dashed",
+  routing: "default",
+  start: { shape: "none", size: 10 },
   end: { shape: "none", size: 10 }
 });
 
@@ -2020,7 +2056,9 @@ var VALID_RELATION_KINDS = /* @__PURE__ */ new Set([
   "generalization",
   "realization",
   "aggregation",
-  "composition"
+  "composition",
+  "other",
+  "none"
 ]);
 var VALID_SHAPE_GEOMETRIES = /* @__PURE__ */ new Set([
   "ellipse",
@@ -2051,7 +2089,7 @@ function validateAiGuidance(ai, issues) {
   if (!isPlainObject(ai)) {
     issues.push({
       path: "ai",
-      message: 'Missing or invalid "ai" guidance object (must include purpose, interpretation, and editingRules).',
+      message: 'Missing or invalid "ai" guidance object (must include interpretation and editingRules).',
       severity: "error"
     });
     return;
@@ -2065,10 +2103,10 @@ function validateAiGuidance(ai, issues) {
       });
     }
   }
-  if (typeof ai.purpose !== "string" || ai.purpose.trim().length === 0) {
+  if (ai.purpose !== void 0 && typeof ai.purpose !== "string") {
     issues.push({
       path: "ai.purpose",
-      message: "ai.purpose must be a non-empty string.",
+      message: "ai.purpose must be a string.",
       severity: "error"
     });
   }
@@ -2095,6 +2133,22 @@ function validateUmlDocument(raw, issues) {
       message: 'Document "title" must be a non-empty string.',
       severity: "error"
     });
+  }
+  if (raw.description !== void 0 && typeof raw.description !== "string") {
+    issues.push({
+      path: "description",
+      message: 'Document "description" must be a string.',
+      severity: "error"
+    });
+  }
+  if (raw.defaultRouting !== void 0) {
+    if (typeof raw.defaultRouting !== "string" || !["orthogonal", "bezier", "straight"].includes(raw.defaultRouting)) {
+      issues.push({
+        path: "defaultRouting",
+        message: 'Document "defaultRouting" must be one of: orthogonal, bezier, straight.',
+        severity: "error"
+      });
+    }
   }
   validateAiGuidance(raw.ai, issues);
   if (!Array.isArray(raw.nodes)) {
@@ -2465,7 +2519,80 @@ function parseAndValidateDocument(text, expectedKind = "uml") {
   };
 }
 
+// src/shared/documents/migrations.ts
+var DOCUMENT_MIGRATIONS = [
+  {
+    id: "migrate-purpose-to-description",
+    name: "Move Purpose to Root Description",
+    description: 'Moves legacy "ai.purpose" to root "description" property under title.',
+    shouldApply: (doc) => {
+      const ai = doc.ai;
+      return Boolean(ai && typeof ai.purpose === "string");
+    },
+    apply: (doc) => {
+      const ai = doc.ai;
+      if (ai && typeof ai.purpose === "string") {
+        if (!doc.description) {
+          doc.description = ai.purpose;
+        }
+        delete ai.purpose;
+      }
+    }
+  },
+  {
+    id: "refresh-ai-guidance",
+    name: "Update AI Guidance Rules",
+    description: "Updates embedded interpretation and editing rules to the latest version.",
+    shouldApply: (doc) => {
+      const template = createDefaultUmlDocument(doc.title);
+      const currentInterp = JSON.stringify(doc.ai?.interpretation ?? []);
+      const templateInterp = JSON.stringify(template.ai.interpretation);
+      const currentRules = JSON.stringify(doc.ai?.editingRules ?? []);
+      const templateRules = JSON.stringify(template.ai.editingRules);
+      return currentInterp !== templateInterp || currentRules !== templateRules;
+    },
+    apply: (doc) => {
+      const template = createDefaultUmlDocument(doc.title);
+      doc.ai.interpretation = [...template.ai.interpretation];
+      doc.ai.editingRules = [...template.ai.editingRules];
+    }
+  },
+  {
+    id: "sync-version",
+    name: "Sync Document Version",
+    description: `Updates document version to current extension version (${EXTENSION_VERSION}).`,
+    shouldApply: (doc) => doc.version !== EXTENSION_VERSION,
+    apply: (doc) => {
+      doc.version = EXTENSION_VERSION;
+    }
+  }
+];
+function runDocumentMigrations(doc) {
+  const cloned = JSON.parse(JSON.stringify(doc));
+  const appliedSteps = [];
+  for (const step of DOCUMENT_MIGRATIONS) {
+    if (step.shouldApply(cloned)) {
+      step.apply(cloned);
+      appliedSteps.push(step.id);
+    }
+  }
+  cloned.version = EXTENSION_VERSION;
+  return { doc: cloned, appliedSteps };
+}
+
 // src/shared/operations/index.ts
+function resolveMatchingRelation(currentKind, line, start, end) {
+  const match = detectMatchingRelationPreset(line, start, end);
+  if (match) {
+    return match;
+  }
+  const isStartAssoc = (start?.shape ?? "none") === "none" || (start?.shape ?? "none") === "open-arrow";
+  const isEndAssoc = (end?.shape ?? "none") === "none" || (end?.shape ?? "none") === "open-arrow";
+  if (line !== "dashed" && isStartAssoc && isEndAssoc) {
+    return "association";
+  }
+  return "other";
+}
 function generateCloneId(baseId, existingIds) {
   const cleanBase = baseId.replace(/-copy(-\d+)?$/, "");
   let candidate = `${cleanBase}-copy`;
@@ -2493,9 +2620,30 @@ function applyUmlOperationToText(rawText, op) {
       if (op.title !== void 0 && op.title.trim().length > 0) {
         patches.push({ path: ["title"], value: op.title.trim() });
       }
-      if (op.purpose !== void 0) {
-        patches.push({ path: ["ai", "purpose"], value: op.purpose.trim() });
+      if (op.description !== void 0) {
+        patches.push({ path: ["description"], value: op.description.trim() });
+      } else if (op.purpose !== void 0) {
+        patches.push({ path: ["description"], value: op.purpose.trim() });
       }
+      if (op.defaultRouting !== void 0) {
+        patches.push({ path: ["defaultRouting"], value: op.defaultRouting });
+      }
+      break;
+    }
+    case "uml.migrateDocument": {
+      const { doc: migratedDoc, appliedSteps } = runDocumentMigrations(doc);
+      if (appliedSteps.length === 0 && doc.version === EXTENSION_VERSION) {
+        return { ok: false, error: "Document is already up to date." };
+      }
+      patches.push({ path: ["version"], value: EXTENSION_VERSION });
+      if (migratedDoc.description !== void 0) {
+        patches.push({ path: ["description"], value: migratedDoc.description });
+      }
+      if (doc.ai && "purpose" in doc.ai) {
+        patches.push({ path: ["ai", "purpose"], value: void 0 });
+      }
+      patches.push({ path: ["ai", "interpretation"], value: migratedDoc.ai.interpretation });
+      patches.push({ path: ["ai", "editingRules"], value: migratedDoc.ai.editingRules });
       break;
     }
     case "uml.addNode": {
@@ -2503,7 +2651,7 @@ function applyUmlOperationToText(rawText, op) {
         return { ok: false, error: `Node ID "${op.id}" already exists.` };
       }
       const descriptor = getUmlNodeKind(op.kind);
-      const width = Math.max(60, Math.round(op.width ?? descriptor?.defaultWidth ?? 210));
+      const width = Math.max(60, Math.round(op.width ?? descriptor?.defaultWidth ?? 240));
       const height = Math.max(45, Math.round(op.height ?? descriptor?.defaultHeight ?? 140));
       const newNode = {
         id: op.id,
@@ -2517,6 +2665,8 @@ function applyUmlOperationToText(rawText, op) {
         newNode.text = op.text ?? "Design note...";
       } else if (op.kind === "shape") {
         newNode.shape = op.shape ?? "rectangle";
+      } else if (op.kind === "frame") {
+        newNode.children = op.children ?? [];
       } else if (descriptor?.hasCompartments !== false) {
         newNode.attributes = [
           {
@@ -2526,16 +2676,7 @@ function applyUmlOperationToText(rawText, op) {
             type: "string"
           }
         ];
-        newNode.operations = [
-          {
-            id: `${op.id}-op-1`,
-            visibility: "+",
-            name: "validate",
-            signature: "()",
-            returnType: "boolean",
-            parameters: []
-          }
-        ];
+        newNode.operations = [];
       }
       const layoutBox = {
         x: Math.round(op.x),
@@ -2582,6 +2723,12 @@ function applyUmlOperationToText(rawText, op) {
       if (op.shape !== void 0) {
         patches.push({ path: ["nodes", idx, "shape"], value: op.shape });
       }
+      if (op.children !== void 0) {
+        patches.push({ path: ["nodes", idx, "children"], value: op.children });
+      }
+      if (op.line !== void 0) {
+        patches.push({ path: ["nodes", idx, "line"], value: op.line === "solid" ? void 0 : op.line });
+      }
       if (op.showAttributes !== void 0) {
         patches.push({ path: ["nodes", idx, "showAttributes"], value: op.showAttributes });
       }
@@ -2613,6 +2760,17 @@ function applyUmlOperationToText(rawText, op) {
           }
         });
       }
+      if (op.frameChildrenUpdates) {
+        for (const [frameId, children] of Object.entries(op.frameChildrenUpdates)) {
+          const idx = doc.nodes.findIndex((n) => n.id === frameId);
+          if (idx !== -1) {
+            patches.push({
+              path: ["nodes", idx, "children"],
+              value: children
+            });
+          }
+        }
+      }
       break;
     }
     case "uml.deleteEntities": {
@@ -2624,7 +2782,15 @@ function applyUmlOperationToText(rawText, op) {
         }
       }
       if (delNodes.size > 0) {
-        const remainingNodes = doc.nodes.filter((n) => !delNodes.has(n.id));
+        const remainingNodes = doc.nodes.filter((n) => !delNodes.has(n.id)).map((n) => {
+          if (n.kind === "frame" && n.children) {
+            const cleanedChildren = n.children.filter((cid) => !delNodes.has(cid));
+            if (cleanedChildren.length !== n.children.length) {
+              return { ...n, children: cleanedChildren };
+            }
+          }
+          return n;
+        });
         patches.push({ path: ["nodes"], value: remainingNodes });
         for (const nodeId of delNodes) {
           if (nodeId in doc.layout.nodes) {
@@ -2663,7 +2829,8 @@ function applyUmlOperationToText(rawText, op) {
           const freshNameMap = {
             class: `Class${nextNum}`,
             note: `Note ${nextNum}`,
-            shape: `Shape ${nextNum}`
+            shape: `Shape ${nextNum}`,
+            frame: `Frame ${nextNum}`
           };
           const freshId = `${node.kind}-${Date.now().toString(36).slice(-4)}-${clonedNodes.length + 1}`;
           existingNodeIds.delete(newId);
@@ -2723,6 +2890,9 @@ function applyUmlOperationToText(rawText, op) {
             id: newId,
             name: `${node.name}Copy`
           };
+          if (node.children) {
+            clonedNode.children = node.children.map((cid) => nodeIdMap.get(cid)).filter((cid) => Boolean(cid));
+          }
           if (attrCopy) clonedNode.attributes = attrCopy;
           if (opCopy) clonedNode.operations = opCopy;
           clonedNodes.push(clonedNode);
@@ -2739,8 +2909,8 @@ function applyUmlOperationToText(rawText, op) {
           value: {
             x: Math.round((origLayout.x + offsetX) / 20) * 20,
             y: Math.round((origLayout.y + offsetY) / 20) * 20,
-            width: stripCustom ? descriptor?.defaultWidth ?? 210 : origLayout.width,
-            height: stripCustom ? descriptor?.defaultHeight ?? 140 : origLayout.height
+            width: origLayout.width,
+            height: origLayout.height
           }
         });
       }
@@ -2775,7 +2945,7 @@ function applyUmlOperationToText(rawText, op) {
           ...stripCustom ? {
             visual: {
               line: preset?.line ?? "solid",
-              routing: preset?.routing ?? "bezier",
+              routing: preset?.routing ?? "default",
               start: { ...preset?.start ?? { shape: "none", size: 10 } },
               end: { ...preset?.end ?? { shape: "none", size: 10 } }
             }
@@ -2802,12 +2972,16 @@ function applyUmlOperationToText(rawText, op) {
       if (!targetNode) {
         return { ok: false, error: `Target node "${op.targetNodeId}" does not exist.` };
       }
-      const preset = getUmlRelationPreset(op.kind);
+      if (sourceNode.kind === "frame" || targetNode.kind === "frame") {
+        return { ok: false, error: "Frames cannot have relationships." };
+      }
       const touchesNote = sourceNode.kind === "note" || targetNode.kind === "note";
+      const edgeKind = op.kind ?? (touchesNote ? "other" : "association");
+      const preset = getUmlRelationPreset(edgeKind);
       const defaultLine = touchesNote ? "dashed" : preset?.line ?? "solid";
       const newEdge = {
         id: op.id,
-        kind: op.kind,
+        kind: edgeKind,
         source: {
           nodeId: op.sourceNodeId
         },
@@ -2817,7 +2991,7 @@ function applyUmlOperationToText(rawText, op) {
         ...op.label ? { label: op.label } : {},
         visual: {
           line: op.line ?? defaultLine,
-          routing: preset?.routing ?? "bezier",
+          routing: op.routing ?? preset?.routing ?? "default",
           start: { ...preset?.start ?? { shape: "none", size: 10 } },
           end: { ...preset?.end ?? { shape: "none", size: 10 } }
         }
@@ -2847,8 +3021,12 @@ function applyUmlOperationToText(rawText, op) {
         });
       }
       if (op.sourceNodeId !== void 0) {
-        if (!doc.nodes.some((n) => n.id === op.sourceNodeId)) {
+        const sNode = doc.nodes.find((n) => n.id === op.sourceNodeId);
+        if (!sNode) {
           return { ok: false, error: `Node "${op.sourceNodeId}" does not exist.` };
+        }
+        if (sNode.kind === "frame") {
+          return { ok: false, error: "Frames cannot have relationships." };
         }
         patches.push({
           path: ["edges", idx, "source", "nodeId"],
@@ -2856,8 +3034,12 @@ function applyUmlOperationToText(rawText, op) {
         });
       }
       if (op.targetNodeId !== void 0) {
-        if (!doc.nodes.some((n) => n.id === op.targetNodeId)) {
+        const tNode = doc.nodes.find((n) => n.id === op.targetNodeId);
+        if (!tNode) {
           return { ok: false, error: `Node "${op.targetNodeId}" does not exist.` };
+        }
+        if (tNode.kind === "frame") {
+          return { ok: false, error: "Frames cannot have relationships." };
         }
         patches.push({
           path: ["edges", idx, "target", "nodeId"],
@@ -2886,29 +3068,31 @@ function applyUmlOperationToText(rawText, op) {
         patches.push({ path: ["edges", idx, "kind"], value: op.kind });
         const preset = getUmlRelationPreset(op.kind);
         if (preset) {
-          const effectiveSource = op.sourceNodeId ?? existing.source.nodeId;
-          const effectiveTarget = op.targetNodeId ?? existing.target.nodeId;
-          const sourceNode = doc.nodes.find((n) => n.id === effectiveSource);
-          const targetNode = doc.nodes.find((n) => n.id === effectiveTarget);
-          const touchesNote = sourceNode?.kind === "note" || targetNode?.kind === "note";
-          const defaultLine = touchesNote ? "dashed" : preset.line;
           patches.push({
             path: ["edges", idx, "visual"],
             value: {
               ...existing.visual ?? {},
-              line: defaultLine,
+              line: preset.line,
               routing: existing.visual?.routing ?? preset.routing,
               start: { ...preset.start },
               end: { ...preset.end }
             }
           });
         }
-      }
-      if (op.line !== void 0) {
+      } else if (op.line !== void 0) {
         patches.push({
           path: ["edges", idx, "visual", "line"],
           value: op.line
         });
+        const nextKind = resolveMatchingRelation(
+          existing.kind,
+          op.line,
+          existing.visual?.start,
+          existing.visual?.end
+        );
+        if (nextKind !== existing.kind) {
+          patches.push({ path: ["edges", idx, "kind"], value: nextKind });
+        }
       }
       if (op.routing !== void 0) {
         patches.push({
@@ -2947,7 +3131,7 @@ function applyUmlOperationToText(rawText, op) {
           path: ["edges", idx, "visual"],
           value: {
             line: preset?.line ?? "solid",
-            routing: preset?.routing ?? "bezier",
+            routing: preset?.routing ?? "default",
             start: op.end === "start" ? cleanedDecoration : { ...preset?.start ?? { shape: "none", size: 10 } },
             end: op.end === "end" ? cleanedDecoration : { ...preset?.end ?? { shape: "none", size: 10 } }
           }
@@ -2957,6 +3141,18 @@ function applyUmlOperationToText(rawText, op) {
           path: ["edges", idx, "visual", op.end],
           value: cleanedDecoration
         });
+      }
+      const currentEdge = doc.edges[idx];
+      const startDec = op.end === "start" ? cleanedDecoration : currentEdge.visual?.start;
+      const endDec = op.end === "end" ? cleanedDecoration : currentEdge.visual?.end;
+      const nextKind = resolveMatchingRelation(
+        currentEdge.kind,
+        currentEdge.visual?.line,
+        startDec,
+        endDec
+      );
+      if (nextKind !== currentEdge.kind) {
+        patches.push({ path: ["edges", idx, "kind"], value: nextKind });
       }
       break;
     }
@@ -3156,8 +3352,21 @@ var DocumentCoordinator = class {
         });
         break;
       }
-      case "webview.exportSvgContent": {
-        await this.saveExportedSvg(msg.svgContent);
+      case "webview.exportFile": {
+        await this.exportDiagramPng(msg.base64Data);
+        break;
+      }
+      case "webview.copyImageToClipboard": {
+        await this.copyImageToClipboard(msg.base64Data);
+        break;
+      }
+      case "webview.checkForExtensionUpdate": {
+        try {
+          await vscode3.commands.executeCommand("workbench.extensions.action.checkForUpdates");
+          await vscode3.commands.executeCommand("workbench.extensions.search", "@installed Vizion");
+        } catch {
+          void vscode3.window.showInformationMessage("Please check the Extensions view for the latest Vizion update.");
+        }
         break;
       }
     }
@@ -3383,7 +3592,7 @@ var DocumentCoordinator = class {
       }
       chosenKind = picked.kindValue;
     }
-    const defaultName = chosenKind === "note" ? "Architecture Note" : chosenKind === "shape" ? "Shape" : "DomainEntity";
+    const defaultName = chosenKind === "note" ? "Architecture Note" : chosenKind === "shape" ? "Shape" : chosenKind === "frame" ? "Frame" : "DomainEntity";
     const enteredName = await vscode3.window.showInputBox({
       title: `Vizion UML: New ${chosenKind.toUpperCase()} Name`,
       prompt: chosenKind === "note" ? "Enter note text or summary" : `Enter ${chosenKind} identifier`,
@@ -3555,7 +3764,7 @@ var DocumentCoordinator = class {
   async promptRenameEntityFlow(panel, expectedVersion, targetKind, targetId, currentValue) {
     const titleMap = {
       node: "Rename UML Node",
-      edgeLabel: "Edit Relation Label",
+      edgeLabel: "Edit Label",
       documentTitle: "Rename Document Title"
     };
     const nextValue = await vscode3.window.showInputBox({
@@ -3596,20 +3805,31 @@ var DocumentCoordinator = class {
       }
     });
   }
-  async saveExportedSvg(svgContent) {
-    const defaultUri = vscode3.Uri.file(
-      this.document.uri.fsPath.replace(/(?:\.uml)?\.viz$/i, ".svg")
-    );
-    const targetUri = await vscode3.window.showSaveDialog({
-      title: "Export Vizion Diagram as SVG",
-      defaultUri,
-      filters: { "SVG Vector Image": ["svg"] }
-    });
-    if (!targetUri) return;
-    await vscode3.workspace.fs.writeFile(targetUri, Buffer.from(svgContent, "utf8"));
-    void vscode3.window.showInformationMessage(
-      `Exported SVG to ${vscode3.workspace.asRelativePath(targetUri)}`
-    );
+  async exportDiagramPng(base64Data) {
+    const originalFsPath = this.document.uri.fsPath;
+    const targetFsPath = originalFsPath.replace(/(?:\.uml)?\.viz$/i, ".png");
+    const targetUri = vscode3.Uri.file(targetFsPath);
+    const bytes = Buffer.from(base64Data, "base64");
+    await vscode3.workspace.fs.writeFile(targetUri, bytes);
+    const relName = vscode3.workspace.asRelativePath(targetUri);
+    void vscode3.window.showInformationMessage(`Exported diagram PNG to ${relName}`);
+  }
+  async copyImageToClipboard(base64Data) {
+    const buffer = Buffer.from(base64Data, "base64");
+    try {
+      if (process.platform === "linux") {
+        const { spawn } = await import("node:child_process");
+        const proc = spawn("wl-copy", ["-t", "image/png"]);
+        proc.stdin.write(buffer);
+        proc.stdin.end();
+        await new Promise((resolve, reject) => {
+          proc.on("close", (code) => code === 0 ? resolve() : reject(new Error(`wl-copy exited with ${code}`)));
+          proc.on("error", reject);
+        });
+        void vscode3.window.showInformationMessage("Diagram image snapshot copied to clipboard");
+      }
+    } catch {
+    }
   }
   restoreFocus(panel) {
     if (!panel) return;
@@ -3742,7 +3962,7 @@ function buildWebviewHtml(webview, extensionUri, editorKind, initialSnapshot) {
   const serializedSnapshot = JSON.stringify(initialSnapshot).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
   const csp = [
     `default-src 'none'`,
-    `img-src ${webview.cspSource} data:`,
+    `img-src ${webview.cspSource} data: blob:`,
     `style-src ${webview.cspSource} 'unsafe-inline'`,
     `font-src ${webview.cspSource} data:`,
     `script-src 'nonce-${nonce}'`

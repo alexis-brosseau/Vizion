@@ -8,6 +8,60 @@
   function isPathOpen(pathKey: string): boolean {
     return activePath === pathKey || activePath.startsWith(`${pathKey}.`);
   }
+
+  function keepMenuInView(node: HTMLElement) {
+    const rect = node.getBoundingClientRect();
+    let adjustedX = rect.left;
+    let adjustedY = rect.top;
+
+    if (rect.right > window.innerWidth - 8) {
+      adjustedX = Math.max(8, window.innerWidth - rect.width - 8);
+    }
+    if (rect.left < 8) {
+      adjustedX = 8;
+    }
+    if (rect.bottom > window.innerHeight - 8) {
+      adjustedY = Math.max(8, window.innerHeight - rect.height - 8);
+    }
+    if (rect.top < 8) {
+      adjustedY = 8;
+    }
+
+    node.style.left = `${adjustedX}px`;
+    node.style.top = `${adjustedY}px`;
+  }
+
+  function keepSubmenuInView(node: HTMLElement) {
+    const rect = node.getBoundingClientRect();
+
+    // Horizontal: If submenu extends beyond right edge, flip to open on left
+    if (rect.right > window.innerWidth - 8) {
+      node.style.left = 'auto';
+      node.style.right = '100%';
+      node.style.marginLeft = '0px';
+      node.style.marginRight = '2px';
+    }
+
+    // Check if it overflows left
+    const updatedRect = node.getBoundingClientRect();
+    if (updatedRect.left < 8) {
+      node.style.left = '8px';
+      node.style.right = 'auto';
+      node.style.margin = '0px';
+    }
+
+    // Vertical: If submenu extends below window bottom, shift up
+    if (updatedRect.bottom > window.innerHeight - 8) {
+      const overflowY = updatedRect.bottom - (window.innerHeight - 8);
+      node.style.top = `${-4 - overflowY}px`;
+    }
+
+    const finalRect = node.getBoundingClientRect();
+    if (finalRect.top < 8) {
+      const curTop = parseInt(node.style.top || '-4', 10);
+      node.style.top = `${curTop + (8 - finalRect.top)}px`;
+    }
+  }
 </script>
 
 {#snippet menuList(items: ContextMenuItem[], parentPath: string)}
@@ -39,7 +93,12 @@
         </button>
 
         {#if isPathOpen(itemPath)}
-          <div class="vz-context-submenu" role="menu" tabindex="-1">
+          <div
+            class="vz-context-submenu"
+            use:keepSubmenuInView
+            role="menu"
+            tabindex="-1"
+          >
             {@render menuList(item.submenu, itemPath)}
           </div>
         {/if}
@@ -85,6 +144,7 @@
   >
     <div
       class="vz-context-menu"
+      use:keepMenuInView
       style="left: {store.contextMenu.x}px; top: {store.contextMenu.y}px;"
       role="menu"
       tabindex="-1"

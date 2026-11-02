@@ -28,7 +28,9 @@ const VALID_RELATION_KINDS = new Set([
   'generalization',
   'realization',
   'aggregation',
-  'composition'
+  'composition',
+  'other',
+  'none'
 ]);
 const VALID_SHAPE_GEOMETRIES = new Set([
   'ellipse',
@@ -66,7 +68,7 @@ function validateAiGuidance(ai: unknown, issues: ValidationIssue[]): void {
   if (!isPlainObject(ai)) {
     issues.push({
       path: 'ai',
-      message: 'Missing or invalid "ai" guidance object (must include purpose, interpretation, and editingRules).',
+      message: 'Missing or invalid "ai" guidance object (must include interpretation and editingRules).',
       severity: 'error'
     });
     return;
@@ -82,10 +84,10 @@ function validateAiGuidance(ai: unknown, issues: ValidationIssue[]): void {
     }
   }
 
-  if (typeof ai.purpose !== 'string' || ai.purpose.trim().length === 0) {
+  if (ai.purpose !== undefined && typeof ai.purpose !== 'string') {
     issues.push({
       path: 'ai.purpose',
-      message: 'ai.purpose must be a non-empty string.',
+      message: 'ai.purpose must be a string.',
       severity: 'error'
     });
   }
@@ -125,6 +127,27 @@ function validateUmlDocument(
       message: 'Document "title" must be a non-empty string.',
       severity: 'error'
     });
+  }
+
+  if (raw.description !== undefined && typeof raw.description !== 'string') {
+    issues.push({
+      path: 'description',
+      message: 'Document "description" must be a string.',
+      severity: 'error'
+    });
+  }
+
+  if (raw.defaultRouting !== undefined) {
+    if (
+      typeof raw.defaultRouting !== 'string' ||
+      !['orthogonal', 'bezier', 'straight'].includes(raw.defaultRouting)
+    ) {
+      issues.push({
+        path: 'defaultRouting',
+        message: 'Document "defaultRouting" must be one of: orthogonal, bezier, straight.',
+        severity: 'error'
+      });
+    }
   }
 
   validateAiGuidance(raw.ai, issues);

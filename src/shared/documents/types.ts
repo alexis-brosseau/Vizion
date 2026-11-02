@@ -9,7 +9,7 @@
 export type VizionDocumentKind = 'uml';
 
 export interface EmbeddedAiGuidance {
-  purpose: string;
+  purpose?: string;
   interpretation: string[];
   editingRules: string[];
   [unknownKey: string]: unknown;
@@ -60,6 +60,8 @@ export interface UmlNode {
   stereotype?: string;
   text?: string;
   shape?: UmlShapeGeometry;
+  children?: string[];
+  line?: 'solid' | 'dashed';
   showAttributes?: boolean;
   showOperations?: boolean;
   attributes?: UmlAttribute[];
@@ -73,7 +75,9 @@ export type UmlRelationKind =
   | 'generalization'
   | 'realization'
   | 'aggregation'
-  | 'composition';
+  | 'composition'
+  | 'other'
+  | 'none';
 
 export type EndpointShapeKind =
   | 'none'
@@ -94,11 +98,12 @@ export interface EndpointDecoration {
 }
 
 export type UmlLineStyle = 'solid' | 'dashed';
-export type UmlRoutingKind = 'straight' | 'bezier';
+export type UmlRoutingKind = 'straight' | 'bezier' | 'orthogonal';
+export type UmlEdgeRouting = 'default' | UmlRoutingKind;
 
 export interface UmlEdgeVisual {
   line?: UmlLineStyle;
-  routing?: UmlRoutingKind;
+  routing?: UmlEdgeRouting;
   start?: EndpointDecoration;
   end?: EndpointDecoration;
   [unknownKey: string]: unknown;
@@ -141,7 +146,9 @@ export interface UmlDocument {
   version?: string;
   kind: 'uml';
   title: string;
+  description?: string;
   ai: EmbeddedAiGuidance;
+  defaultRouting?: UmlRoutingKind;
   nodes: UmlNode[];
   edges: UmlEdge[];
   layout: {
