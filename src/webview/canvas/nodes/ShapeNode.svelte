@@ -73,11 +73,11 @@
     {#if selected}
       <rect
         class="vz-shape-selection-box"
-        x="2"
-        y="2"
-        width={Math.max(0, box.width - 4)}
-        height={Math.max(0, box.height - 4)}
-        rx="3"
+        x="1"
+        y="1"
+        width={Math.max(0, box.width - 2)}
+        height={Math.max(0, box.height - 2)}
+        rx="4"
       ></rect>
     {/if}
   </svg>

@@ -12,6 +12,7 @@
     editing = false,
     draft = '',
     readOnly = false,
+    last = false,
     onToggle,
     onDraftChange,
     onCommit,
@@ -23,6 +24,7 @@
     editing?: boolean;
     draft?: string;
     readOnly?: boolean;
+    last?: boolean;
     onToggle?: () => void;
     onDraftChange?: (value: string) => void;
     onCommit?: () => void;
@@ -47,7 +49,7 @@
 </script>
 
 {#if editing || (visible && memberCount > 0)}
-<div class="vz-uml-compartment">
+<div class="vz-uml-compartment" class:is-last={last}>
   {#if editing}
     <div class="vz-inline-sec-hdr">
       <span>{title}</span>

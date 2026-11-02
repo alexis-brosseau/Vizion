@@ -31,9 +31,7 @@
     extractOperationParameters,
     formatAttributesToText,
     formatOperationsToText,
-    formatVisibilitySign,
-    parseAttributesFromText,
-    parseOperationsFromText
+    formatVisibilitySign
   } from '../../shared/operations';
   import {
     getEndpointShape,
@@ -112,42 +110,16 @@
   let gesture = $state<UmlGestureState>({ mode: 'idle' });
   let spacePressed = $state<boolean>(false);
   let inlineEditingNodeId = $state<string | null>(null);
-  let inlineNodeNameDraft = $state<string>('');
-  let inlineNodeStereotypeDraft = $state<string>('');
-  let inlineNodeTextDraft = $state<string>('');
-  let inlineNodeAttributesDraft = $state<string>('');
-  let inlineNodeOperationsDraft = $state<string>('');
   let inlineEditingEdgeId = $state<string | null>(null);
   let inlineEdgeLabelDraft = $state<string>('');
   let lastPointerWorldPos = $state<Point2D | null>(null);
-  let lastSyncedNodeJson = $state<string>('');
 
+  // Inline node drafts are owned by store.inlineEdit. This effect only clears
+  // the local layout flag when the edited node no longer exists.
   $effect(() => {
-    if (inlineEditingNodeId && doc) {
-      const target = doc.nodes.find((n) => n.id === inlineEditingNodeId);
-      if (target) {
-        const json = JSON.stringify({
-          name: target.name,
-          stereotype: target.stereotype,
-          attributes: target.attributes,
-          operations: target.operations,
-          text: target.text
-        });
-        if (json !== lastSyncedNodeJson) {
-          lastSyncedNodeJson = json;
-          inlineNodeNameDraft = target.name ?? '';
-          inlineNodeStereotypeDraft =
-            target.kind === 'note' || target.kind === 'shape' ? '' : (target.stereotype ?? '');
-          inlineNodeTextDraft = target.text ?? '';
-          inlineNodeAttributesDraft = formatAttributesToText(target.attributes ?? []);
-          inlineNodeOperationsDraft = formatOperationsToText(target.operations ?? []);
-        }
-      } else {
-        inlineEditingNodeId = null;
-        lastSyncedNodeJson = '';
-      }
-    } else {
-      lastSyncedNodeJson = '';
+    if (inlineEditingNodeId && doc && !doc.nodes.some((node) => node.id === inlineEditingNodeId)) {
+      store.inlineEdit.cancelAll();
+      inlineEditingNodeId = null;
     }
   });
 
@@ -1126,7 +1098,9 @@
       attributes: [...existing, newAttr]
     });
     if (inlineEditingNodeId === node.id) {
-      inlineNodeAttributesDraft = formatAttributesToText([...existing, newAttr]);
+      store.inlineEdit.updateNodeDraft({
+        attributes: formatAttributesToText([...existing, newAttr])
+      });
     }
   }
 
@@ -1147,7 +1121,9 @@
       operations: [...existing, newOp]
     });
     if (inlineEditingNodeId === node.id) {
-      inlineNodeOperationsDraft = formatOperationsToText([...existing, newOp]);
+      store.inlineEdit.updateNodeDraft({
+        operations: formatOperationsToText([...existing, newOp])
+      });
     }
   }
 
@@ -1242,137 +1218,13 @@
     }
     store.inlineEdit.beginNode(node);
     inlineEditingNodeId = node.id;
-    lastSyncedNodeJson = JSON.stringify({
-      name: node.name,
-      stereotype: node.stereotype,
-      attributes: node.attributes,
-      operations: node.operations,
-      text: node.text
-    });
-    inlineNodeNameDraft = node.name ?? '';
-    inlineNodeStereotypeDraft =
-      node.kind === 'note' || node.kind === 'shape' || node.kind === 'frame' ? '' : (node.stereotype ?? '');
-    inlineNodeTextDraft = node.text ?? '';
-    inlineNodeAttributesDraft = formatAttributesToText(node.attributes ?? []);
-    inlineNodeOperationsDraft = formatOperationsToText(node.operations ?? []);
   }
 
-  function flushInlineNodeHeader(node?: UmlNode): void {
-    const nodeId = inlineEditingNodeId;
-    if (!nodeId) return;
-    const targetNode = node ?? doc?.nodes.find((n) => n.id === nodeId);
-    if (!targetNode) return;
-
-    const nextName = inlineNodeNameDraft.trim();
-    const nextStereo = inlineNodeStereotypeDraft.replace(/^[«<]+|[»>]+$/g, '').trim();
-
-    const updates: { name?: string; stereotype?: string } = {};
-    if (nextName !== targetNode.name) {
-      updates.name = nextName;
-    }
-    if (
-      targetNode.kind !== 'note' &&
-      targetNode.kind !== 'shape' &&
-      targetNode.kind !== 'frame' &&
-      nextStereo !== (targetNode.stereotype ?? '')
-    ) {
-      updates.stereotype = nextStereo; // An empty string triggers property deletion on the host
-    }
-
-    if (Object.keys(updates).length > 0) {
-      store.dispatchOperation({
-        type: 'uml.updateNode',
-        nodeId: targetNode.id,
-        ...updates
-      });
-    }
-  }
-
-  function flushInlineNodeMembers(node?: UmlNode): void {
-    const nodeId = inlineEditingNodeId;
-    if (!nodeId) return;
-    const targetNode = node ?? doc?.nodes.find((n) => n.id === nodeId);
-    if (!targetNode || targetNode.kind === 'note' || targetNode.kind === 'shape' || targetNode.kind === 'frame') return;
-
-    const nextAttrs = parseAttributesFromText(
-      inlineNodeAttributesDraft,
-      targetNode.id,
-      targetNode.attributes ?? []
-    );
-    const nextOps = parseOperationsFromText(
-      inlineNodeOperationsDraft,
-      targetNode.id,
-      targetNode.operations ?? []
-    );
-
-    const updates: { attributes?: UmlAttribute[]; operations?: UmlOperation[] } = {};
-
-    const currAttrs = targetNode.attributes ?? [];
-    const attrsChanged =
-      nextAttrs.length !== currAttrs.length ||
-      nextAttrs.some((a, i) => {
-        const c = currAttrs[i];
-        return (
-          !c ||
-          a.name !== c.name ||
-          (a.type ?? '') !== (c.type ?? '') ||
-          (a.visibility ?? '+') !== (c.visibility ?? '+')
-        );
-      });
-    if (attrsChanged) {
-      updates.attributes = nextAttrs;
-    }
-
-    const currOps = targetNode.operations ?? [];
-    const opsChanged =
-      nextOps.length !== currOps.length ||
-      nextOps.some((o, i) => {
-        const c = currOps[i];
-        return (
-          !c ||
-          o.name !== c.name ||
-          (o.returnType ?? '') !== (c.returnType ?? '') ||
-          (o.visibility ?? '+') !== (c.visibility ?? '+') ||
-          (o.signature ?? '()') !== (c.signature ?? '()')
-        );
-      });
-    if (opsChanged) {
-      updates.operations = nextOps;
-    }
-
-    if (Object.keys(updates).length > 0) {
-      store.dispatchOperation({
-        type: 'uml.updateNode',
-        nodeId: targetNode.id,
-        ...updates
-      });
-    }
-  }
-
-  function flushInlineNodeText(node?: UmlNode): void {
-    const nodeId = inlineEditingNodeId;
-    if (!nodeId) return;
-    const targetNode = node ?? doc?.nodes.find((n) => n.id === nodeId);
-    if (!targetNode || targetNode.kind !== 'note') return;
-
-    if (inlineNodeTextDraft !== (targetNode.text ?? '')) {
-      store.dispatchOperation({
-        type: 'uml.updateNode',
-        nodeId: targetNode.id,
-        text: inlineNodeTextDraft
-      });
-    }
-  }
 
   function commitInlineNodeEdit(node?: UmlNode): void {
     if (store.inlineEdit.state.mode === 'node') {
       store.inlineEdit.commitNode(node);
-      inlineEditingNodeId = null;
-      return;
     }
-    flushInlineNodeHeader(node);
-    flushInlineNodeMembers(node);
-    flushInlineNodeText(node);
     inlineEditingNodeId = null;
   }
 

@@ -94,6 +94,7 @@
     editing={isEditing}
     draft={editingState?.operations ?? ''}
     {readOnly}
+    last
     onToggle={() => toggleCompartment('operations')}
     onDraftChange={(value) => store.inlineEdit.updateNodeDraft({ operations: value })}
     onCommit={() => store.inlineEdit.commitNode(node)}

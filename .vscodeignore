@@ -12,7 +12,9 @@ scripts/**
 **/*.map
 *.vsix
 tsconfig.json
-vizion_makeover_implementation_plan.md
 AGENTS.md
-Vizion-VS-Code-UML-Sketch-Implementation-Plan.md
+agents/**
+example/**
+vizion_makeover_implementation_plan.md
+Front-End Architecture and Functional UX.md
 

@@ -54,6 +54,7 @@ describe('Vizion Document Templates & Initialization Predicates', () => {
     expect(uml.description).toBeTruthy();
     expect(uml.ai.interpretation.length).toBeGreaterThan(0);
     expect(uml.ai.editingRules.length).toBeGreaterThan(0);
+    expect(uml.ai.editingRules.some((rule) => rule.includes('10 grid cells'))).toBe(true);
     expect('schemaVersion' in uml).toBe(false);
   });
 

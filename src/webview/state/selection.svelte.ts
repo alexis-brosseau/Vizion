@@ -1,4 +1,5 @@
 import type { UmlDocument } from '../../shared/documents/types';
+import { selectEntity, syncSelectionEdges } from './selection-logic';
 
 /**
  * Owns the multi-selection set and the node/edge coupling rules:
@@ -17,15 +18,7 @@ export class SelectionController {
   }
 
   selectSingle(doc: UmlDocument | undefined, id: string, additive = false): void {
-    let next: string[];
-    if (additive) {
-      next = this.selectedIds.includes(id)
-        ? this.selectedIds.filter((existing) => existing !== id)
-        : [...this.selectedIds, id];
-    } else {
-      next = [id];
-    }
-    this.selectedIds = this.syncSelectionEdges(doc, next, this.selectedIds);
+    this.selectedIds = selectEntity(doc, this.selectedIds, id, additive);
   }
 
   clear(): void {
@@ -52,48 +45,6 @@ export class SelectionController {
     baseIds: string[],
     prevIds: string[] = this.selectedIds
   ): string[] {
-    if (!doc) return baseIds;
-    const selectedSet = new Set(baseIds);
-    const prevNodeIds = new Set(
-      doc.nodes.filter((node) => prevIds.includes(node.id)).map((node) => node.id)
-    );
-    const nextNodeIds = new Set(
-      doc.nodes.filter((node) => selectedSet.has(node.id)).map((node) => node.id)
-    );
-
-    const deselectedNodes = new Set([...prevNodeIds].filter((id) => !nextNodeIds.has(id)));
-
-    for (const deselectedId of deselectedNodes) {
-      for (const edge of doc.edges) {
-        if (edge.source.nodeId === deselectedId || edge.target.nodeId === deselectedId) {
-          selectedSet.delete(edge.id);
-        }
-      }
-    }
-
-    if (nextNodeIds.size >= 2) {
-      for (const edge of doc.edges) {
-        if (nextNodeIds.has(edge.source.nodeId) && nextNodeIds.has(edge.target.nodeId)) {
-          selectedSet.add(edge.id);
-        } else if (
-          edge.source.nodeId &&
-          edge.target.nodeId &&
-          (!nextNodeIds.has(edge.source.nodeId) || !nextNodeIds.has(edge.target.nodeId))
-        ) {
-          selectedSet.delete(edge.id);
-        }
-      }
-    } else {
-      for (const edge of doc.edges) {
-        if (
-          selectedSet.has(edge.id) &&
-          (nextNodeIds.has(edge.source.nodeId) || nextNodeIds.has(edge.target.nodeId))
-        ) {
-          selectedSet.delete(edge.id);
-        }
-      }
-    }
-
-    return Array.from(selectedSet);
+    return syncSelectionEdges(doc, baseIds, prevIds);
   }
 }

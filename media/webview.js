@@ -8123,6 +8123,7 @@ ${component_stack}
           'Referential Integrity: Every "source.nodeId" and "target.nodeId" in "edges[]" MUST exactly match an existing node "id" in "nodes[]", and cannot reference a "frame" node. When removing a node from "nodes[]", you must atomically delete all edges referencing its ID.',
           `Frame Containment & Integrity: Frame nodes cannot have edges of their own. Every node listed in a frame's "children" MUST exist in "nodes[]". Elements can overlap a frame without being in its children; a node is only contained in a frame if listed in its "children", which happens when an element is dragged into the frame with the cursor hovering over it.`,
           'Layout Synchronization: Every node added to "nodes[]" MUST have a corresponding bounding box in "layout.nodes[nodeId]" ({ "x": number, "y": number, "width": number, "height": number }) aligned to a 20px grid. When deleting a node, delete its layout entry.',
+          "Node Spacing: Node elements MUST be separated by at least 10 grid cells (200px) edge-to-edge. Never place nodes closer than 10 grid cells horizontally or vertically. Overlapping or tightly packed nodes make the diagram unreadable; leave generous whitespace between unrelated nodes and between frames.",
           'Preserve Existing Identifiers: Never alter existing "id" strings when updating nodes, edges, attributes, operations, or parameters. When creating new entities, generate clean, unique kebab-case IDs (e.g., "node-order-service", "edge-order-payment-1", "order-attr-status", "order-op-cancel", "cancel-arg-reason").',
           'Allowed Enums & Data Values: Strictly use only documented enum values \u2014 node kinds: "class"|"shape"|"note"|"frame"; shapes: "ellipse"|"rectangle"|"rhombus"|"trapezoid"|"parallelogram"; edge kinds: "association"|"dependency"|"generalization"|"realization"|"aggregation"|"composition"; visibilities: "+"|"-"|"#"|"~"; endpoint shapes: "none"|"circle"|"diamond"|"square"|"triangle"|"open-arrow"; fills: "hollow"|"filled".',
           'Preserve Unknown & Custom Fields: Preserve all unrecognized top-level and nested properties, annotations, extension keys, and this "ai" section intact across edits.',
@@ -8545,6 +8546,51 @@ ${component_stack}
     }
   };
 
+  // src/webview/state/selection-logic.ts
+  function syncSelectionEdges(doc, baseIds, prevIds) {
+    if (!doc) return baseIds;
+    const selectedSet = new Set(baseIds);
+    const prevNodeIds = new Set(
+      doc.nodes.filter((node) => prevIds.includes(node.id)).map((node) => node.id)
+    );
+    const nextNodeIds = new Set(
+      doc.nodes.filter((node) => selectedSet.has(node.id)).map((node) => node.id)
+    );
+    const deselectedNodes = new Set([...prevNodeIds].filter((id) => !nextNodeIds.has(id)));
+    for (const deselectedId of deselectedNodes) {
+      for (const edge of doc.edges) {
+        if (edge.source.nodeId === deselectedId || edge.target.nodeId === deselectedId) {
+          selectedSet.delete(edge.id);
+        }
+      }
+    }
+    if (nextNodeIds.size >= 2) {
+      for (const edge of doc.edges) {
+        if (nextNodeIds.has(edge.source.nodeId) && nextNodeIds.has(edge.target.nodeId)) {
+          selectedSet.add(edge.id);
+        } else if (edge.source.nodeId && edge.target.nodeId && (!nextNodeIds.has(edge.source.nodeId) || !nextNodeIds.has(edge.target.nodeId))) {
+          selectedSet.delete(edge.id);
+        }
+      }
+    } else {
+      for (const edge of doc.edges) {
+        if (selectedSet.has(edge.id) && (nextNodeIds.has(edge.source.nodeId) || nextNodeIds.has(edge.target.nodeId))) {
+          selectedSet.delete(edge.id);
+        }
+      }
+    }
+    return Array.from(selectedSet);
+  }
+  function selectEntity(doc, currentIds, id, additive) {
+    const isEdge = doc?.edges.some((edge) => edge.id === id) ?? false;
+    if (isEdge) {
+      if (!additive) return [id];
+      return currentIds.includes(id) ? currentIds.filter((existing) => existing !== id) : [...currentIds, id];
+    }
+    const next2 = additive ? currentIds.includes(id) ? currentIds.filter((existing) => existing !== id) : [...currentIds, id] : [id];
+    return syncSelectionEdges(doc, next2, currentIds);
+  }
+
   // src/webview/state/selection.svelte.ts
   var SelectionController = class {
     #selectedIds;
@@ -8564,13 +8610,7 @@ ${component_stack}
       this.selectedIds = this.syncSelectionEdges(doc, ids, this.selectedIds);
     }
     selectSingle(doc, id, additive = false) {
-      let next2;
-      if (additive) {
-        next2 = this.selectedIds.includes(id) ? this.selectedIds.filter((existing) => existing !== id) : [...this.selectedIds, id];
-      } else {
-        next2 = [id];
-      }
-      this.selectedIds = this.syncSelectionEdges(doc, next2, this.selectedIds);
+      this.selectedIds = selectEntity(doc, this.selectedIds, id, additive);
     }
     clear() {
       this.selectedIds = [];
@@ -8590,34 +8630,7 @@ ${component_stack}
       }
     }
     syncSelectionEdges(doc, baseIds, prevIds = this.selectedIds) {
-      if (!doc) return baseIds;
-      const selectedSet = new Set(baseIds);
-      const prevNodeIds = new Set(doc.nodes.filter((node) => prevIds.includes(node.id)).map((node) => node.id));
-      const nextNodeIds = new Set(doc.nodes.filter((node) => selectedSet.has(node.id)).map((node) => node.id));
-      const deselectedNodes = new Set([...prevNodeIds].filter((id) => !nextNodeIds.has(id)));
-      for (const deselectedId of deselectedNodes) {
-        for (const edge of doc.edges) {
-          if (edge.source.nodeId === deselectedId || edge.target.nodeId === deselectedId) {
-            selectedSet.delete(edge.id);
-          }
-        }
-      }
-      if (nextNodeIds.size >= 2) {
-        for (const edge of doc.edges) {
-          if (nextNodeIds.has(edge.source.nodeId) && nextNodeIds.has(edge.target.nodeId)) {
-            selectedSet.add(edge.id);
-          } else if (edge.source.nodeId && edge.target.nodeId && (!nextNodeIds.has(edge.source.nodeId) || !nextNodeIds.has(edge.target.nodeId))) {
-            selectedSet.delete(edge.id);
-          }
-        }
-      } else {
-        for (const edge of doc.edges) {
-          if (selectedSet.has(edge.id) && (nextNodeIds.has(edge.source.nodeId) || nextNodeIds.has(edge.target.nodeId))) {
-            selectedSet.delete(edge.id);
-          }
-        }
-      }
-      return Array.from(selectedSet);
+      return syncSelectionEdges(doc, baseIds, prevIds);
     }
   };
 
@@ -9848,10 +9861,10 @@ ${component_stack}
   var root_43 = from_html(`<span>,</span>`);
   var root_52 = from_html(`<!> <span> </span> <!>`, 1);
   var root_62 = from_html(`<div class="vz-uml-member"><span class="vz-vis"> </span> <span> </span> <!> <span>)</span> <!></div>`);
-  var root_72 = from_html(`<div class="vz-uml-compartment"><!></div>`);
+  var root_72 = from_html(`<div><!></div>`);
   function NodeCompartment($$anchor, $$props) {
     push($$props, true);
-    let visible = prop($$props, "visible", 3, true), editing = prop($$props, "editing", 3, false), draft = prop($$props, "draft", 3, ""), readOnly = prop($$props, "readOnly", 3, false);
+    let visible = prop($$props, "visible", 3, true), editing = prop($$props, "editing", 3, false), draft = prop($$props, "draft", 3, ""), readOnly = prop($$props, "readOnly", 3, false), last = prop($$props, "last", 3, false);
     const title = user_derived(() => $$props.kind === "attributes" ? "Attributes" : "Operations");
     const placeholder = user_derived(() => $$props.kind === "attributes" ? "+ name: type\n- privateField: string" : "+ method(): returnType\n+ execute(arg: type)");
     const memberCount = user_derived(() => $$props.kind === "attributes" ? ($$props.node.attributes ?? []).length : ($$props.node.operations ?? []).length);
@@ -9865,6 +9878,7 @@ ${component_stack}
     {
       var consequent_7 = ($$anchor2) => {
         var div = root_72();
+        let classes;
         var node_2 = child(div);
         {
           var consequent_1 = ($$anchor3) => {
@@ -9873,7 +9887,7 @@ ${component_stack}
             var span = child(div_1);
             var text2 = only_child(span, true);
             var button = sibling(span, 2);
-            let classes;
+            let classes_1;
             var text_1 = only_child(button, true);
             reset(div_1);
             var node_3 = sibling(div_1, 2);
@@ -9903,7 +9917,7 @@ ${component_stack}
             }
             template_effect(() => {
               set_text(text2, get(title));
-              classes = set_class(button, 1, "vz-eye-toggle-btn", null, classes, { off: !visible() });
+              classes_1 = set_class(button, 1, "vz-eye-toggle-btn", null, classes_1, { off: !visible() });
               set_attribute2(button, "title", visible() ? `Hide ${get(title)}` : `Show ${get(title)}`);
               set_attribute2(button, "aria-label", visible() ? `Hide ${get(title)}` : `Show ${get(title)}`);
               button.disabled = readOnly();
@@ -10019,6 +10033,7 @@ ${component_stack}
           });
         }
         reset(div);
+        template_effect(() => classes = set_class(div, 1, "vz-uml-compartment", null, classes, { "is-last": last() }));
         append($$anchor2, div);
       };
       if_block(node_1, ($$render) => {
@@ -10296,6 +10311,7 @@ ${component_stack}
         get readOnly() {
           return get(readOnly);
         },
+        last: true,
         onToggle: () => toggleCompartment("operations"),
         onDraftChange: (value) => $$props.store.inlineEdit.updateNodeDraft({ operations: value }),
         onCommit: () => $$props.store.inlineEdit.commitNode($$props.node)
@@ -10541,7 +10557,7 @@ ${component_stack}
   delegate(["pointerdown", "contextmenu", "dblclick", "input", "keydown"]);
 
   // src/webview/canvas/nodes/ShapeNode.svelte
-  var root10 = from_svg(`<rect class="vz-shape-selection-box" x="2" y="2" rx="3"></rect>`);
+  var root10 = from_svg(`<rect class="vz-shape-selection-box" x="1" y="1" rx="4"></rect>`);
   var root_18 = from_html(`<div class="vz-shape-label editing"><input type="text" class="vz-shape-inline-input" aria-label="Shape label"/></div>`);
   var root_27 = from_html(`<div role="presentation"><!></div>`);
   var root_36 = from_html(`<div role="button"><svg class="vz-shape-svg" aria-hidden="true"><path class="vz-shape-outline"></path><!></svg> <!> <!> <!></div>`);
@@ -10577,8 +10593,8 @@ ${component_stack}
             set_attribute2(rect, "height", $1);
           },
           [
-            () => Math.max(0, $$props.box.width - 4),
-            () => Math.max(0, $$props.box.height - 4)
+            () => Math.max(0, $$props.box.width - 2),
+            () => Math.max(0, $$props.box.height - 2)
           ]
         );
         append($$anchor2, rect);
@@ -11037,40 +11053,13 @@ ${component_stack}
     let gesture = state(proxy({ mode: "idle" }));
     let spacePressed = state(false);
     let inlineEditingNodeId = state(null);
-    let inlineNodeNameDraft = state("");
-    let inlineNodeStereotypeDraft = state("");
-    let inlineNodeTextDraft = state("");
-    let inlineNodeAttributesDraft = state("");
-    let inlineNodeOperationsDraft = state("");
     let inlineEditingEdgeId = state(null);
     let inlineEdgeLabelDraft = state("");
     let lastPointerWorldPos = state(null);
-    let lastSyncedNodeJson = state("");
     user_effect(() => {
-      if (get(inlineEditingNodeId) && get(doc)) {
-        const target2 = get(doc).nodes.find((n) => n.id === get(inlineEditingNodeId));
-        if (target2) {
-          const json = JSON.stringify({
-            name: target2.name,
-            stereotype: target2.stereotype,
-            attributes: target2.attributes,
-            operations: target2.operations,
-            text: target2.text
-          });
-          if (json !== get(lastSyncedNodeJson)) {
-            set(lastSyncedNodeJson, json, true);
-            set(inlineNodeNameDraft, target2.name ?? "", true);
-            set(inlineNodeStereotypeDraft, target2.kind === "note" || target2.kind === "shape" ? "" : target2.stereotype ?? "", true);
-            set(inlineNodeTextDraft, target2.text ?? "", true);
-            set(inlineNodeAttributesDraft, formatAttributesToText(target2.attributes ?? []), true);
-            set(inlineNodeOperationsDraft, formatOperationsToText(target2.operations ?? []), true);
-          }
-        } else {
-          set(inlineEditingNodeId, null);
-          set(lastSyncedNodeJson, "");
-        }
-      } else {
-        set(lastSyncedNodeJson, "");
+      if (get(inlineEditingNodeId) && get(doc) && !get(doc).nodes.some((node) => node.id === get(inlineEditingNodeId))) {
+        store().inlineEdit.cancelAll();
+        set(inlineEditingNodeId, null);
       }
     });
     function focusInput(el) {
@@ -11855,7 +11844,7 @@ ${component_stack}
         attributes: [...existing, newAttr]
       });
       if (get(inlineEditingNodeId) === node.id) {
-        set(inlineNodeAttributesDraft, formatAttributesToText([...existing, newAttr]), true);
+        store().inlineEdit.updateNodeDraft({ attributes: formatAttributesToText([...existing, newAttr]) });
       }
     }
     function addNodeOperationInline(node) {
@@ -11875,7 +11864,7 @@ ${component_stack}
         operations: [...existing, newOp]
       });
       if (get(inlineEditingNodeId) === node.id) {
-        set(inlineNodeOperationsDraft, formatOperationsToText([...existing, newOp]), true);
+        store().inlineEdit.updateNodeDraft({ operations: formatOperationsToText([...existing, newOp]) });
       }
     }
     function handleNodeContextMenu(e, node) {
@@ -11956,91 +11945,11 @@ ${component_stack}
       }
       store().inlineEdit.beginNode(node);
       set(inlineEditingNodeId, node.id, true);
-      set(
-        lastSyncedNodeJson,
-        JSON.stringify({
-          name: node.name,
-          stereotype: node.stereotype,
-          attributes: node.attributes,
-          operations: node.operations,
-          text: node.text
-        }),
-        true
-      );
-      set(inlineNodeNameDraft, node.name ?? "", true);
-      set(inlineNodeStereotypeDraft, node.kind === "note" || node.kind === "shape" || node.kind === "frame" ? "" : node.stereotype ?? "", true);
-      set(inlineNodeTextDraft, node.text ?? "", true);
-      set(inlineNodeAttributesDraft, formatAttributesToText(node.attributes ?? []), true);
-      set(inlineNodeOperationsDraft, formatOperationsToText(node.operations ?? []), true);
-    }
-    function flushInlineNodeHeader(node) {
-      const nodeId = get(inlineEditingNodeId);
-      if (!nodeId) return;
-      const targetNode = node ?? get(doc)?.nodes.find((n) => n.id === nodeId);
-      if (!targetNode) return;
-      const nextName = get(inlineNodeNameDraft).trim();
-      const nextStereo = get(inlineNodeStereotypeDraft).replace(/^[«<]+|[»>]+$/g, "").trim();
-      const updates = {};
-      if (nextName !== targetNode.name) {
-        updates.name = nextName;
-      }
-      if (targetNode.kind !== "note" && targetNode.kind !== "shape" && targetNode.kind !== "frame" && nextStereo !== (targetNode.stereotype ?? "")) {
-        updates.stereotype = nextStereo;
-      }
-      if (Object.keys(updates).length > 0) {
-        store().dispatchOperation({ type: "uml.updateNode", nodeId: targetNode.id, ...updates });
-      }
-    }
-    function flushInlineNodeMembers(node) {
-      const nodeId = get(inlineEditingNodeId);
-      if (!nodeId) return;
-      const targetNode = node ?? get(doc)?.nodes.find((n) => n.id === nodeId);
-      if (!targetNode || targetNode.kind === "note" || targetNode.kind === "shape" || targetNode.kind === "frame") return;
-      const nextAttrs = parseAttributesFromText(get(inlineNodeAttributesDraft), targetNode.id, targetNode.attributes ?? []);
-      const nextOps = parseOperationsFromText(get(inlineNodeOperationsDraft), targetNode.id, targetNode.operations ?? []);
-      const updates = {};
-      const currAttrs = targetNode.attributes ?? [];
-      const attrsChanged = nextAttrs.length !== currAttrs.length || nextAttrs.some((a, i) => {
-        const c = currAttrs[i];
-        return !c || a.name !== c.name || (a.type ?? "") !== (c.type ?? "") || (a.visibility ?? "+") !== (c.visibility ?? "+");
-      });
-      if (attrsChanged) {
-        updates.attributes = nextAttrs;
-      }
-      const currOps = targetNode.operations ?? [];
-      const opsChanged = nextOps.length !== currOps.length || nextOps.some((o, i) => {
-        const c = currOps[i];
-        return !c || o.name !== c.name || (o.returnType ?? "") !== (c.returnType ?? "") || (o.visibility ?? "+") !== (c.visibility ?? "+") || (o.signature ?? "()") !== (c.signature ?? "()");
-      });
-      if (opsChanged) {
-        updates.operations = nextOps;
-      }
-      if (Object.keys(updates).length > 0) {
-        store().dispatchOperation({ type: "uml.updateNode", nodeId: targetNode.id, ...updates });
-      }
-    }
-    function flushInlineNodeText(node) {
-      const nodeId = get(inlineEditingNodeId);
-      if (!nodeId) return;
-      const targetNode = node ?? get(doc)?.nodes.find((n) => n.id === nodeId);
-      if (!targetNode || targetNode.kind !== "note") return;
-      if (get(inlineNodeTextDraft) !== (targetNode.text ?? "")) {
-        store().dispatchOperation({
-          type: "uml.updateNode",
-          nodeId: targetNode.id,
-          text: get(inlineNodeTextDraft)
-        });
-      }
     }
     function commitInlineNodeEdit(node) {
       if (store().inlineEdit.state.mode === "node") {
         store().inlineEdit.commitNode(node);
-        set(inlineEditingNodeId, null);
-        return;
       }
-      flushInlineNodeHeader(node);
-      flushInlineNodeMembers(node);
-      flushInlineNodeText(node);
       set(inlineEditingNodeId, null);
     }
     user_effect(() => {
