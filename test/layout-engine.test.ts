@@ -148,6 +148,32 @@ describe('layout engine', () => {
     expect(geometry.endTip.x).toBe(420);
   });
 
+  it('keeps orthogonal routes from shape nodes axis-aligned on grid lines', () => {
+    const geometry = computeUmlEdgeGeometry(
+      { x: 20, y: 20, width: 220, height: 140 },
+      { x: 460, y: 220, width: 220, height: 140 },
+      'orthogonal',
+      { shape: 'none', size: 10 },
+      { shape: 'none', size: 10 },
+      0,
+      undefined,
+      undefined,
+      'ellipse'
+    );
+    const pairs = (geometry.pathD.match(/-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?/g) ?? []).map(
+      (pair) => pair.split(/\s+/).map(Number)
+    );
+
+    expect(pairs.length).toBeGreaterThan(1);
+    for (let index = 0; index < pairs.length - 1; index++) {
+      const [x1, y1] = pairs[index];
+      const [x2, y2] = pairs[index + 1];
+      expect(x1 === x2 || y1 === y2).toBe(true);
+      if (y1 === y2) expect(Math.abs(y1 % GRID_SIZE)).toBe(0);
+      if (x1 === x2) expect(Math.abs(x1 % GRID_SIZE)).toBe(0);
+    }
+  });
+
   it('grows a note minimum height to fit wrapped text without scrolling', () => {
     const note = node('note', 'note', {
       text: 'A long architecture note that wraps across several lines at a narrow width. '.repeat(6)

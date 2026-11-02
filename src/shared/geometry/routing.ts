@@ -202,6 +202,128 @@ function snapAnchorToRect(point: Point2D, rect: UmlNodeLayout): Point2D {
   };
 }
 
+function shapeVertices(rect: UmlNodeLayout, shape: UmlShapeGeometry): Point2D[] {
+  const pad = 2;
+  const x0 = rect.x + pad;
+  const y0 = rect.y + pad;
+  const x1 = rect.x + Math.max(pad + 10, rect.width - pad);
+  const y1 = rect.y + Math.max(pad + 10, rect.height - pad);
+  const cx = rect.x + rect.width / 2;
+  const cy = rect.y + rect.height / 2;
+
+  if (shape === 'rhombus') {
+    return [
+      { x: cx, y: y0 },
+      { x: x1, y: cy },
+      { x: cx, y: y1 },
+      { x: x0, y: cy }
+    ];
+  }
+  if (shape === 'trapezoid') {
+    const inset = Math.min(36, (x1 - x0) * 0.2);
+    return [
+      { x: x0 + inset, y: y0 },
+      { x: x1 - inset, y: y0 },
+      { x: x1, y: y1 },
+      { x: x0, y: y1 }
+    ];
+  }
+  const skew = Math.min(32, (x1 - x0) * 0.18);
+  return [
+    { x: x0 + skew, y: y0 },
+    { x: x1, y: y0 },
+    { x: x1 - skew, y: y1 },
+    { x: x0, y: y1 }
+  ];
+}
+
+function polygonBoundaryAtY(vertices: Point2D[], y: number, side: 'min' | 'max'): number | null {
+  const candidates: number[] = [];
+  for (let index = 0; index < vertices.length; index++) {
+    const a = vertices[index];
+    const b = vertices[(index + 1) % vertices.length];
+    if (a.y === b.y) continue;
+    if (y < Math.min(a.y, b.y) || y > Math.max(a.y, b.y)) continue;
+    const t = (y - a.y) / (b.y - a.y);
+    candidates.push(a.x + t * (b.x - a.x));
+  }
+  if (candidates.length === 0) return null;
+  return side === 'min' ? Math.min(...candidates) : Math.max(...candidates);
+}
+
+function polygonBoundaryAtX(vertices: Point2D[], x: number, side: 'min' | 'max'): number | null {
+  const candidates: number[] = [];
+  for (let index = 0; index < vertices.length; index++) {
+    const a = vertices[index];
+    const b = vertices[(index + 1) % vertices.length];
+    if (a.x === b.x) continue;
+    if (x < Math.min(a.x, b.x) || x > Math.max(a.x, b.x)) continue;
+    const t = (x - a.x) / (b.x - a.x);
+    candidates.push(a.y + t * (b.y - a.y));
+  }
+  if (candidates.length === 0) return null;
+  return side === 'min' ? Math.min(...candidates) : Math.max(...candidates);
+}
+
+function shapeBoundaryAtSnappedAnchor(
+  point: Point2D,
+  rect: UmlNodeLayout,
+  shape: UmlShapeGeometry,
+  normal: Point2D
+): Point2D {
+  if (shape === 'rectangle') return snapAnchorToRect(point, rect);
+  const cx = rect.x + rect.width / 2;
+  const cy = rect.y + rect.height / 2;
+
+  if (normal.x !== 0) {
+    const y = snapToGrid(cy, GRID_SIZE);
+    if (shape === 'ellipse') {
+      const rx = Math.max(5, (rect.width - 4) / 2);
+      const ry = Math.max(5, (rect.height - 4) / 2);
+      const normalizedY = clampToRange(y, cy - ry + 0.5, cy + ry - 0.5);
+      const offset = (normalizedY - cy) / ry;
+      const halfWidth = rx * Math.sqrt(Math.max(0, 1 - offset * offset));
+      return { x: cx + (normal.x > 0 ? halfWidth : -halfWidth), y: normalizedY };
+    }
+    if (shape === 'rhombus') {
+      const rx = Math.max(5, (rect.width - 4) / 2);
+      const ry = Math.max(5, (rect.height - 4) / 2);
+      const normalizedY = clampToRange(y, cy - ry + 0.5, cy + ry - 0.5);
+      const halfWidth = rx * Math.max(0, 1 - Math.abs(normalizedY - cy) / ry);
+      return { x: cx + (normal.x > 0 ? halfWidth : -halfWidth), y: normalizedY };
+    }
+    const boundaryX = polygonBoundaryAtY(
+      shapeVertices(rect, shape),
+      y,
+      normal.x > 0 ? 'max' : 'min'
+    );
+    return { x: boundaryX ?? (normal.x > 0 ? rect.x + rect.width : rect.x), y };
+  }
+
+  const x = snapToGrid(cx, GRID_SIZE);
+  if (shape === 'ellipse') {
+    const rx = Math.max(5, (rect.width - 4) / 2);
+    const ry = Math.max(5, (rect.height - 4) / 2);
+    const normalizedX = clampToRange(x, cx - rx + 0.5, cx + rx - 0.5);
+    const offset = (normalizedX - cx) / rx;
+    const halfHeight = ry * Math.sqrt(Math.max(0, 1 - offset * offset));
+    return { x: normalizedX, y: cy + (normal.y > 0 ? halfHeight : -halfHeight) };
+  }
+  if (shape === 'rhombus') {
+    const rx = Math.max(5, (rect.width - 4) / 2);
+    const ry = Math.max(5, (rect.height - 4) / 2);
+    const normalizedX = clampToRange(x, cx - rx + 0.5, cx + rx - 0.5);
+    const halfHeight = ry * Math.max(0, 1 - Math.abs(normalizedX - cx) / rx);
+    return { x: normalizedX, y: cy + (normal.y > 0 ? halfHeight : -halfHeight) };
+  }
+  const boundaryY = polygonBoundaryAtX(
+    shapeVertices(rect, shape),
+    x,
+    normal.y > 0 ? 'max' : 'min'
+  );
+  return { x, y: boundaryY ?? (normal.y > 0 ? rect.y + rect.height : rect.y) };
+}
+
 /**
  * Snaps orthogonal routes to the 20px grid and guarantees axis-aligned segments.
  * Endpoints stay pinned to the node border; intermediate elbows land on grid lines.
@@ -210,13 +332,19 @@ function gridifyOrthogonalRoute(
   points: Point2D[],
   sourceRect: UmlNodeLayout,
   targetRect: UmlNodeLayout,
-  sourceIsShape: boolean,
-  targetIsShape: boolean
+  sourceShape: UmlShapeGeometry | undefined,
+  targetShape: UmlShapeGeometry | undefined,
+  sourceNormal: Point2D,
+  targetNormal: Point2D
 ): Point2D[] {
   if (points.length === 0) return points;
 
   const snapped: Point2D[] = [];
-  snapped.push(sourceIsShape ? points[0] : snapAnchorToRect(points[0], sourceRect));
+  snapped.push(
+    sourceShape
+      ? shapeBoundaryAtSnappedAnchor(points[0], sourceRect, sourceShape, sourceNormal)
+      : snapAnchorToRect(points[0], sourceRect)
+  );
   for (let index = 1; index < points.length - 1; index++) {
     snapped.push({
       x: snapToGrid(points[index].x, GRID_SIZE),
@@ -224,7 +352,14 @@ function gridifyOrthogonalRoute(
     });
   }
   snapped.push(
-    targetIsShape ? points[points.length - 1] : snapAnchorToRect(points[points.length - 1], targetRect)
+    targetShape
+      ? shapeBoundaryAtSnappedAnchor(
+          points[points.length - 1],
+          targetRect,
+          targetShape,
+          targetNormal
+        )
+      : snapAnchorToRect(points[points.length - 1], targetRect)
   );
 
   const orthogonal: Point2D[] = [snapped[0]];
@@ -415,8 +550,10 @@ export function computeOrthogonalRoute(
     pts,
     sourceRect,
     targetRect,
-    Boolean(sourceShape),
-    Boolean(targetShape)
+    sourceShape,
+    targetShape,
+    startNorm,
+    endNorm
   );
 
   // Filter consecutive duplicate / collinear points
