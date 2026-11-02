@@ -550,7 +550,7 @@
       },
       "warehouse-hub": {
         "x": 1380,
-        "y": 960,
+        "y": 980,
         "width": 180,
         "height": 100
       },
@@ -567,10 +567,10 @@
         "height": 180
       },
       "fraud-eval": {
-        "x": 100,
+        "x": 120,
         "y": 740,
         "width": 180,
-        "height": 100
+        "height": 120
       },
       "security-note": {
         "x": 200,

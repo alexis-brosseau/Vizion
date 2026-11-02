@@ -1806,16 +1806,6 @@
               />
             {/if}
 
-            {#if marqueeRect}
-              <rect
-                x={marqueeRect.x}
-                y={marqueeRect.y}
-                width={marqueeRect.width}
-                height={marqueeRect.height}
-                class="vz-marquee-box"
-              />
-            {/if}
-
             {#each doc.edges as edge (edge.id)}
               {@const isEdgeSelected =
                 store.selectedIds.includes(edge.id) ||
@@ -1997,6 +1987,22 @@
             {/if}
           {/each}
         </div>
+
+        <svg class="vz-svg-layer vz-svg-marquee" aria-label="Marquee Selection">
+          <g
+            transform="translate({store.viewport.panX}, {store.viewport.panY}) scale({store.viewport.zoom})"
+          >
+            {#if marqueeRect}
+              <rect
+                x={marqueeRect.x}
+                y={marqueeRect.y}
+                width={marqueeRect.width}
+                height={marqueeRect.height}
+                class="vz-marquee-box"
+              />
+            {/if}
+          </g>
+        </svg>
 
         <!-- Visual Endpoint Shape & Multiplicity Picker Popup -->
         {#if endpointPickerPopup}

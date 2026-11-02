@@ -92,6 +92,16 @@
   z-index: var(--vz-z-overlay);
 }
 
+/* The marquee sits above labels so it reads as a screen-space selection region. */
+.vz-svg-marquee {
+  z-index: 50;
+  pointer-events: none;
+}
+
+.vz-svg-marquee .vz-marquee-box {
+  pointer-events: none;
+}
+
 .vz-svg-layer * {
   pointer-events: auto;
 }

@@ -11038,13 +11038,13 @@ ${component_stack}
   var root16 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`);
   var root_112 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`);
   var root_28 = from_svg(`<line class="vz-gesture-line"></line>`);
-  var root_37 = from_svg(`<rect class="vz-marquee-box"></rect>`);
-  var root_46 = from_svg(`<circle class="vz-endpoint-handle" r="9" role="presentation"></circle><circle class="vz-endpoint-handle" r="9" role="presentation"></circle>`, 1);
-  var root_54 = from_html(`<!> <!> <!>`, 1);
+  var root_37 = from_svg(`<circle class="vz-endpoint-handle" r="9" role="presentation"></circle><circle class="vz-endpoint-handle" r="9" role="presentation"></circle>`, 1);
+  var root_46 = from_html(`<!> <!> <!>`, 1);
+  var root_54 = from_svg(`<rect class="vz-marquee-box"></rect>`);
   var root_63 = from_svg(`<path stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>`);
   var root_73 = from_html(`<button type="button"><svg width="34" height="18" viewBox="-24 -9 26 18" class="vz-endpoint-preview-svg" aria-hidden="true"><line x1="-22" y1="0" y2="0" stroke="currentColor" stroke-width="1.8"></line><!></svg> <span> </span></button>`);
   var root_8 = from_html(`<div class="vz-endpoint-popup"><div class="vz-endpoint-mult-row"><span class="vz-field-label">Multiplicity</span> <input type="text" class="vz-input-mini" placeholder="e.g. 1, *, 1..5, 2..*"/></div> <div class="vz-endpoint-icon-grid"></div></div>`);
-  var root_9 = from_html(`<div class="vz-html-frames"></div> <svg class="vz-svg-layer vz-svg-relations vz-svg-overlay" aria-label="UML Relationships"><g></g></svg> <div class="vz-html-world"></div> <svg class="vz-svg-layer vz-svg-foreground" aria-label="UML Canvas Interactions"><g><!><!><!></g></svg> <div class="vz-html-frames vz-html-edge-labels"><!> <!></div> <!>`, 1);
+  var root_9 = from_html(`<div class="vz-html-frames"></div> <svg class="vz-svg-layer vz-svg-relations vz-svg-overlay" aria-label="UML Relationships"><g></g></svg> <div class="vz-html-world"></div> <svg class="vz-svg-layer vz-svg-foreground" aria-label="UML Canvas Interactions"><g><!><!></g></svg> <div class="vz-html-frames vz-html-edge-labels"><!> <!></div> <svg class="vz-svg-layer vz-svg-marquee" aria-label="Marquee Selection"><g><!></g></svg> <!>`, 1);
   var root_10 = from_html(`<div tabindex="0" role="application" aria-label="Vizion UML Canvas"><div class="vz-floating-zoom"><button type="button" class="vz-zoom-pill-btn" title="Zoom Out">\uFF0D</button> <button type="button" class="vz-zoom-pill-label" title="Scroll wheel here to adjust by \xB11%, or click to Fit Content"> </button> <button type="button" class="vz-zoom-pill-btn" title="Zoom In">\uFF0B</button></div> <!></div>`);
   function CanvasViewport($$anchor, $$props) {
     push($$props, true);
@@ -12448,32 +12448,16 @@ ${component_stack}
           });
         }
         var node_8 = sibling(node_7);
-        {
-          var consequent_7 = ($$anchor3) => {
-            var rect_1 = root_37();
-            template_effect(() => {
-              set_attribute2(rect_1, "x", get(marqueeRect).x);
-              set_attribute2(rect_1, "y", get(marqueeRect).y);
-              set_attribute2(rect_1, "width", get(marqueeRect).width);
-              set_attribute2(rect_1, "height", get(marqueeRect).height);
-            });
-            append($$anchor3, rect_1);
-          };
-          if_block(node_8, ($$render) => {
-            if (get(marqueeRect)) $$render(consequent_7);
-          });
-        }
-        var node_9 = sibling(node_8);
-        each(node_9, 17, () => get(doc).edges, (edge) => edge.id, ($$anchor3, edge) => {
+        each(node_8, 17, () => get(doc).edges, (edge) => edge.id, ($$anchor3, edge) => {
           const isEdgeSelected = user_derived(() => store().selectedIds.includes(get(edge).id) || store().selectedIds.includes(get(edge).source.nodeId) && store().selectedIds.includes(get(edge).target.nodeId));
           const srcBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).source.nodeId]);
           const tgtBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).target.nodeId]);
           var fragment_11 = comment();
-          var node_10 = first_child(fragment_11);
+          var node_9 = first_child(fragment_11);
           {
-            var consequent_8 = ($$anchor4) => {
+            var consequent_7 = ($$anchor4) => {
               const handleData = user_derived(() => computeEdgeRenderData(get(edge), get(srcBox), get(tgtBox), get(doc).nodes.find((n) => n.id === get(edge).source.nodeId), get(doc).nodes.find((n) => n.id === get(edge).target.nodeId), get(doc).defaultRouting, get(edgeParallelOffsets)[get(edge).id] ?? 0));
-              var fragment_12 = root_46();
+              var fragment_12 = root_37();
               var circle = first_child(fragment_12);
               var circle_1 = sibling(circle);
               template_effect(() => {
@@ -12494,8 +12478,8 @@ ${component_stack}
               });
               append($$anchor4, fragment_12);
             };
-            if_block(node_10, ($$render) => {
-              if (get(isEdgeSelected) && get(srcBox) && get(tgtBox) && !store().isReadOnly) $$render(consequent_8);
+            if_block(node_9, ($$render) => {
+              if (get(isEdgeSelected) && get(srcBox) && get(tgtBox) && !store().isReadOnly) $$render(consequent_7);
             });
           }
           append($$anchor3, fragment_11);
@@ -12503,13 +12487,13 @@ ${component_stack}
         reset(g_1);
         reset(svg_3);
         var div_4 = sibling(svg_3, 2);
-        var node_11 = child(div_4);
-        each(node_11, 17, () => get(doc).nodes.filter((n) => n.kind === "frame"), (frame) => frame.id, ($$anchor3, frame) => {
+        var node_10 = child(div_4);
+        each(node_10, 17, () => get(doc).nodes.filter((n) => n.kind === "frame"), (frame) => frame.id, ($$anchor3, frame) => {
           const frameBox = user_derived(() => get(effectiveNodeLayouts)[get(frame).id]);
           var fragment_13 = comment();
-          var node_12 = first_child(fragment_13);
+          var node_11 = first_child(fragment_13);
           {
-            var consequent_9 = ($$anchor4) => {
+            var consequent_8 = ($$anchor4) => {
               const frameEditing = user_derived(() => store().inlineEdit.state.mode === "node" && store().inlineEdit.state.nodeId === get(frame).id ? store().inlineEdit.state : null);
               {
                 let $0 = user_derived(() => ({ x: get(frameBox).x + 16, y: get(frameBox).y + 1.5 }));
@@ -12552,29 +12536,29 @@ ${component_stack}
                 });
               }
             };
-            if_block(node_12, ($$render) => {
-              if (get(frameBox)) $$render(consequent_9);
+            if_block(node_11, ($$render) => {
+              if (get(frameBox)) $$render(consequent_8);
             });
           }
           append($$anchor3, fragment_13);
         });
-        var node_13 = sibling(node_11, 2);
-        each(node_13, 17, () => get(doc).edges, (edge) => edge.id, ($$anchor3, edge) => {
+        var node_12 = sibling(node_10, 2);
+        each(node_12, 17, () => get(doc).edges, (edge) => edge.id, ($$anchor3, edge) => {
           const srcBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).source.nodeId]);
           const tgtBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).target.nodeId]);
           var fragment_15 = comment();
-          var node_14 = first_child(fragment_15);
+          var node_13 = first_child(fragment_15);
           {
-            var consequent_10 = ($$anchor4) => {
+            var consequent_9 = ($$anchor4) => {
               const srcNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(edge).source.nodeId));
               const tgtNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(edge).target.nodeId));
               const isEdgeSelected = user_derived(() => store().selectedIds.includes(get(edge).id) || store().selectedIds.includes(get(edge).source.nodeId) && store().selectedIds.includes(get(edge).target.nodeId));
               const labelData = user_derived(() => computeEdgeRenderData(get(edge), get(srcBox), get(tgtBox), get(srcNode), get(tgtNode), get(doc).defaultRouting, get(edgeParallelOffsets)[get(edge).id] ?? 0));
-              var fragment_16 = root_54();
-              var node_15 = first_child(fragment_16);
+              var fragment_16 = root_46();
+              var node_14 = first_child(fragment_16);
               {
                 let $0 = user_derived(() => get(inlineEditingEdgeId) === get(edge).id);
-                EdgeLabel(node_15, {
+                EdgeLabel(node_14, {
                   get point() {
                     return get(labelData).geometry.labelPoint;
                   },
@@ -12604,11 +12588,11 @@ ${component_stack}
                   onCancel: () => set(inlineEditingEdgeId, null)
                 });
               }
-              var node_16 = sibling(node_15, 2);
+              var node_15 = sibling(node_14, 2);
               {
                 let $0 = user_derived(() => get(inlineEditingMultiplicity)?.edgeId === get(edge).id && get(inlineEditingMultiplicity).end === "start");
                 let $1 = user_derived(() => get(inlineEditingMultiplicity)?.draft ?? "");
-                MultiplicityTag(node_16, {
+                MultiplicityTag(node_15, {
                   get point() {
                     return get(labelData).startMultiplicityPoint;
                   },
@@ -12641,11 +12625,11 @@ ${component_stack}
                   onCancel: () => set(inlineEditingMultiplicity, null)
                 });
               }
-              var node_17 = sibling(node_16, 2);
+              var node_16 = sibling(node_15, 2);
               {
                 let $0 = user_derived(() => get(inlineEditingMultiplicity)?.edgeId === get(edge).id && get(inlineEditingMultiplicity).end === "end");
                 let $1 = user_derived(() => get(inlineEditingMultiplicity)?.draft ?? "");
-                MultiplicityTag(node_17, {
+                MultiplicityTag(node_16, {
                   get point() {
                     return get(labelData).endMultiplicityPoint;
                   },
@@ -12680,14 +12664,34 @@ ${component_stack}
               }
               append($$anchor4, fragment_16);
             };
-            if_block(node_14, ($$render) => {
-              if (get(srcBox) && get(tgtBox)) $$render(consequent_10);
+            if_block(node_13, ($$render) => {
+              if (get(srcBox) && get(tgtBox)) $$render(consequent_9);
             });
           }
           append($$anchor3, fragment_15);
         });
         reset(div_4);
-        var node_18 = sibling(div_4, 2);
+        var svg_4 = sibling(div_4, 2);
+        var g_2 = child(svg_4);
+        var node_17 = child(g_2);
+        {
+          var consequent_10 = ($$anchor3) => {
+            var rect_1 = root_54();
+            template_effect(() => {
+              set_attribute2(rect_1, "x", get(marqueeRect).x);
+              set_attribute2(rect_1, "y", get(marqueeRect).y);
+              set_attribute2(rect_1, "width", get(marqueeRect).width);
+              set_attribute2(rect_1, "height", get(marqueeRect).height);
+            });
+            append($$anchor3, rect_1);
+          };
+          if_block(node_17, ($$render) => {
+            if (get(marqueeRect)) $$render(consequent_10);
+          });
+        }
+        reset(g_2);
+        reset(svg_4);
+        var node_18 = sibling(svg_4, 2);
         {
           var consequent_12 = ($$anchor3) => {
             const popup = user_derived(() => get(endpointPickerPopup));
@@ -12702,8 +12706,8 @@ ${component_stack}
               const isActive = user_derived(() => isSameEndpointChoice(get(popup).current, get(choice).decoration));
               var button_3 = root_73();
               let classes_1;
-              var svg_4 = child(button_3);
-              var line_1 = child(svg_4);
+              var svg_5 = child(button_3);
+              var line_1 = child(svg_5);
               var node_19 = sibling(line_1);
               {
                 var consequent_11 = ($$anchor5) => {
@@ -12718,8 +12722,8 @@ ${component_stack}
                   if (get(preview).d) $$render(consequent_11);
                 });
               }
-              reset(svg_4);
-              var span = sibling(svg_4, 2);
+              reset(svg_5);
+              var span = sibling(svg_5, 2);
               var text_1 = only_child(span, true);
               reset(button_3);
               template_effect(
@@ -12779,6 +12783,7 @@ ${component_stack}
           set_style(div_3, `transform: translate(${store().viewport.panX ?? ""}px, ${store().viewport.panY ?? ""}px) scale(${store().viewport.zoom ?? ""});`);
           set_attribute2(g_1, "transform", `translate(${store().viewport.panX ?? ""}, ${store().viewport.panY ?? ""}) scale(${store().viewport.zoom ?? ""})`);
           set_style(div_4, `transform: translate(${store().viewport.panX ?? ""}px, ${store().viewport.panY ?? ""}px) scale(${store().viewport.zoom ?? ""});`);
+          set_attribute2(g_2, "transform", `translate(${store().viewport.panX ?? ""}, ${store().viewport.panY ?? ""}) scale(${store().viewport.zoom ?? ""})`);
         });
         append($$anchor2, fragment_1);
       };

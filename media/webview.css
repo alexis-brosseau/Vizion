@@ -376,6 +376,13 @@ select:disabled {
 .vz-svg-foreground {
   z-index: var(--vz-z-overlay);
 }
+.vz-svg-marquee {
+  z-index: 50;
+  pointer-events: none;
+}
+.vz-svg-marquee .vz-marquee-box {
+  pointer-events: none;
+}
 .vz-svg-layer * {
   pointer-events: auto;
 }
@@ -1963,8 +1970,8 @@ body,
 }
 .vz-marquee-box,
 .vz-selection-outline {
-  fill: rgba(0, 122, 204, 0.1);
-  stroke: var(--vscode-focusBorder);
+  fill: color-mix(in srgb, var(--vz-accent) 12%, transparent);
+  stroke: var(--vz-accent);
   stroke-width: 1.25px;
   stroke-dasharray: 4 3;
   pointer-events: none;
