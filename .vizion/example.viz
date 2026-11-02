@@ -1,6 +1,6 @@
 {
   "format": "vizion",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "kind": "uml",
   "title": "E-Commerce Architecture & Fulfillment",
   "description": "Comprehensive reference model showcasing frames, domain entities, shape nodes, notes, and typed relationships.",
@@ -420,7 +420,7 @@
       "label": "reserves stock",
       "visual": {
         "line": "dashed",
-        "routing": "orthogonal",
+        "routing": "straight",
         "start": {
           "shape": "none",
           "size": 10
@@ -491,7 +491,7 @@
       },
       "visual": {
         "line": "dashed",
-        "routing": "orthogonal",
+        "routing": "bezier",
         "start": {
           "shape": "none",
           "size": 10
@@ -506,8 +506,8 @@
   "layout": {
     "nodes": {
       "architecture-note": {
-        "x": 440,
-        "y": 40,
+        "x": 620,
+        "y": 60,
         "width": 280,
         "height": 120
       },
@@ -536,27 +536,27 @@
         "height": 220
       },
       "inventory-cluster": {
-        "x": 1420,
-        "y": 340,
+        "x": 1380,
+        "y": 520,
         "width": 180,
         "height": 100
       },
       "dispatch-queue": {
-        "x": 1420,
-        "y": 560,
+        "x": 1380,
+        "y": 740,
         "width": 180,
         "height": 100
       },
       "warehouse-hub": {
-        "x": 1420,
-        "y": 760,
+        "x": 1380,
+        "y": 940,
         "width": 180,
         "height": 100
       },
       "security-subsystem-frame": {
-        "x": 0,
+        "x": 60,
         "y": 640,
-        "width": 880,
+        "width": 860,
         "height": 500
       },
       "payment-service": {
@@ -566,20 +566,20 @@
         "height": 180
       },
       "fraud-eval": {
-        "x": 60,
+        "x": 100,
         "y": 740,
         "width": 180,
         "height": 100
       },
       "security-note": {
-        "x": 60,
-        "y": 960,
+        "x": 200,
+        "y": 980,
         "width": 320,
         "height": 120
       },
       "invoice": {
-        "x": 460,
-        "y": 960,
+        "x": 640,
+        "y": 980,
         "width": 240,
         "height": 120
       }

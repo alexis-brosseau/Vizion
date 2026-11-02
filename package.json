@@ -2,11 +2,11 @@
   "name": "vizion",
   "displayName": "Vizion",
   "description": "Custom UML editor for .viz JSON documents with embedded AI guidance.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "Vizionary",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.88.0"
+    "vscode": "^1.90.0"
   },
   "categories": [
     "Visualization",
@@ -16,7 +16,10 @@
   "activationEvents": [
     "onCustomEditor:vizion.uml",
     "onCommand:vizion.newUmlDiagram",
-    "onCommand:vizion.initializeCurrentDocument"
+    "onCommand:vizion.initializeCurrentDocument",
+    "onCommand:vizion.addNode",
+    "onCommand:vizion.addRelation",
+    "onCommand:vizion.renameEntity"
   ],
   "main": "./dist/extension.cjs",
   "contributes": {
@@ -76,6 +79,24 @@
         "title": "Reset Canvas Zoom (100%)",
         "category": "Vizion",
         "icon": "$(zoom-in)"
+      },
+      {
+        "command": "vizion.addNode",
+        "title": "Add UML Node",
+        "category": "Vizion",
+        "icon": "$(add)"
+      },
+      {
+        "command": "vizion.addRelation",
+        "title": "Add UML Relation",
+        "category": "Vizion",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "vizion.renameEntity",
+        "title": "Rename UML Entity",
+        "category": "Vizion",
+        "icon": "$(edit)"
       }
     ],
     "menus": {
@@ -97,6 +118,7 @@
     "build": "node scripts/build.mjs",
     "watch": "node scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "package": "vsce package --no-dependencies --allow-missing-repository"
   },
@@ -104,13 +126,14 @@
     "jsonc-parser": "^3.3.1"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^4.0.0",
-    "@types/node": "^20.14.0",
-    "@types/vscode": "^1.88.0",
-    "@vscode/vsce": "^3.0.0",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.2.0",
     "esbuild": "^0.24.0",
-    "svelte": "^5.16.0",
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.4"
+    "esbuild-svelte": "^0.8.2",
+    "svelte": "^5.15.0",
+    "svelte-check": "^4.1.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
   }
 }

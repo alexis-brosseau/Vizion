@@ -1,0 +1,359 @@
+/* Canvas viewport, layer stacking, and world transforms. */
+.vz-workspace {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.vz-main-split {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.vz-viewport {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  outline: none;
+  background-color: var(--vz-bg);
+}
+
+.vz-viewport.space-grab,
+.vz-viewport.space-grab .vz-uml-node {
+  cursor: grab;
+}
+
+.vz-viewport.space-grabbing,
+.vz-viewport.space-grabbing .vz-uml-node {
+  cursor: grabbing;
+}
+
+.vz-viewport.is-resizing,
+.vz-viewport.is-resizing * {
+  cursor: var(--vz-resize-cursor) !important;
+}
+
+.vz-floating-zoom {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: var(--vz-z-popup);
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--vz-widget-border);
+  border-radius: var(--vz-radius-md);
+  background: var(--vz-widget-bg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.vz-html-frames,
+.vz-html-world {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.vz-html-frames {
+  z-index: var(--vz-z-frames);
+}
+
+.vz-html-world {
+  z-index: var(--vz-z-nodes);
+}
+
+.vz-html-frames > *,
+.vz-html-world > * {
+  pointer-events: auto;
+}
+
+.vz-svg-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.vz-svg-relations {
+  z-index: var(--vz-z-relations);
+}
+
+.vz-svg-foreground {
+  z-index: var(--vz-z-overlay);
+}
+
+.vz-svg-layer * {
+  pointer-events: auto;
+}
+
+/* Edge labels live in an HTML overlay so they stay crisp and editable. */
+.vz-html-frames.vz-html-edge-labels {
+  z-index: 30;
+  pointer-events: none;
+}
+
+.vz-html-edge-labels > * {
+  pointer-events: auto;
+}
+
+.vz-edge-label-group {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 1px 7px;
+  border: 1px solid var(--vz-widget-border);
+  border-radius: var(--vz-radius-md);
+  background: var(--vz-widget-bg);
+  color: var(--vz-fg);
+  font-size: var(--vz-font-size-sm);
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: text;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+
+.vz-edge-label-group.frame {
+  padding: 1px 12px;
+  border-width: 2px;
+  border-color: var(--vscode-panel-border, var(--vscode-editor-foreground));
+}
+
+.vz-edge-label-group.selected,
+.vz-edge-label-group.frame.selected {
+  border-color: var(--vz-accent);
+}
+
+.vz-edge-inline-editor {
+  position: absolute;
+  z-index: 2;
+}
+
+.vz-edge-label-input {
+  width: 100%;
+  min-height: 22px;
+  padding: 2px 6px;
+  border: 1px solid var(--vz-accent);
+  border-radius: var(--vz-radius-md);
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  font-size: var(--vz-font-size-sm);
+  text-align: center;
+  outline: none;
+}
+
+.vz-mult-badge.selected {
+  border-color: var(--vz-accent);
+}
+
+.vz-mult-badge {
+  position: absolute;
+  padding: 1px 6px;
+  border: 1px solid var(--vz-widget-border);
+  border-radius: var(--vz-radius-md);
+  background: var(--vz-bg);
+  color: var(--vz-fg);
+  font-family: var(--vz-mono-font-family);
+  font-size: var(--vz-font-size-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: text;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.vz-edge-hit-path {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+.vz-edge-line {
+  fill: none;
+  stroke: var(--vz-fg);
+  stroke-width: 1.6;
+  pointer-events: none;
+}
+
+.vz-edge-line.dashed {
+  stroke-dasharray: 6 4;
+}
+
+.vz-edge-line.selected {
+  stroke: var(--vz-accent);
+  stroke-width: 2.4;
+}
+
+.vz-endpoint-target {
+  fill: transparent;
+  stroke: none;
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+}
+
+.vz-endpoint-handle {
+  fill: transparent;
+  stroke: var(--vz-accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  cursor: pointer;
+  pointer-events: all;
+  outline: none;
+}
+
+.vz-endpoint-handle:hover {
+  fill: var(--vz-accent);
+  fill-opacity: 0.18;
+}
+
+.vz-endpoint-handle:focus,
+.vz-endpoint-handle:active {
+  outline: none;
+  stroke: var(--vz-accent);
+}
+
+.vz-edge-renderer.selected .vz-endpoint-target {
+  opacity: 0.9;
+  stroke: var(--vz-accent);
+  stroke-width: 1.5;
+  pointer-events: all;
+}
+
+/* Node component internals not covered by the legacy stylesheet. */
+.vz-note-body {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 10px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.vz-note-body.editing {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.vz-note-textarea {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  overflow-y: auto;
+}
+
+.vz-note-placeholder {
+  color: var(--vz-muted-fg);
+  font-style: italic;
+}
+
+.vz-shape-svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.vz-shape-outline {
+  fill: var(--vz-widget-bg);
+  stroke: var(--vz-widget-border);
+  stroke-width: 1.75;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18));
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.vz-viewport.space-grabbing .vz-shape-outline {
+  cursor: grabbing;
+}
+
+.vz-uml-node.kind-shape.selected .vz-shape-outline {
+  stroke: var(--vz-accent);
+  stroke-width: 2.5;
+}
+
+.vz-shape-selection-box {
+  fill: none;
+  stroke: var(--vz-accent);
+  stroke-width: 1;
+  stroke-dasharray: 5 4;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.vz-uml-node.kind-shape {
+  pointer-events: none;
+}
+
+.vz-uml-node.kind-shape .vz-shape-label {
+  pointer-events: none;
+}
+
+.vz-uml-node.kind-shape .vz-shape-label.selected,
+.vz-uml-node.kind-shape .vz-shape-label.editing {
+  pointer-events: auto;
+}
+
+.vz-uml-node.kind-shape .vz-resize-handle,
+.vz-uml-node.kind-shape .vz-connect-port {
+  pointer-events: auto;
+}
+
+.vz-shape-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.vz-shape-label.editing {
+  pointer-events: auto;
+}
+
+.vz-shape-label .vz-uml-node-header {
+  border: 0;
+  background: transparent;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.vz-gesture-line {
+  stroke: var(--vz-accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  fill: none;
+}
+
+.vz-marquee-box,
+.vz-selection-outline {
+  fill: color-mix(in srgb, var(--vz-accent) 12%, transparent);
+  stroke: var(--vz-accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
+}

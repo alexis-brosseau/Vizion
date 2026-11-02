@@ -11,7 +11,7 @@
     },
     "version": {
       "type": "string",
-      "description": "Vizion document version, matching the extension version (e.g. 0.2.0)."
+      "description": "Vizion document version, matching the extension version (e.g. 0.3.0)."
     },
     "kind": {
       "const": "uml",

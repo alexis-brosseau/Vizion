@@ -1,0 +1,159 @@
+/* Visual Endpoint Shape Icon Picker Popup */
+.vz-endpoint-popup {
+  position: fixed;
+  width: 245px;
+  background-color: var(--vscode-editor-background);
+  background-color: color-mix(in srgb, var(--vscode-editor-background) 82%, #000000 18%);
+  color: var(--vscode-menu-foreground, var(--vscode-editor-foreground));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-focusBorder, rgba(128, 128, 128, 0.45)));
+  border-radius: 6px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.6);
+  padding: 6px;
+  z-index: 95;
+}
+
+.vz-endpoint-icon-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.vz-endpoint-icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--vscode-editor-foreground);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vz-endpoint-icon-btn:hover {
+  background-color: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.25));
+}
+
+.vz-endpoint-icon-btn.active {
+  border-color: var(--vscode-focusBorder);
+  background-color: var(--vscode-list-activeSelectionBackground, rgba(0, 122, 204, 0.25));
+  color: var(--vscode-list-activeSelectionForeground, var(--vscode-editor-foreground));
+}
+
+.vz-endpoint-preview-svg {
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.vz-connect-port {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background-color: var(--vscode-button-background);
+  border: 1.5px solid var(--vscode-editor-background);
+  cursor: crosshair;
+}
+
+.vz-resize-handle {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  background-color: var(--vscode-focusBorder);
+  border: 1px solid var(--vscode-editor-background);
+  cursor: nwse-resize;
+}
+
+/* UML SVG Edges & Endpoint Decorations */
+.vz-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14px;
+  cursor: pointer;
+}
+
+.vz-edge-stroke {
+  fill: none;
+  stroke: var(--vscode-editor-foreground);
+  stroke-width: 1.75px;
+  pointer-events: none;
+}
+
+.vz-edge-group.selected .vz-edge-stroke {
+  stroke: var(--vscode-focusBorder);
+  stroke-width: 2.4px;
+}
+
+.vz-endpoint-marker {
+  stroke: var(--vscode-editor-foreground);
+  stroke-width: 1.75px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.vz-edge-group.selected .vz-endpoint-marker {
+  stroke: var(--vscode-focusBorder);
+}
+
+.vz-endpoint-picker-target {
+  fill: rgba(0, 122, 204, 0.18);
+  stroke: var(--vscode-focusBorder);
+  stroke-width: 1.5px;
+  stroke-dasharray: 2 2;
+  cursor: pointer;
+}
+
+.vz-endpoint-picker-target:hover {
+  fill: rgba(0, 122, 204, 0.4);
+}
+
+.vz-reconnect-handle {
+  fill: var(--vscode-button-background);
+  stroke: var(--vscode-editor-background);
+  stroke-width: 1.5px;
+  cursor: move;
+}
+
+.vz-edge-label-bg {
+  fill: var(--vscode-editorWidget-background);
+  stroke: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+}
+
+.vz-edge-label-text {
+  fill: var(--vscode-editor-foreground);
+  font-size: 11px;
+}
+
+.vz-edge-mult-bg {
+  fill: var(--vscode-editor-background);
+  fill-opacity: 0.9;
+  stroke: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+  stroke-width: 1px;
+}
+
+.vz-edge-mult-text {
+  fill: var(--vscode-editor-foreground);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.vz-endpoint-mult-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 2px 6px 2px;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.25));
+  margin-bottom: 4px;
+}
+

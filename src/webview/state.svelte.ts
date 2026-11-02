@@ -11,17 +11,18 @@ import type { HostToWebviewMessage, HostToWebviewSnapshotMessage } from '../shar
 import type { VizionOperationPayload } from '../shared/operations';
 import { UML_SHAPE_GEOMETRIES } from '../shared/registry/uml-registry';
 import { postToHost } from './bridge';
+import { ClipboardController, type ClipboardState } from './state/clipboard.svelte';
+import { GestureStateMachine } from './state/gesture-machine.svelte';
+import { InlineEditController } from './state/inline-edit.svelte';
+import { SelectionController } from './state/selection.svelte';
+import { ViewportController, type ViewportTransform } from './state/viewport.svelte';
+
+export type { ClipboardState, ViewportTransform };
 
 declare global {
   interface Window {
     __VIZION_INITIAL_SNAPSHOT__?: HostToWebviewSnapshotMessage;
   }
-}
-
-export interface ViewportTransform {
-  panX: number;
-  panY: number;
-  zoom: number;
 }
 
 export interface ContextMenuItem {
@@ -38,13 +39,6 @@ export interface ContextMenuState {
   y: number;
   title?: string;
   items: ContextMenuItem[];
-}
-
-export interface ClipboardState {
-  kind: VizionDocumentKind;
-  nodeIds: string[];
-  edgeIds: string[];
-  pasteCount: number;
 }
 
 /**
@@ -66,16 +60,32 @@ export class VizionWebviewStore {
   // Optimistic node layouts so drag/resize never snaps back before host ack arrives
   optimisticUmlLayouts = $state<Record<string, UmlNodeLayout>>({});
 
+  // State controllers (composition keeps the public facade stable for existing components)
+  readonly viewportController = new ViewportController();
+  readonly selectionController = new SelectionController();
+  readonly clipboardController = new ClipboardController();
+  readonly gestureMachine = new GestureStateMachine();
+  readonly inlineEdit = new InlineEditController(this);
+
+  get viewport(): ViewportTransform {
+    return this.viewportController.transform;
+  }
+
+  get selectedIds(): string[] {
+    return this.selectionController.selectedIds;
+  }
+
+  get clipboard(): ClipboardState | null {
+    return this.clipboardController.state;
+  }
+
   // Transient UI state
-  selectedIds = $state<string[]>([]);
   outlineSearchQuery = $state<string>('');
   sidebarWidth = $state<number>(290);
   elementsPaneRatio = $state<number>(0.4);
-  viewport = $state<ViewportTransform>({ panX: 40, panY: 40, zoom: 1 });
   statusMessage = $state<string | null>(null);
   staleNotice = $state<string | null>(null);
   contextMenu = $state<ContextMenuState | null>(null);
-  clipboard = $state<ClipboardState | null>(null);
 
   private requestCounter = 0;
   private onFitContentCallback?: () => void;
@@ -126,12 +136,7 @@ export class VizionWebviewStore {
     this.optimisticUmlLayouts = {};
 
     if (msg.valid && msg.document) {
-      const validIds = new Set<string>([
-        ...msg.document.nodes.map((n) => n.id),
-        ...msg.document.edges.map((e) => e.id)
-      ]);
-      const filtered = this.selectedIds.filter((id) => validIds.has(id));
-      this.selectedIds = this.syncSelectionEdges(filtered);
+      this.selectionController.prune(msg.document);
     }
   }
 
@@ -156,7 +161,7 @@ export class VizionWebviewStore {
         } else {
           this.staleNotice = null;
           if (msg.createdIds && msg.createdIds.length > 0) {
-            this.selectedIds = this.syncSelectionEdges(msg.createdIds);
+            this.selectionController.setSelectedIds(this.umlDoc, msg.createdIds);
           }
         }
         break;
@@ -247,36 +252,28 @@ export class VizionWebviewStore {
     postToHost({ type: 'webview.checkForExtensionUpdate' });
   }
 
+  setStatusMessage(message: string | null): void {
+    this.statusMessage = message;
+  }
+
+  setStaleNotice(message: string | null): void {
+    this.staleNotice = message;
+  }
+
   copySelection(): void {
-    if (this.selectedIds.length === 0) return;
-    if (this.umlDoc) {
-      const nodeIds = this.umlDoc.nodes
-        .filter((n) => this.selectedIds.includes(n.id))
-        .map((n) => n.id);
-      const edgeIds = this.umlDoc.edges
-        .filter((e) => this.selectedIds.includes(e.id))
-        .map((e) => e.id);
-      if (nodeIds.length > 0 || edgeIds.length > 0) {
-        this.clipboard = {
-          kind: 'uml',
-          nodeIds,
-          edgeIds,
-          pasteCount: 0
-        };
-      }
-    }
+    this.clipboardController.copy(this.umlDoc, this.selectedIds);
   }
 
   pasteClipboard(stripCustomData = false): void {
-    if (this.isReadOnly || !this.clipboard) return;
-    this.clipboard.pasteCount += 1;
-    const step = this.clipboard.pasteCount * 20;
+    const clipboard = this.clipboardController.state;
+    if (this.isReadOnly || !clipboard) return;
+    const step = this.clipboardController.nextPasteOffset();
 
-    if (this.clipboard.kind === 'uml' && this.umlDoc) {
+    if (clipboard.kind === 'uml' && this.umlDoc) {
       this.dispatchOperation({
         type: 'uml.duplicateSelection',
-        nodeIds: this.clipboard.nodeIds,
-        edgeIds: this.clipboard.edgeIds,
+        nodeIds: clipboard.nodeIds,
+        edgeIds: clipboard.edgeIds,
         offsetX: step,
         offsetY: step,
         stripCustomData
@@ -335,85 +332,23 @@ export class VizionWebviewStore {
   }
 
   syncSelectionEdges(baseIds: string[], prevIds: string[] = this.selectedIds): string[] {
-    if (!this.umlDoc) return baseIds;
-    const selectedSet = new Set(baseIds);
-    const prevNodeIds = new Set(
-      this.umlDoc.nodes.filter((n) => prevIds.includes(n.id)).map((n) => n.id)
-    );
-    const nextNodeIds = new Set(
-      this.umlDoc.nodes.filter((n) => selectedSet.has(n.id)).map((n) => n.id)
-    );
-
-    // Identify which nodes were deselected (were selected previously, but not now)
-    const deselectedNodes = new Set([...prevNodeIds].filter((id) => !nextNodeIds.has(id)));
-
-    // When deselecting a node, deselect all relations linked to it
-    for (const deselectedId of deselectedNodes) {
-      for (const edge of this.umlDoc.edges) {
-        if (edge.source.nodeId === deselectedId || edge.target.nodeId === deselectedId) {
-          selectedSet.delete(edge.id);
-        }
-      }
-    }
-
-    // If 2 or more nodes are selected, their relation between them must also be selected
-    if (nextNodeIds.size >= 2) {
-      for (const edge of this.umlDoc.edges) {
-        if (nextNodeIds.has(edge.source.nodeId) && nextNodeIds.has(edge.target.nodeId)) {
-          selectedSet.add(edge.id);
-        } else if (
-          edge.source.nodeId &&
-          edge.target.nodeId &&
-          (!nextNodeIds.has(edge.source.nodeId) || !nextNodeIds.has(edge.target.nodeId))
-        ) {
-          // Deselect relations where at least one linked node is not selected
-          selectedSet.delete(edge.id);
-        }
-      }
-    } else {
-      // If fewer than 2 nodes are selected, remove any edges that connected selected nodes
-      for (const edge of this.umlDoc.edges) {
-        if (
-          selectedSet.has(edge.id) &&
-          (nextNodeIds.has(edge.source.nodeId) || nextNodeIds.has(edge.target.nodeId))
-        ) {
-          selectedSet.delete(edge.id);
-        }
-      }
-    }
-
-    return Array.from(selectedSet);
+    return this.selectionController.syncSelectionEdges(this.umlDoc, baseIds, prevIds);
   }
 
   setSelectedIds(ids: string[]): void {
-    this.selectedIds = this.syncSelectionEdges(ids, this.selectedIds);
+    this.selectionController.setSelectedIds(this.umlDoc, ids);
   }
 
   selectSingle(id: string, additive = false): void {
-    let next: string[];
-    if (additive) {
-      if (this.selectedIds.includes(id)) {
-        next = this.selectedIds.filter((x) => x !== id);
-      } else {
-        next = [...this.selectedIds, id];
-      }
-    } else {
-      next = [id];
-    }
-    this.selectedIds = this.syncSelectionEdges(next, this.selectedIds);
+    this.selectionController.selectSingle(this.umlDoc, id, additive);
   }
 
   clearSelection(): void {
-    this.selectedIds = [];
+    this.selectionController.clear();
   }
 
   setViewport(next: ViewportTransform): void {
-    const clampedZoom = Math.min(3.0, Math.max(0.2, next.zoom));
-    this.viewport = {
-      panX: Math.round(next.panX * 10) / 10,
-      panY: Math.round(next.panY * 10) / 10,
-      zoom: Math.round(clampedZoom * 1000) / 1000
-    };
+    this.viewportController.setViewport(next);
   }
 
   setSidebarWidth(width: number): void {

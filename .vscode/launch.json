@@ -12,6 +12,9 @@
       "outFiles": [
         "${workspaceFolder}/dist/**/*.cjs"
       ],
+      "env": {
+        "NODE_OPTIONS": "--no-experimental-network-inspection"
+      },
       "preLaunchTask": "npm: build"
     }
   ]

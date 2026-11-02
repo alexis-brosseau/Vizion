@@ -173,15 +173,6 @@ https://svelte.dev/e/lifecycle_double_unmount`, bold, normal);
       console.warn(`https://svelte.dev/e/lifecycle_double_unmount`);
     }
   }
-  function select_multiple_invalid_value() {
-    if (dev_fallback_default) {
-      console.warn(`%c[svelte] select_multiple_invalid_value
-%cThe \`value\` property of a \`<select multiple>\` element should be an array, but it received a non-array value. The selection will be kept as is.
-https://svelte.dev/e/select_multiple_invalid_value`, bold, normal);
-    } else {
-      console.warn(`https://svelte.dev/e/select_multiple_invalid_value`);
-    }
-  }
   function state_proxy_equality_mismatch(operator) {
     if (dev_fallback_default) {
       console.warn(`%c[svelte] state_proxy_equality_mismatch
@@ -405,6 +396,17 @@ https://svelte.dev/e/hydration_failed`);
       throw error;
     } else {
       throw new Error(`https://svelte.dev/e/hydration_failed`);
+    }
+  }
+  function invalid_snippet() {
+    if (dev_fallback_default) {
+      const error = new Error(`invalid_snippet
+Could not \`{@render}\` snippet due to the expression being \`null\` or \`undefined\`. Consider using optional chaining \`{@render snippet?.()}\`
+https://svelte.dev/e/invalid_snippet`);
+      error.name = "Svelte error";
+      throw error;
+    } else {
+      throw new Error(`https://svelte.dev/e/invalid_snippet`);
     }
   }
   function props_invalid_value(key2) {
@@ -1323,11 +1325,11 @@ https://svelte.dev/e/svelte_boundary_reset_onerror`);
           this.#unlink();
           infinite_loop_guard();
         }
-        for (const root7 of this.#resolve()) {
+        for (const root29 of this.#resolve()) {
           try {
-            this.#traverse(root7, effects, render_effects);
+            this.#traverse(root29, effects, render_effects);
           } catch (e) {
-            reset_all(root7);
+            reset_all(root29);
             if (!this.#is_deferred()) this.discard();
             throw e;
           }
@@ -1393,9 +1395,9 @@ https://svelte.dev/e/svelte_boundary_reset_onerror`);
      * @param {Effect[]} effects
      * @param {Effect[]} render_effects
      */
-    #traverse(root7, effects, render_effects) {
-      root7.f ^= CLEAN;
-      var effect2 = root7.first;
+    #traverse(root29, effects, render_effects) {
+      root29.f ^= CLEAN;
+      var effect2 = root29.first;
       while (effect2 !== null) {
         var flags2 = effect2.f;
         var is_branch = (flags2 & (BRANCH_EFFECT | ROOT_EFFECT)) !== 0;
@@ -1640,8 +1642,8 @@ https://svelte.dev/e/svelte_boundary_reset_onerror`);
           }
           if (batch.#scheduled.length > 0 && !batch.#decrement_queued) {
             batch.apply();
-            for (var root7 of batch.#resolve()) {
-              batch.#traverse(root7, [], []);
+            for (var root29 of batch.#resolve()) {
+              batch.#traverse(root29, [], []);
             }
           }
           batch.deactivate();
@@ -2392,9 +2394,6 @@ https://svelte.dev/e/svelte_boundary_reset_onerror`);
     }
     return value;
   }
-  function is(a, b) {
-    return Object.is(get_proxied_value(a), get_proxied_value(b));
-  }
   var ARRAY_MUTATING_METHODS = /* @__PURE__ */ new Set([
     "copyWithin",
     "fill",
@@ -3143,7 +3142,7 @@ ${component_stack}
     }
     return false;
   }
-  function schedule_possible_effect_self_invalidation(signal, effect2, root7 = true) {
+  function schedule_possible_effect_self_invalidation(signal, effect2, root29 = true) {
     var reactions = signal.reactions;
     if (reactions === null) return;
     if (!async_mode_flag && current_sources !== null && current_sources.has(signal)) {
@@ -3159,7 +3158,7 @@ ${component_stack}
           false
         );
       } else if (effect2 === reaction) {
-        if (root7) {
+        if (root29) {
           set_signal_status(reaction, DIRTY);
         } else if ((reaction.f & CLEAN) !== 0) {
           set_signal_status(reaction, MAYBE_DIRTY);
@@ -3887,21 +3886,21 @@ ${component_stack}
           /** @type {DocumentFragment} */
           create_fragment_from_html(wrapped)
         );
-        var root7 = (
+        var root29 = (
           /** @type {Element} */
           get_first_child(fragment)
         );
         if (is_fragment) {
           node = document.createDocumentFragment();
-          while (get_first_child(root7)) {
+          while (get_first_child(root29)) {
             node.appendChild(
               /** @type {TemplateNode} */
-              get_first_child(root7)
+              get_first_child(root29)
             );
           }
         } else {
           node = /** @type {Element} */
-          get_first_child(root7);
+          get_first_child(root29);
         }
       }
       var clone = (
@@ -5314,6 +5313,18 @@ ${component_stack}
     }
   }
 
+  // node_modules/svelte/src/internal/client/dom/blocks/snippet.js
+  function snippet(node, get_snippet, ...args) {
+    var branches = new BranchManager(node);
+    block(() => {
+      const snippet2 = get_snippet() ?? null;
+      if (dev_fallback_default && snippet2 == null) {
+        invalid_snippet();
+      }
+      branches.ensure(snippet2, snippet2 && ((anchor) => snippet2(anchor, ...args)));
+    }, EFFECT_TRANSPARENT);
+  }
+
   // node_modules/svelte/src/internal/client/dom/elements/actions.js
   function action(dom, action2, get_value) {
     effect(() => {
@@ -5530,111 +5541,6 @@ ${component_stack}
       }
     }
     return next_styles;
-  }
-
-  // node_modules/svelte/src/internal/client/dom/elements/bindings/select.js
-  function set_selected(option, selected) {
-    if (selected) {
-      if (!option.hasAttribute("selected")) option.setAttribute("selected", "");
-    } else {
-      option.removeAttribute("selected");
-    }
-  }
-  function apply_default_select_value(select, preserve) {
-    var value = select.__defaultValue;
-    var multiple = select.multiple;
-    var values = multiple ? value ?? [] : null;
-    if (multiple && !is_array(values)) return;
-    var index2 = select.selectedIndex;
-    var selected = preserve && multiple ? new Set(select.selectedOptions) : null;
-    for (var option of select.options) {
-      var option_value = get_option_value(option);
-      set_selected(
-        option,
-        multiple ? (
-          /** @type {any[]} */
-          values.includes(option_value)
-        ) : is(option_value, value)
-      );
-    }
-    if (!preserve) return;
-    if (selected !== null) {
-      for (option of select.options) {
-        var was_selected = selected.has(option);
-        if (option.selected !== was_selected) option.selected = was_selected;
-      }
-    } else if (select.selectedIndex !== index2) {
-      select.selectedIndex = index2;
-    }
-  }
-  function select_option(select, value, mounting = false) {
-    if (select.multiple) {
-      if (value == void 0) {
-        return;
-      }
-      if (!is_array(value)) {
-        return select_multiple_invalid_value();
-      }
-      for (var option of select.options) {
-        option.selected = value.includes(get_option_value(option));
-      }
-      return;
-    }
-    for (option of select.options) {
-      var option_value = get_option_value(option);
-      if (is(option_value, value)) {
-        option.selected = true;
-        return;
-      }
-    }
-    if (!mounting || value !== void 0) {
-      select.selectedIndex = -1;
-    }
-  }
-  function init_select(select) {
-    var observer = new MutationObserver((entries) => {
-      if (entries.every(is_selectedcontent_mutation)) return;
-      if ("__defaultValue" in select) {
-        apply_default_select_value(select, false);
-      }
-      if ("__value" in select) {
-        select_option(select, select.__value);
-      }
-    });
-    observer.observe(select, {
-      // Listen to option element changes
-      childList: true,
-      subtree: true,
-      // because of <optgroup>
-      // Listen to option element value attribute changes
-      // (doesn't get notified of select value changes,
-      // because that property is not reflected as an attribute)
-      attributes: true,
-      attributeFilter: ["value"]
-    });
-    teardown(() => {
-      observer.disconnect();
-    });
-  }
-  function get_option_value(option) {
-    if ("__value" in option) {
-      return option.__value;
-    } else {
-      return option.value;
-    }
-  }
-  function is_selectedcontent_mutation(entry) {
-    if (
-      /** @type {Element} */
-      entry.target.closest("selectedcontent") !== null
-    ) {
-      return true;
-    }
-    if (entry.type === "childList") {
-      var nodes = [...entry.addedNodes, ...entry.removedNodes];
-      return nodes.length > 0 && nodes.every((node) => node.nodeName === "SELECTEDCONTENT");
-    }
-    return false;
   }
 
   // node_modules/svelte/src/internal/client/dom/elements/attributes.js
@@ -6386,7 +6292,7 @@ ${component_stack}
     ((window.__svelte ??= {}).v ??= /* @__PURE__ */ new Set()).add(PUBLIC_VERSION);
   }
 
-  // src/webview/common/ContextMenu.svelte
+  // src/webview/ui/menu/ContextMenu.svelte
   var root = from_html(`<div class="vz-context-divider"></div>`);
   var root_1 = from_html(`<div class="vz-context-submenu" role="menu" tabindex="-1"><!></div>`);
   var root_2 = from_html(`<div class="vz-context-submenu-wrap"><button type="button" class="vz-context-item" role="menuitem" aria-haspopup="true"><span> </span> <span class="vz-submenu-arrow">\u25B8</span></button> <!></div>`);
@@ -6713,6 +6619,205 @@ ${component_stack}
   }
   delegate(["click"]);
 
+  // src/shared/geometry/vector.ts
+  var GRID_SIZE = 20;
+  function snapToGrid(value, gridSize = GRID_SIZE) {
+    return Math.round(value / gridSize) * gridSize;
+  }
+  function screenToWorld(xOrPoint, yOrViewport, maybeViewport) {
+    let screenX;
+    let screenY;
+    let viewport;
+    if (typeof xOrPoint === "object" && xOrPoint !== null) {
+      screenX = xOrPoint.x;
+      screenY = xOrPoint.y;
+      viewport = yOrViewport;
+    } else {
+      screenX = xOrPoint;
+      screenY = yOrViewport;
+      viewport = maybeViewport;
+    }
+    const zoom = Number.isFinite(viewport?.zoom) && viewport.zoom > 0 ? viewport.zoom : 1;
+    const panX = Number.isFinite(viewport?.panX) ? viewport.panX : 0;
+    const panY = Number.isFinite(viewport?.panY) ? viewport.panY : 0;
+    return {
+      x: (screenX - panX) / zoom,
+      y: (screenY - panY) / zoom
+    };
+  }
+  function normalizeDragRect(p1, p2, minSize = 0) {
+    const x = Math.min(p1.x, p2.x);
+    const y = Math.min(p1.y, p2.y);
+    const width = Math.max(minSize, Math.abs(p2.x - p1.x));
+    const height = Math.max(minSize, Math.abs(p2.y - p1.y));
+    return {
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+      width: Math.round(width * 10) / 10,
+      height: Math.round(height * 10) / 10
+    };
+  }
+  function rectsIntersect(a, b) {
+    return a.x <= b.x + b.width && a.x + a.width >= b.x && a.y <= b.y + b.height && a.y + a.height >= b.y;
+  }
+
+  // src/shared/geometry/intersections.ts
+  function computeRectBoundaryIntersection(rect, externalPoint) {
+    const cx = rect.x + rect.width / 2;
+    const cy = rect.y + rect.height / 2;
+    const dx = externalPoint.x - cx;
+    const dy = externalPoint.y - cy;
+    const halfW = Math.max(10, rect.width / 2);
+    const halfH = Math.max(10, rect.height / 2);
+    if (Math.abs(dx) < 1e-3 && Math.abs(dy) < 1e-3) {
+      return {
+        point: { x: rect.x + rect.width, y: cy },
+        normal: { x: 1, y: 0 }
+      };
+    }
+    const scaleX = halfW / Math.max(1e-4, Math.abs(dx));
+    const scaleY = halfH / Math.max(1e-4, Math.abs(dy));
+    if (scaleX < scaleY) {
+      const signX = dx >= 0 ? 1 : -1;
+      return {
+        point: {
+          x: cx + signX * halfW,
+          y: cy + dy * scaleX
+        },
+        normal: { x: signX, y: 0 }
+      };
+    } else {
+      const signY = dy >= 0 ? 1 : -1;
+      return {
+        point: {
+          x: cx + dx * scaleY,
+          y: cy + signY * halfH
+        },
+        normal: { x: 0, y: signY }
+      };
+    }
+  }
+  function computeShapeBoundaryIntersection(rect, externalPoint, shape) {
+    const cx = rect.x + rect.width / 2;
+    const cy = rect.y + rect.height / 2;
+    const dx = externalPoint.x - cx;
+    const dy = externalPoint.y - cy;
+    if (Math.abs(dx) < 1e-3 && Math.abs(dy) < 1e-3) {
+      return {
+        point: { x: rect.x + rect.width, y: cy },
+        normal: { x: 1, y: 0 }
+      };
+    }
+    if (!shape || shape === "rectangle") {
+      return computeRectBoundaryIntersection(rect, externalPoint);
+    }
+    const pad = 2;
+    const x0 = rect.x + pad;
+    const y0 = rect.y + pad;
+    const x1 = rect.x + Math.max(pad + 10, rect.width - pad);
+    const y1 = rect.y + Math.max(pad + 10, rect.height - pad);
+    if (shape === "ellipse") {
+      const rx = Math.max(5, (x1 - x0) / 2);
+      const ry = Math.max(5, (y1 - y0) / 2);
+      const denom = Math.hypot(dx / rx, dy / ry);
+      const t = denom > 1e-4 ? 1 / denom : 1;
+      const px = cx + t * dx;
+      const py = cy + t * dy;
+      const gX = (px - cx) / (rx * rx);
+      const gY = (py - cy) / (ry * ry);
+      const gLen = Math.hypot(gX, gY) || 1;
+      return {
+        point: { x: px, y: py },
+        normal: { x: gX / gLen, y: gY / gLen }
+      };
+    }
+    let vertices = [];
+    if (shape === "rhombus") {
+      vertices = [
+        { x: cx, y: y0 },
+        { x: x1, y: cy },
+        { x: cx, y: y1 },
+        { x: x0, y: cy }
+      ];
+    } else if (shape === "trapezoid") {
+      const inset = Math.min(36, (x1 - x0) * 0.2);
+      vertices = [
+        { x: x0 + inset, y: y0 },
+        { x: x1 - inset, y: y0 },
+        { x: x1, y: y1 },
+        { x: x0, y: y1 }
+      ];
+    } else if (shape === "parallelogram") {
+      const skew = Math.min(32, (x1 - x0) * 0.18);
+      vertices = [
+        { x: x0 + skew, y: y0 },
+        { x: x1, y: y0 },
+        { x: x1 - skew, y: y1 },
+        { x: x0, y: y1 }
+      ];
+    }
+    let bestT = Infinity;
+    let bestPt = { x: rect.x + rect.width, y: cy };
+    let bestNorm = { x: 1, y: 0 };
+    for (let i = 0; i < vertices.length; i++) {
+      const A = vertices[i];
+      const B = vertices[(i + 1) % vertices.length];
+      const vx = B.x - A.x;
+      const vy = B.y - A.y;
+      const det = dy * vx - dx * vy;
+      if (Math.abs(det) < 1e-9) continue;
+      const diffX = A.x - cx;
+      const diffY = A.y - cy;
+      const t = (diffY * vx - diffX * vy) / det;
+      const u = (dx * diffY - dy * diffX) / det;
+      if (t > 0 && u >= -1e-3 && u <= 1.001 && t < bestT) {
+        bestT = t;
+        bestPt = { x: cx + t * dx, y: cy + t * dy };
+        const midX = (A.x + B.x) / 2;
+        const midY = (A.y + B.y) / 2;
+        let nx = -vy;
+        let ny = vx;
+        if (nx * (midX - cx) + ny * (midY - cy) < 0) {
+          nx = -nx;
+          ny = -ny;
+        }
+        const nLen = Math.hypot(nx, ny) || 1;
+        bestNorm = { x: nx / nLen, y: ny / nLen };
+      }
+    }
+    if (bestT < Infinity) {
+      if (shape === "rhombus") {
+        const corners = [
+          { pt: { x: cx, y: y0 }, norm: { x: 0, y: -1 } },
+          // top corner acts like top flat border
+          { pt: { x: x1, y: cy }, norm: { x: 1, y: 0 } },
+          // right corner acts like right flat border
+          { pt: { x: cx, y: y1 }, norm: { x: 0, y: 1 } },
+          // bottom corner acts like bottom flat border
+          { pt: { x: x0, y: cy }, norm: { x: -1, y: 0 } }
+          // left corner acts like left flat border
+        ];
+        const sideLen = Math.hypot(x1 - cx, cy - y0);
+        const cornerThreshold = Math.min(22, Math.max(14, sideLen * 0.35));
+        let nearestIdx = -1;
+        let minD = Infinity;
+        for (let i = 0; i < corners.length; i++) {
+          const d = Math.hypot(bestPt.x - corners[i].pt.x, bestPt.y - corners[i].pt.y);
+          if (d < minD) {
+            minD = d;
+            nearestIdx = i;
+          }
+        }
+        if (nearestIdx >= 0 && minD <= cornerThreshold) {
+          bestPt = { ...corners[nearestIdx].pt };
+          bestNorm = { ...corners[nearestIdx].norm };
+        }
+      }
+      return { point: bestPt, normal: bestNorm };
+    }
+    return computeRectBoundaryIntersection(rect, externalPoint);
+  }
+
   // src/shared/registry/uml-registry.ts
   var UML_SHAPE_GEOMETRIES = [
     { kind: "ellipse", label: "Ellipse" },
@@ -6921,188 +7026,7 @@ ${component_stack}
     end: { shape: "none", size: 10 }
   });
 
-  // src/shared/geometry/index.ts
-  var GRID_SIZE = 20;
-  function snapToGrid(value, gridSize = GRID_SIZE) {
-    return Math.round(value / gridSize) * gridSize;
-  }
-  function screenToWorld(screenX, screenY, viewport) {
-    const z = Math.max(0.05, viewport.zoom);
-    return {
-      x: Math.round((screenX - viewport.panX) / z * 100) / 100,
-      y: Math.round((screenY - viewport.panY) / z * 100) / 100
-    };
-  }
-  function normalizeDragRect(p1, p2, minSize = 0) {
-    const x = Math.min(p1.x, p2.x);
-    const y = Math.min(p1.y, p2.y);
-    const width = Math.max(minSize, Math.abs(p2.x - p1.x));
-    const height = Math.max(minSize, Math.abs(p2.y - p1.y));
-    return {
-      x: Math.round(x * 10) / 10,
-      y: Math.round(y * 10) / 10,
-      width: Math.round(width * 10) / 10,
-      height: Math.round(height * 10) / 10
-    };
-  }
-  function rectsIntersect(a, b) {
-    return a.x <= b.x + b.width && a.x + a.width >= b.x && a.y <= b.y + b.height && a.y + a.height >= b.y;
-  }
-  function computeRectBoundaryIntersection(rect, externalPoint) {
-    const cx = rect.x + rect.width / 2;
-    const cy = rect.y + rect.height / 2;
-    const dx = externalPoint.x - cx;
-    const dy = externalPoint.y - cy;
-    const halfW = Math.max(10, rect.width / 2);
-    const halfH = Math.max(10, rect.height / 2);
-    if (Math.abs(dx) < 1e-3 && Math.abs(dy) < 1e-3) {
-      return {
-        point: { x: rect.x + rect.width, y: cy },
-        normal: { x: 1, y: 0 }
-      };
-    }
-    const scaleX = halfW / Math.max(1e-4, Math.abs(dx));
-    const scaleY = halfH / Math.max(1e-4, Math.abs(dy));
-    if (scaleX < scaleY) {
-      const signX = dx >= 0 ? 1 : -1;
-      return {
-        point: {
-          x: cx + signX * halfW,
-          y: cy + dy * scaleX
-        },
-        normal: { x: signX, y: 0 }
-      };
-    } else {
-      const signY = dy >= 0 ? 1 : -1;
-      return {
-        point: {
-          x: cx + dx * scaleY,
-          y: cy + signY * halfH
-        },
-        normal: { x: 0, y: signY }
-      };
-    }
-  }
-  function computeShapeBoundaryIntersection(rect, externalPoint, shape) {
-    const cx = rect.x + rect.width / 2;
-    const cy = rect.y + rect.height / 2;
-    const dx = externalPoint.x - cx;
-    const dy = externalPoint.y - cy;
-    if (Math.abs(dx) < 1e-3 && Math.abs(dy) < 1e-3) {
-      return {
-        point: { x: rect.x + rect.width, y: cy },
-        normal: { x: 1, y: 0 }
-      };
-    }
-    if (!shape || shape === "rectangle") {
-      return computeRectBoundaryIntersection(rect, externalPoint);
-    }
-    const pad = 2;
-    const x0 = rect.x + pad;
-    const y0 = rect.y + pad;
-    const x1 = rect.x + Math.max(pad + 10, rect.width - pad);
-    const y1 = rect.y + Math.max(pad + 10, rect.height - pad);
-    if (shape === "ellipse") {
-      const rx = Math.max(5, (x1 - x0) / 2);
-      const ry = Math.max(5, (y1 - y0) / 2);
-      const denom = Math.hypot(dx / rx, dy / ry);
-      const t = denom > 1e-4 ? 1 / denom : 1;
-      const px = cx + t * dx;
-      const py = cy + t * dy;
-      const gX = (px - cx) / (rx * rx);
-      const gY = (py - cy) / (ry * ry);
-      const gLen = Math.hypot(gX, gY) || 1;
-      return {
-        point: { x: px, y: py },
-        normal: { x: gX / gLen, y: gY / gLen }
-      };
-    }
-    let vertices = [];
-    if (shape === "rhombus") {
-      vertices = [
-        { x: cx, y: y0 },
-        { x: x1, y: cy },
-        { x: cx, y: y1 },
-        { x: x0, y: cy }
-      ];
-    } else if (shape === "trapezoid") {
-      const inset = Math.min(36, (x1 - x0) * 0.2);
-      vertices = [
-        { x: x0 + inset, y: y0 },
-        { x: x1 - inset, y: y0 },
-        { x: x1, y: y1 },
-        { x: x0, y: y1 }
-      ];
-    } else if (shape === "parallelogram") {
-      const skew = Math.min(32, (x1 - x0) * 0.18);
-      vertices = [
-        { x: x0 + skew, y: y0 },
-        { x: x1, y: y0 },
-        { x: x1 - skew, y: y1 },
-        { x: x0, y: y1 }
-      ];
-    }
-    let bestT = Infinity;
-    let bestPt = { x: rect.x + rect.width, y: cy };
-    let bestNorm = { x: 1, y: 0 };
-    for (let i = 0; i < vertices.length; i++) {
-      const A = vertices[i];
-      const B = vertices[(i + 1) % vertices.length];
-      const vx = B.x - A.x;
-      const vy = B.y - A.y;
-      const det = dy * vx - dx * vy;
-      if (Math.abs(det) < 1e-9) continue;
-      const diffX = A.x - cx;
-      const diffY = A.y - cy;
-      const t = (diffY * vx - diffX * vy) / det;
-      const u = (dx * diffY - dy * diffX) / det;
-      if (t > 0 && u >= -1e-3 && u <= 1.001 && t < bestT) {
-        bestT = t;
-        bestPt = { x: cx + t * dx, y: cy + t * dy };
-        const midX = (A.x + B.x) / 2;
-        const midY = (A.y + B.y) / 2;
-        let nx = -vy;
-        let ny = vx;
-        if (nx * (midX - cx) + ny * (midY - cy) < 0) {
-          nx = -nx;
-          ny = -ny;
-        }
-        const nLen = Math.hypot(nx, ny) || 1;
-        bestNorm = { x: nx / nLen, y: ny / nLen };
-      }
-    }
-    if (bestT < Infinity) {
-      if (shape === "rhombus") {
-        const corners = [
-          { pt: { x: cx, y: y0 }, norm: { x: 0, y: -1 } },
-          // top corner acts like top flat border
-          { pt: { x: x1, y: cy }, norm: { x: 1, y: 0 } },
-          // right corner acts like right flat border
-          { pt: { x: cx, y: y1 }, norm: { x: 0, y: 1 } },
-          // bottom corner acts like bottom flat border
-          { pt: { x: x0, y: cy }, norm: { x: -1, y: 0 } }
-          // left corner acts like left flat border
-        ];
-        const sideLen = Math.hypot(x1 - cx, cy - y0);
-        const cornerThreshold = Math.min(22, Math.max(14, sideLen * 0.35));
-        let nearestIdx = -1;
-        let minD = Infinity;
-        for (let i = 0; i < corners.length; i++) {
-          const d = Math.hypot(bestPt.x - corners[i].pt.x, bestPt.y - corners[i].pt.y);
-          if (d < minD) {
-            minD = d;
-            nearestIdx = i;
-          }
-        }
-        if (nearestIdx >= 0 && minD <= cornerThreshold) {
-          bestPt = { ...corners[nearestIdx].pt };
-          bestNorm = { ...corners[nearestIdx].norm };
-        }
-      }
-      return { point: bestPt, normal: bestNorm };
-    }
-    return computeRectBoundaryIntersection(rect, externalPoint);
-  }
+  // src/shared/geometry/routing.ts
   function getMultiplicityLabelPoint(tip, angleDeg, multiplicityText) {
     const text2 = (multiplicityText ?? "").trim();
     const boxWidth = text2.length > 0 ? text2.length * 7.6 + 12 : 20;
@@ -7125,6 +7049,364 @@ ${component_stack}
       y: tip.y + dy
     };
   }
+  function computeStraightRoute(startTip, endTip, startTrim = 0, endTrim = 0) {
+    const rawDx = endTip.x - startTip.x;
+    const rawDy = endTip.y - startTip.y;
+    const rawLen = Math.hypot(rawDx, rawDy) || 1;
+    const unitX = rawDx / rawLen;
+    const unitY = rawDy / rawLen;
+    const trimmedStart = {
+      x: startTip.x + unitX * Math.min(startTrim, rawLen * 0.45),
+      y: startTip.y + unitY * Math.min(startTrim, rawLen * 0.45)
+    };
+    const trimmedEnd = {
+      x: endTip.x - unitX * Math.min(endTrim, rawLen * 0.45),
+      y: endTip.y - unitY * Math.min(endTrim, rawLen * 0.45)
+    };
+    const pathD = `M ${trimmedStart.x} ${trimmedStart.y} L ${trimmedEnd.x} ${trimmedEnd.y}`;
+    const hitPathD = `M ${startTip.x} ${startTip.y} L ${endTip.x} ${endTip.y}`;
+    const endAngleDeg = Math.atan2(unitY, unitX) * 180 / Math.PI;
+    const startAngleDeg = Math.atan2(-unitY, -unitX) * 180 / Math.PI;
+    return {
+      pathD,
+      hitPathD,
+      startTip,
+      endTip,
+      startAngleDeg,
+      endAngleDeg,
+      labelPoint: {
+        x: (startTip.x + endTip.x) / 2,
+        y: (startTip.y + endTip.y) / 2
+      }
+    };
+  }
+  function computeBezierRoute(startTip, endTip, srcNormal, tgtNormal, startTrim = 0, endTrim = 0) {
+    const rawDx = endTip.x - startTip.x;
+    const rawDy = endTip.y - startTip.y;
+    const rawLen = Math.hypot(rawDx, rawDy) || 1;
+    const dist = Math.min(140, Math.max(40, rawLen * 0.38));
+    const c1 = {
+      x: startTip.x + srcNormal.x * dist,
+      y: startTip.y + srcNormal.y * dist
+    };
+    const c2 = {
+      x: endTip.x + tgtNormal.x * dist,
+      y: endTip.y + tgtNormal.y * dist
+    };
+    const startVecX = startTip.x - c1.x;
+    const startVecY = startTip.y - c1.y;
+    const startVecLen = Math.hypot(startVecX, startVecY) || 1;
+    const startUnitX = startVecX / startVecLen;
+    const startUnitY = startVecY / startVecLen;
+    const endVecX = endTip.x - c2.x;
+    const endVecY = endTip.y - c2.y;
+    const endVecLen = Math.hypot(endVecX, endVecY) || 1;
+    const endUnitX = endVecX / endVecLen;
+    const endUnitY = endVecY / endVecLen;
+    const trimmedStart = {
+      x: startTip.x - startUnitX * Math.min(startTrim, rawLen * 0.4),
+      y: startTip.y - startUnitY * Math.min(startTrim, rawLen * 0.4)
+    };
+    const trimmedEnd = {
+      x: endTip.x - endUnitX * Math.min(endTrim, rawLen * 0.4),
+      y: endTip.y - endUnitY * Math.min(endTrim, rawLen * 0.4)
+    };
+    const pathD = `M ${trimmedStart.x} ${trimmedStart.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${trimmedEnd.x} ${trimmedEnd.y}`;
+    const hitPathD = `M ${startTip.x} ${startTip.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${endTip.x} ${endTip.y}`;
+    const labelPoint = {
+      x: 0.125 * startTip.x + 0.375 * c1.x + 0.375 * c2.x + 0.125 * endTip.x,
+      y: 0.125 * startTip.y + 0.375 * c1.y + 0.375 * c2.y + 0.125 * endTip.y
+    };
+    return {
+      pathD,
+      hitPathD,
+      startTip,
+      endTip,
+      startAngleDeg: Math.atan2(startUnitY, startUnitX) * 180 / Math.PI,
+      endAngleDeg: Math.atan2(endUnitY, endUnitX) * 180 / Math.PI,
+      labelPoint
+    };
+  }
+  function clampToRange(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+  function snapAnchorToRect(point, rect) {
+    const right = rect.x + rect.width;
+    const bottom = rect.y + rect.height;
+    const onVerticalEdge = Math.min(Math.abs(point.x - rect.x), Math.abs(point.x - right)) <= Math.min(Math.abs(point.y - rect.y), Math.abs(point.y - bottom));
+    if (onVerticalEdge) {
+      return {
+        x: point.x,
+        y: clampToRange(snapToGrid(point.y, GRID_SIZE), rect.y, bottom)
+      };
+    }
+    return {
+      x: clampToRange(snapToGrid(point.x, GRID_SIZE), rect.x, right),
+      y: point.y
+    };
+  }
+  function gridifyOrthogonalRoute(points, sourceRect, targetRect, sourceIsShape, targetIsShape) {
+    if (points.length === 0) return points;
+    const snapped = [];
+    snapped.push(sourceIsShape ? points[0] : snapAnchorToRect(points[0], sourceRect));
+    for (let index2 = 1; index2 < points.length - 1; index2++) {
+      snapped.push({
+        x: snapToGrid(points[index2].x, GRID_SIZE),
+        y: snapToGrid(points[index2].y, GRID_SIZE)
+      });
+    }
+    snapped.push(
+      targetIsShape ? points[points.length - 1] : snapAnchorToRect(points[points.length - 1], targetRect)
+    );
+    const orthogonal = [snapped[0]];
+    for (let index2 = 1; index2 < snapped.length; index2++) {
+      const previous = orthogonal[orthogonal.length - 1];
+      const current = snapped[index2];
+      if (previous.x !== current.x && previous.y !== current.y) {
+        orthogonal.push({ x: current.x, y: previous.y });
+      }
+      if (previous.x === current.x && previous.y === current.y) continue;
+      orthogonal.push(current);
+    }
+    return orthogonal;
+  }
+  function computeOrthogonalRoute(sourceRect, targetRect, srcHit, tgtHit, startTrim = 0, endTrim = 0, parallelOffset = 0, sourceAnchorOverride, targetAnchorOverride, sourceShape, targetShape, labelText) {
+    const sourceCenter = {
+      x: sourceRect.x + sourceRect.width / 2,
+      y: sourceRect.y + sourceRect.height / 2
+    };
+    const targetCenter = {
+      x: targetRect.x + targetRect.width / 2,
+      y: targetRect.y + targetRect.height / 2
+    };
+    const sRight = sourceRect.x + sourceRect.width;
+    const sLeft = sourceRect.x;
+    const sBottom = sourceRect.y + sourceRect.height;
+    const sTop = sourceRect.y;
+    const tRight = targetRect.x + targetRect.width;
+    const tLeft = targetRect.x;
+    const tBottom = targetRect.y + targetRect.height;
+    const tTop = targetRect.y;
+    const gapRight = tLeft - sRight;
+    const gapLeft = sLeft - tRight;
+    const gapBottom = tTop - sBottom;
+    const gapTop = sTop - tBottom;
+    let startPt = srcHit.point;
+    let startNorm = srcHit.normal;
+    let endPt = tgtHit.point;
+    let endNorm = tgtHit.normal;
+    if (!sourceAnchorOverride && !targetAnchorOverride) {
+      if (gapRight >= 0 && gapRight >= gapBottom && gapRight >= gapTop) {
+        startPt = { x: sRight, y: sourceCenter.y };
+        startNorm = { x: 1, y: 0 };
+        endPt = { x: tLeft, y: targetCenter.y };
+        endNorm = { x: -1, y: 0 };
+      } else if (gapLeft >= 0 && gapLeft >= gapBottom && gapLeft >= gapTop) {
+        startPt = { x: sLeft, y: sourceCenter.y };
+        startNorm = { x: -1, y: 0 };
+        endPt = { x: tRight, y: targetCenter.y };
+        endNorm = { x: 1, y: 0 };
+      } else if (gapBottom >= 0) {
+        startPt = { x: sourceCenter.x, y: sBottom };
+        startNorm = { x: 0, y: 1 };
+        endPt = { x: targetCenter.x, y: tTop };
+        endNorm = { x: 0, y: -1 };
+      } else if (gapTop >= 0) {
+        startPt = { x: sourceCenter.x, y: sTop };
+        startNorm = { x: 0, y: -1 };
+        endPt = { x: targetCenter.x, y: tBottom };
+        endNorm = { x: 0, y: 1 };
+      }
+    }
+    if (sourceShape && !sourceAnchorOverride) {
+      const hit = computeShapeBoundaryIntersection(
+        sourceRect,
+        { x: sourceCenter.x + startNorm.x * 1e4, y: sourceCenter.y + startNorm.y * 1e4 },
+        sourceShape
+      );
+      startPt = hit.point;
+    }
+    if (targetShape && !targetAnchorOverride) {
+      const hit = computeShapeBoundaryIntersection(
+        targetRect,
+        { x: targetCenter.x + endNorm.x * 1e4, y: targetCenter.y + endNorm.y * 1e4 },
+        targetShape
+      );
+      endPt = hit.point;
+    }
+    const pts = [startPt];
+    if (startNorm.x !== 0) {
+      if (endNorm.x !== 0) {
+        if (startNorm.x !== endNorm.x && (endPt.x - startPt.x) * startNorm.x > 0) {
+          if (Math.abs(startPt.y - endPt.y) < 1 && parallelOffset !== 0) {
+            const jogY = startPt.y + parallelOffset;
+            const midX = (startPt.x + endPt.x) / 2;
+            const halfSpan = Math.min(20, Math.abs(endPt.x - startPt.x) / 4);
+            const dirX = endPt.x >= startPt.x ? 1 : -1;
+            const midX1 = midX - dirX * halfSpan;
+            const midX2 = midX + dirX * halfSpan;
+            pts.push({ x: midX1, y: startPt.y });
+            pts.push({ x: midX1, y: jogY });
+            pts.push({ x: midX2, y: jogY });
+            pts.push({ x: midX2, y: endPt.y });
+          } else {
+            const midX = (startPt.x + endPt.x) / 2 + parallelOffset;
+            pts.push({ x: midX, y: startPt.y });
+            pts.push({ x: midX, y: endPt.y });
+          }
+        } else {
+          const cX1 = startPt.x + startNorm.x * 24;
+          const cX2 = endPt.x + endNorm.x * 24;
+          const midY = (startPt.y + endPt.y) / 2 + parallelOffset;
+          pts.push({ x: cX1, y: startPt.y });
+          pts.push({ x: cX1, y: midY });
+          pts.push({ x: cX2, y: midY });
+          pts.push({ x: cX2, y: endPt.y });
+        }
+      } else {
+        if (startNorm.x * (endPt.x - startPt.x) > 0 && endNorm.y * (startPt.y - endPt.y) > 0) {
+          pts.push({ x: endPt.x, y: startPt.y });
+        } else {
+          const cX = startPt.x + startNorm.x * 24;
+          const cY = endPt.y + endNorm.y * 24;
+          pts.push({ x: cX, y: startPt.y });
+          pts.push({ x: cX, y: cY });
+          pts.push({ x: endPt.x, y: cY });
+        }
+      }
+    } else {
+      if (endNorm.y !== 0) {
+        if (startNorm.y !== endNorm.y && (endPt.y - startPt.y) * startNorm.y > 0) {
+          if (Math.abs(startPt.x - endPt.x) < 1 && parallelOffset !== 0) {
+            const jogX = startPt.x + parallelOffset;
+            const midY = (startPt.y + endPt.y) / 2;
+            const halfSpan = Math.min(20, Math.abs(endPt.y - startPt.y) / 4);
+            const dirY = endPt.y >= startPt.y ? 1 : -1;
+            const midY1 = midY - dirY * halfSpan;
+            const midY2 = midY + dirY * halfSpan;
+            pts.push({ x: startPt.x, y: midY1 });
+            pts.push({ x: jogX, y: midY1 });
+            pts.push({ x: jogX, y: midY2 });
+            pts.push({ x: endPt.x, y: midY2 });
+          } else {
+            const midY = (startPt.y + endPt.y) / 2 + parallelOffset;
+            pts.push({ x: startPt.x, y: midY });
+            pts.push({ x: endPt.x, y: midY });
+          }
+        } else {
+          const cY1 = startPt.y + startNorm.y * 24;
+          const cY2 = endPt.y + endNorm.y * 24;
+          const midX = (startPt.x + endPt.x) / 2 + parallelOffset;
+          pts.push({ x: startPt.x, y: cY1 });
+          pts.push({ x: midX, y: cY1 });
+          pts.push({ x: midX, y: cY2 });
+          pts.push({ x: endPt.x, y: cY2 });
+        }
+      } else {
+        if (startNorm.y * (endPt.y - startPt.y) > 0 && endNorm.x * (startPt.x - endPt.x) > 0) {
+          pts.push({ x: startPt.x, y: endPt.y });
+        } else {
+          const cY = startPt.y + startNorm.y * 24;
+          const cX = endPt.x + endNorm.x * 24;
+          pts.push({ x: startPt.x, y: cY });
+          pts.push({ x: cX, y: cY });
+          pts.push({ x: cX, y: endPt.y });
+        }
+      }
+    }
+    pts.push(endPt);
+    const routedPts = gridifyOrthogonalRoute(
+      pts,
+      sourceRect,
+      targetRect,
+      Boolean(sourceShape),
+      Boolean(targetShape)
+    );
+    const cleanPts = [routedPts[0]];
+    for (let i = 1; i < routedPts.length; i++) {
+      const prev = cleanPts[cleanPts.length - 1];
+      const curr = routedPts[i];
+      if (Math.abs(prev.x - curr.x) < 0.5 && Math.abs(prev.y - curr.y) < 0.5) {
+        continue;
+      }
+      if (cleanPts.length >= 2) {
+        const before = cleanPts[cleanPts.length - 2];
+        if (Math.abs(before.x - prev.x) < 0.5 && Math.abs(prev.x - curr.x) < 0.5 || Math.abs(before.y - prev.y) < 0.5 && Math.abs(prev.y - curr.y) < 0.5) {
+          cleanPts[cleanPts.length - 1] = curr;
+          continue;
+        }
+      }
+      cleanPts.push(curr);
+    }
+    const firstP = cleanPts[0];
+    const secondP = cleanPts[1] ?? firstP;
+    const seg0Dx = secondP.x - firstP.x;
+    const seg0Dy = secondP.y - firstP.y;
+    const seg0Len = Math.hypot(seg0Dx, seg0Dy) || 1;
+    const startUnitX = seg0Dx / seg0Len;
+    const startUnitY = seg0Dy / seg0Len;
+    const effectiveStartTrim = Math.min(startTrim, seg0Len * 0.45);
+    const trimmedStart = {
+      x: firstP.x + startUnitX * effectiveStartTrim,
+      y: firstP.y + startUnitY * effectiveStartTrim
+    };
+    const startAngleDeg = Math.atan2(-startUnitY, -startUnitX) * 180 / Math.PI;
+    const lastP = cleanPts[cleanPts.length - 1];
+    const secondLastP = cleanPts[cleanPts.length - 2] ?? lastP;
+    const segNDx = lastP.x - secondLastP.x;
+    const segNDy = lastP.y - secondLastP.y;
+    const segNLen = Math.hypot(segNDx, segNDy) || 1;
+    const endUnitX = segNDx / segNLen;
+    const endUnitY = segNDy / segNLen;
+    const effectiveEndTrim = Math.min(endTrim, segNLen * 0.45);
+    const trimmedEnd = {
+      x: lastP.x - endUnitX * effectiveEndTrim,
+      y: lastP.y - endUnitY * effectiveEndTrim
+    };
+    const endAngleDeg = Math.atan2(endUnitY, endUnitX) * 180 / Math.PI;
+    const hitPathD = `M ${cleanPts[0].x} ${cleanPts[0].y} ` + cleanPts.slice(1).map((p) => `L ${p.x} ${p.y}`).join(" ");
+    const pathD = `M ${trimmedStart.x} ${trimmedStart.y} ` + cleanPts.slice(1, -1).map((p) => `L ${p.x} ${p.y}`).join(" ") + (cleanPts.length > 1 ? ` L ${trimmedEnd.x} ${trimmedEnd.y}` : "");
+    let maxSegLen = -1;
+    let maxSegIdx = 0;
+    for (let i = 0; i < cleanPts.length - 1; i++) {
+      const len = Math.hypot(cleanPts[i + 1].x - cleanPts[i].x, cleanPts[i + 1].y - cleanPts[i].y);
+      if (len > maxSegLen) {
+        maxSegLen = len;
+        maxSegIdx = i;
+      }
+    }
+    const numSegments = cleanPts.length - 1;
+    let selectedSegIdx = maxSegIdx;
+    if (numSegments >= 3) {
+      const midSegIdx = Math.floor(numSegments / 2);
+      const pMidA = cleanPts[midSegIdx];
+      const pMidB = cleanPts[midSegIdx + 1];
+      const midLen = Math.hypot(pMidB.x - pMidA.x, pMidB.y - pMidA.y);
+      const isMidHoriz = Math.abs(pMidA.y - pMidB.y) < 1;
+      const text2 = (labelText ?? "").trim();
+      const labelWidth = text2.length > 0 ? text2.length * 7.6 + 16 : 48;
+      const labelHeight = 20;
+      const padding = 8;
+      const requiredSpace = isMidHoriz ? labelWidth + padding : labelHeight + padding;
+      if (midLen >= requiredSpace) {
+        selectedSegIdx = midSegIdx;
+      }
+    }
+    const pA = cleanPts[selectedSegIdx];
+    const pB = cleanPts[selectedSegIdx + 1] ?? pA;
+    const mX = (pA.x + pB.x) / 2;
+    const mY = (pA.y + pB.y) / 2;
+    const labelPoint = { x: mX, y: mY };
+    return {
+      pathD,
+      hitPathD,
+      startTip: firstP,
+      endTip: lastP,
+      startAngleDeg,
+      endAngleDeg,
+      labelPoint
+    };
+  }
   function computeUmlEdgeGeometry(sourceRect, targetRect, routing = "orthogonal", startDec, endDec, parallelOffset = 0, sourceAnchorOverride, targetAnchorOverride, sourceShape, targetShape, labelText) {
     const effectiveRouting = routing === "default" ? "orthogonal" : routing;
     if (!sourceAnchorOverride && !targetAnchorOverride && sourceRect.x === targetRect.x && sourceRect.y === targetRect.y && sourceRect.width === targetRect.width && sourceRect.height === targetRect.height) {
@@ -7140,12 +7422,12 @@ ${component_stack}
         const p1 = { x: startTip3.x, y: sourceRect.y - 30 };
         const p2 = { x: sourceRect.x + sourceRect.width + 30, y: sourceRect.y - 30 };
         const p3 = { x: sourceRect.x + sourceRect.width + 30, y: endTip3.y };
-        const trimmedStart2 = { x: startTip3.x, y: startTip3.y - startTrim2 };
-        const trimmedEnd2 = { x: endTip3.x + endTrim2, y: endTip3.y };
-        const pathD3 = `M ${trimmedStart2.x} ${trimmedStart2.y} L ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${p3.x} ${p3.y} L ${trimmedEnd2.x} ${trimmedEnd2.y}`;
+        const trimmedStart = { x: startTip3.x, y: startTip3.y - startTrim2 };
+        const trimmedEnd = { x: endTip3.x + endTrim2, y: endTip3.y };
+        const pathD2 = `M ${trimmedStart.x} ${trimmedStart.y} L ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${p3.x} ${p3.y} L ${trimmedEnd.x} ${trimmedEnd.y}`;
         const hitPathD = `M ${startTip3.x} ${startTip3.y} L ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${p3.x} ${p3.y} L ${endTip3.x} ${endTip3.y}`;
         return {
-          pathD: pathD3,
+          pathD: pathD2,
           hitPathD,
           startTip: startTip3,
           endTip: endTip3,
@@ -7158,10 +7440,10 @@ ${component_stack}
       const endTip2 = { x: sourceRect.x + sourceRect.width, y: sourceRect.y + sourceRect.height * 0.35 };
       const c1 = { x: startTip2.x, y: startTip2.y - 55 };
       const c2 = { x: endTip2.x + 60, y: endTip2.y - 55 };
-      const pathD2 = `M ${startTip2.x} ${startTip2.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${endTip2.x} ${endTip2.y}`;
+      const pathD = `M ${startTip2.x} ${startTip2.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${endTip2.x} ${endTip2.y}`;
       return {
-        pathD: pathD2,
-        hitPathD: pathD2,
+        pathD,
+        hitPathD: pathD,
         startTip: startTip2,
         endTip: endTip2,
         startAngleDeg: 90,
@@ -7205,697 +7487,173 @@ ${component_stack}
     const endSize = endDec?.size ?? endShape?.defaultSize ?? 11;
     const startTrim = (startShape?.trimMultiplier ?? 0) * startSize;
     const endTrim = (endShape?.trimMultiplier ?? 0) * endSize;
-    const fullHitPath = `M ${startTip.x} ${startTip.y} L ${endTip.x} ${endTip.y}`;
     if (effectiveRouting === "bezier") {
-      const dist = Math.min(140, Math.max(40, rawLen * 0.38));
-      const c1 = {
-        x: startTip.x + srcHit.normal.x * dist,
-        y: startTip.y + srcHit.normal.y * dist
-      };
-      const c2 = {
-        x: endTip.x + tgtHit.normal.x * dist,
-        y: endTip.y + tgtHit.normal.y * dist
-      };
-      const startVecX = startTip.x - c1.x;
-      const startVecY = startTip.y - c1.y;
-      const startVecLen = Math.hypot(startVecX, startVecY) || 1;
-      const startUnitX = startVecX / startVecLen;
-      const startUnitY = startVecY / startVecLen;
-      const endVecX = endTip.x - c2.x;
-      const endVecY = endTip.y - c2.y;
-      const endVecLen = Math.hypot(endVecX, endVecY) || 1;
-      const endUnitX = endVecX / endVecLen;
-      const endUnitY = endVecY / endVecLen;
-      const trimmedStart2 = {
-        x: startTip.x - startUnitX * Math.min(startTrim, rawLen * 0.4),
-        y: startTip.y - startUnitY * Math.min(startTrim, rawLen * 0.4)
-      };
-      const trimmedEnd2 = {
-        x: endTip.x - endUnitX * Math.min(endTrim, rawLen * 0.4),
-        y: endTip.y - endUnitY * Math.min(endTrim, rawLen * 0.4)
-      };
-      const pathD2 = `M ${trimmedStart2.x} ${trimmedStart2.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${trimmedEnd2.x} ${trimmedEnd2.y}`;
-      const hitPathD = `M ${startTip.x} ${startTip.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${endTip.x} ${endTip.y}`;
-      const labelPoint = {
-        x: 0.125 * startTip.x + 0.375 * c1.x + 0.375 * c2.x + 0.125 * endTip.x,
-        y: 0.125 * startTip.y + 0.375 * c1.y + 0.375 * c2.y + 0.125 * endTip.y
-      };
-      return {
-        pathD: pathD2,
-        hitPathD,
-        startTip,
-        endTip,
-        startAngleDeg: Math.atan2(startUnitY, startUnitX) * 180 / Math.PI,
-        endAngleDeg: Math.atan2(endUnitY, endUnitX) * 180 / Math.PI,
-        labelPoint
-      };
+      return computeBezierRoute(startTip, endTip, srcHit.normal, tgtHit.normal, startTrim, endTrim);
     }
     if (effectiveRouting === "orthogonal") {
-      const sRight = sourceRect.x + sourceRect.width;
-      const sLeft = sourceRect.x;
-      const sBottom = sourceRect.y + sourceRect.height;
-      const sTop = sourceRect.y;
-      const tRight = targetRect.x + targetRect.width;
-      const tLeft = targetRect.x;
-      const tBottom = targetRect.y + targetRect.height;
-      const tTop = targetRect.y;
-      const gapRight = tLeft - sRight;
-      const gapLeft = sLeft - tRight;
-      const gapBottom = tTop - sBottom;
-      const gapTop = sTop - tBottom;
-      let startPt = srcHit.point;
-      let startNorm = srcHit.normal;
-      let endPt = tgtHit.point;
-      let endNorm = tgtHit.normal;
-      if (!sourceAnchorOverride && !targetAnchorOverride) {
-        if (gapRight >= 0 && (gapRight >= gapBottom && gapRight >= gapTop)) {
-          startPt = { x: sRight, y: sourceCenter.y };
-          startNorm = { x: 1, y: 0 };
-          endPt = { x: tLeft, y: targetCenter.y };
-          endNorm = { x: -1, y: 0 };
-        } else if (gapLeft >= 0 && (gapLeft >= gapBottom && gapLeft >= gapTop)) {
-          startPt = { x: sLeft, y: sourceCenter.y };
-          startNorm = { x: -1, y: 0 };
-          endPt = { x: tRight, y: targetCenter.y };
-          endNorm = { x: 1, y: 0 };
-        } else if (gapBottom >= 0) {
-          startPt = { x: sourceCenter.x, y: sBottom };
-          startNorm = { x: 0, y: 1 };
-          endPt = { x: targetCenter.x, y: tTop };
-          endNorm = { x: 0, y: -1 };
-        } else if (gapTop >= 0) {
-          startPt = { x: sourceCenter.x, y: sTop };
-          startNorm = { x: 0, y: -1 };
-          endPt = { x: targetCenter.x, y: tBottom };
-          endNorm = { x: 0, y: 1 };
-        }
-      }
-      if (sourceShape && !sourceAnchorOverride) {
-        const hit = computeShapeBoundaryIntersection(
-          sourceRect,
-          { x: sourceCenter.x + startNorm.x * 1e4, y: sourceCenter.y + startNorm.y * 1e4 },
-          sourceShape
-        );
-        startPt = hit.point;
-      }
-      if (targetShape && !targetAnchorOverride) {
-        const hit = computeShapeBoundaryIntersection(
-          targetRect,
-          { x: targetCenter.x + endNorm.x * 1e4, y: targetCenter.y + endNorm.y * 1e4 },
-          targetShape
-        );
-        endPt = hit.point;
-      }
-      const pts = [startPt];
-      if (startNorm.x !== 0) {
-        if (endNorm.x !== 0) {
-          if (startNorm.x !== endNorm.x && (endPt.x - startPt.x) * startNorm.x > 0) {
-            const midX = (startPt.x + endPt.x) / 2 + parallelOffset;
-            pts.push({ x: midX, y: startPt.y });
-            pts.push({ x: midX, y: endPt.y });
-          } else {
-            const cX1 = startPt.x + startNorm.x * 24;
-            const cX2 = endPt.x + endNorm.x * 24;
-            const midY = (startPt.y + endPt.y) / 2 + parallelOffset;
-            pts.push({ x: cX1, y: startPt.y });
-            pts.push({ x: cX1, y: midY });
-            pts.push({ x: cX2, y: midY });
-            pts.push({ x: cX2, y: endPt.y });
-          }
-        } else {
-          if (startNorm.x * (endPt.x - startPt.x) > 0 && endNorm.y * (startPt.y - endPt.y) > 0) {
-            pts.push({ x: endPt.x, y: startPt.y });
-          } else {
-            const cX = startPt.x + startNorm.x * 24;
-            const cY = endPt.y + endNorm.y * 24;
-            pts.push({ x: cX, y: startPt.y });
-            pts.push({ x: cX, y: cY });
-            pts.push({ x: endPt.x, y: cY });
-          }
-        }
-      } else {
-        if (endNorm.y !== 0) {
-          if (startNorm.y !== endNorm.y && (endPt.y - startPt.y) * startNorm.y > 0) {
-            const midY = (startPt.y + endPt.y) / 2 + parallelOffset;
-            pts.push({ x: startPt.x, y: midY });
-            pts.push({ x: endPt.x, y: midY });
-          } else {
-            const cY1 = startPt.y + startNorm.y * 24;
-            const cY2 = endPt.y + endNorm.y * 24;
-            const midX = (startPt.x + endPt.x) / 2 + parallelOffset;
-            pts.push({ x: startPt.x, y: cY1 });
-            pts.push({ x: midX, y: cY1 });
-            pts.push({ x: midX, y: cY2 });
-            pts.push({ x: endPt.x, y: cY2 });
-          }
-        } else {
-          if (startNorm.y * (endPt.y - startPt.y) > 0 && endNorm.x * (startPt.x - endPt.x) > 0) {
-            pts.push({ x: startPt.x, y: endPt.y });
-          } else {
-            const cY = startPt.y + startNorm.y * 24;
-            const cX = endPt.x + endNorm.x * 24;
-            pts.push({ x: startPt.x, y: cY });
-            pts.push({ x: cX, y: cY });
-            pts.push({ x: cX, y: endPt.y });
-          }
-        }
-      }
-      pts.push(endPt);
-      const cleanPts = [pts[0]];
-      for (let i = 1; i < pts.length; i++) {
-        const prev = cleanPts[cleanPts.length - 1];
-        const curr = pts[i];
-        if (Math.abs(prev.x - curr.x) < 0.5 && Math.abs(prev.y - curr.y) < 0.5) {
-          continue;
-        }
-        if (cleanPts.length >= 2) {
-          const before = cleanPts[cleanPts.length - 2];
-          if (Math.abs(before.x - prev.x) < 0.5 && Math.abs(prev.x - curr.x) < 0.5 || Math.abs(before.y - prev.y) < 0.5 && Math.abs(prev.y - curr.y) < 0.5) {
-            cleanPts[cleanPts.length - 1] = curr;
-            continue;
-          }
-        }
-        cleanPts.push(curr);
-      }
-      const firstP = cleanPts[0];
-      const secondP = cleanPts[1] ?? firstP;
-      const seg0Dx = secondP.x - firstP.x;
-      const seg0Dy = secondP.y - firstP.y;
-      const seg0Len = Math.hypot(seg0Dx, seg0Dy) || 1;
-      const startUnitX = seg0Dx / seg0Len;
-      const startUnitY = seg0Dy / seg0Len;
-      const effectiveStartTrim = Math.min(startTrim, seg0Len * 0.45);
-      const trimmedStart2 = {
-        x: firstP.x + startUnitX * effectiveStartTrim,
-        y: firstP.y + startUnitY * effectiveStartTrim
-      };
-      const startAngleDeg2 = Math.atan2(-startUnitY, -startUnitX) * 180 / Math.PI;
-      const lastP = cleanPts[cleanPts.length - 1];
-      const secondLastP = cleanPts[cleanPts.length - 2] ?? lastP;
-      const segNDx = lastP.x - secondLastP.x;
-      const segNDy = lastP.y - secondLastP.y;
-      const segNLen = Math.hypot(segNDx, segNDy) || 1;
-      const endUnitX = segNDx / segNLen;
-      const endUnitY = segNDy / segNLen;
-      const effectiveEndTrim = Math.min(endTrim, segNLen * 0.45);
-      const trimmedEnd2 = {
-        x: lastP.x - endUnitX * effectiveEndTrim,
-        y: lastP.y - endUnitY * effectiveEndTrim
-      };
-      const endAngleDeg2 = Math.atan2(endUnitY, endUnitX) * 180 / Math.PI;
-      const hitPathD = `M ${cleanPts[0].x} ${cleanPts[0].y} ` + cleanPts.slice(1).map((p) => `L ${p.x} ${p.y}`).join(" ");
-      const pathD2 = `M ${trimmedStart2.x} ${trimmedStart2.y} ` + cleanPts.slice(1, -1).map((p) => `L ${p.x} ${p.y}`).join(" ") + (cleanPts.length > 1 ? ` L ${trimmedEnd2.x} ${trimmedEnd2.y}` : "");
-      let maxSegLen = -1;
-      let maxSegIdx = 0;
-      for (let i = 0; i < cleanPts.length - 1; i++) {
-        const len = Math.hypot(cleanPts[i + 1].x - cleanPts[i].x, cleanPts[i + 1].y - cleanPts[i].y);
-        if (len > maxSegLen) {
-          maxSegLen = len;
-          maxSegIdx = i;
-        }
-      }
-      const numSegments = cleanPts.length - 1;
-      let selectedSegIdx = maxSegIdx;
-      if (numSegments >= 3) {
-        const midSegIdx = Math.floor(numSegments / 2);
-        const pMidA = cleanPts[midSegIdx];
-        const pMidB = cleanPts[midSegIdx + 1];
-        const midLen = Math.hypot(pMidB.x - pMidA.x, pMidB.y - pMidA.y);
-        const isMidHoriz = Math.abs(pMidA.y - pMidB.y) < 1;
-        const text2 = (labelText ?? "").trim();
-        const labelWidth = text2.length > 0 ? text2.length * 7.6 + 16 : 48;
-        const labelHeight = 20;
-        const padding = 8;
-        const requiredSpace = isMidHoriz ? labelWidth + padding : labelHeight + padding;
-        if (midLen >= requiredSpace) {
-          selectedSegIdx = midSegIdx;
-        }
-      }
-      const pA = cleanPts[selectedSegIdx];
-      const pB = cleanPts[selectedSegIdx + 1] ?? pA;
-      const mX = (pA.x + pB.x) / 2;
-      const mY = (pA.y + pB.y) / 2;
-      const labelPoint = { x: mX, y: mY };
-      return {
-        pathD: pathD2,
-        hitPathD,
-        startTip: firstP,
-        endTip: lastP,
-        startAngleDeg: startAngleDeg2,
-        endAngleDeg: endAngleDeg2,
-        labelPoint
-      };
+      return computeOrthogonalRoute(
+        sourceRect,
+        targetRect,
+        srcHit,
+        tgtHit,
+        startTrim,
+        endTrim,
+        parallelOffset,
+        sourceAnchorOverride,
+        targetAnchorOverride,
+        sourceShape,
+        targetShape,
+        labelText
+      );
     }
-    const unitX = rawDx / rawLen;
-    const unitY = rawDy / rawLen;
-    const trimmedStart = {
-      x: startTip.x + unitX * Math.min(startTrim, rawLen * 0.45),
-      y: startTip.y + unitY * Math.min(startTrim, rawLen * 0.45)
-    };
-    const trimmedEnd = {
-      x: endTip.x - unitX * Math.min(endTrim, rawLen * 0.45),
-      y: endTip.y - unitY * Math.min(endTrim, rawLen * 0.45)
-    };
-    const pathD = `M ${trimmedStart.x} ${trimmedStart.y} L ${trimmedEnd.x} ${trimmedEnd.y}`;
-    const endAngleDeg = Math.atan2(unitY, unitX) * 180 / Math.PI;
-    const startAngleDeg = Math.atan2(-unitY, -unitX) * 180 / Math.PI;
-    return {
-      pathD,
-      hitPathD: fullHitPath,
-      startTip,
-      endTip,
-      startAngleDeg,
-      endAngleDeg,
-      labelPoint: {
-        x: (startTip.x + endTip.x) / 2,
-        y: (startTip.y + endTip.y) / 2
-      }
-    };
+    return computeStraightRoute(startTip, endTip, startTrim, endTrim);
   }
 
-  // src/webview/state.svelte.ts
-  var VizionWebviewStore = class {
-    #expectedKind;
-    get expectedKind() {
-      return get(this.#expectedKind);
-    }
-    set expectedKind(value) {
-      set(this.#expectedKind, value, true);
-    }
-    #documentVersion;
-    get documentVersion() {
-      return get(this.#documentVersion);
-    }
-    set documentVersion(value) {
-      set(this.#documentVersion, value, true);
-    }
-    #isReadOnly;
-    get isReadOnly() {
-      return get(this.#isReadOnly);
-    }
-    set isReadOnly(value) {
-      set(this.#isReadOnly, value, true);
-    }
-    #isEmptyDocument;
-    get isEmptyDocument() {
-      return get(this.#isEmptyDocument);
-    }
-    set isEmptyDocument(value) {
-      set(this.#isEmptyDocument, value, true);
-    }
-    #canExplicitlyInitialize;
-    get canExplicitlyInitialize() {
-      return get(this.#canExplicitlyInitialize);
-    }
-    set canExplicitlyInitialize(value) {
-      set(this.#canExplicitlyInitialize, value, true);
-    }
-    #valid;
-    get valid() {
-      return get(this.#valid);
-    }
-    set valid(value) {
-      set(this.#valid, value, true);
-    }
-    #document;
-    get document() {
-      return get(this.#document);
-    }
-    set document(value) {
-      set(this.#document, value, true);
-    }
-    #lastValidDocument;
-    get lastValidDocument() {
-      return get(this.#lastValidDocument);
-    }
-    set lastValidDocument(value) {
-      set(this.#lastValidDocument, value, true);
-    }
-    #issues;
-    get issues() {
-      return get(this.#issues);
-    }
-    set issues(value) {
-      set(this.#issues, value, true);
-    }
-    #hasUnsupportedConstructs;
-    get hasUnsupportedConstructs() {
-      return get(this.#hasUnsupportedConstructs);
-    }
-    set hasUnsupportedConstructs(value) {
-      set(this.#hasUnsupportedConstructs, value, true);
-    }
-    #optimisticUmlLayouts;
-    get optimisticUmlLayouts() {
-      return get(this.#optimisticUmlLayouts);
-    }
-    set optimisticUmlLayouts(value) {
-      set(this.#optimisticUmlLayouts, value, true);
-    }
-    #selectedIds;
-    get selectedIds() {
-      return get(this.#selectedIds);
-    }
-    set selectedIds(value) {
-      set(this.#selectedIds, value, true);
-    }
-    #outlineSearchQuery;
-    get outlineSearchQuery() {
-      return get(this.#outlineSearchQuery);
-    }
-    set outlineSearchQuery(value) {
-      set(this.#outlineSearchQuery, value, true);
-    }
-    #sidebarWidth;
-    get sidebarWidth() {
-      return get(this.#sidebarWidth);
-    }
-    set sidebarWidth(value) {
-      set(this.#sidebarWidth, value, true);
-    }
-    #elementsPaneRatio;
-    get elementsPaneRatio() {
-      return get(this.#elementsPaneRatio);
-    }
-    set elementsPaneRatio(value) {
-      set(this.#elementsPaneRatio, value, true);
-    }
-    #viewport;
-    get viewport() {
-      return get(this.#viewport);
-    }
-    set viewport(value) {
-      set(this.#viewport, value, true);
-    }
-    #statusMessage;
-    get statusMessage() {
-      return get(this.#statusMessage);
-    }
-    set statusMessage(value) {
-      set(this.#statusMessage, value, true);
-    }
-    #staleNotice;
-    get staleNotice() {
-      return get(this.#staleNotice);
-    }
-    set staleNotice(value) {
-      set(this.#staleNotice, value, true);
-    }
-    #contextMenu;
-    get contextMenu() {
-      return get(this.#contextMenu);
-    }
-    set contextMenu(value) {
-      set(this.#contextMenu, value, true);
-    }
-    #clipboard;
-    get clipboard() {
-      return get(this.#clipboard);
-    }
-    set clipboard(value) {
-      set(this.#clipboard, value, true);
-    }
-    constructor(initialKind2) {
-      this.#expectedKind = state("uml");
-      this.#documentVersion = state(1);
-      this.#isReadOnly = state(false);
-      this.#isEmptyDocument = state(false);
-      this.#canExplicitlyInitialize = state(false);
-      this.#valid = state(true);
-      this.#document = state(void 0);
-      this.#lastValidDocument = state(void 0);
-      this.#issues = state(proxy([]));
-      this.#hasUnsupportedConstructs = state(false);
-      this.#optimisticUmlLayouts = state(proxy({}));
-      this.#selectedIds = state(proxy([]));
-      this.#outlineSearchQuery = state("");
-      this.#sidebarWidth = state(290);
-      this.#elementsPaneRatio = state(0.4);
-      this.#viewport = state(proxy({ panX: 40, panY: 40, zoom: 1 }));
-      this.#statusMessage = state(null);
-      this.#staleNotice = state(null);
-      this.#contextMenu = state(null);
-      this.#clipboard = state(null);
-      this.requestCounter = 0;
-      this.expectedKind = initialKind2;
-      if (window.__VIZION_INITIAL_SNAPSHOT__) {
-        this.applySnapshot(window.__VIZION_INITIAL_SNAPSHOT__);
+  // src/shared/geometry/shapes.ts
+  function buildShapeSvgPath(shape, width, height) {
+    const pad = 2;
+    const x0 = pad;
+    const y0 = pad;
+    const x1 = Math.max(pad + 10, width - pad);
+    const y1 = Math.max(pad + 10, height - pad);
+    const centerX = width / 2;
+    const centerY = height / 2;
+    switch (shape ?? "rectangle") {
+      case "ellipse": {
+        const rx = (x1 - x0) / 2;
+        const ry = (y1 - y0) / 2;
+        return `M ${centerX - rx} ${centerY} A ${rx} ${ry} 0 1 0 ${centerX + rx} ${centerY} A ${rx} ${ry} 0 1 0 ${centerX - rx} ${centerY} Z`;
       }
-      window.addEventListener("message", (event2) => {
-        this.handleHostMessage(event2.data);
-      });
-      postToHost({ type: "webview.ready" });
-    }
-    get umlDoc() {
-      return this.document?.kind === "uml" ? this.document : void 0;
-    }
-    registerCanvasCallbacks(callbacks) {
-      this.onFitContentCallback = callbacks.onFitContent;
-      this.onResetZoomCallback = callbacks.onResetZoom;
-      this.onRestoreFocusCallback = callbacks.onRestoreFocus;
-    }
-    applySnapshot(msg) {
-      this.expectedKind = msg.expectedKind;
-      this.documentVersion = msg.documentVersion;
-      this.isReadOnly = msg.isReadOnly;
-      this.isEmptyDocument = msg.isEmptyDocument;
-      this.canExplicitlyInitialize = msg.canExplicitlyInitialize;
-      this.valid = msg.valid;
-      this.document = msg.document;
-      this.lastValidDocument = msg.lastValidDocument;
-      this.issues = msg.issues;
-      this.hasUnsupportedConstructs = Boolean(msg.hasUnsupportedConstructs);
-      this.optimisticUmlLayouts = {};
-      if (msg.valid && msg.document) {
-        const validIds = /* @__PURE__ */ new Set([
-          ...msg.document.nodes.map((n) => n.id),
-          ...msg.document.edges.map((e) => e.id)
-        ]);
-        const filtered = this.selectedIds.filter((id) => validIds.has(id));
-        this.selectedIds = this.syncSelectionEdges(filtered);
+      case "rhombus":
+        return `M ${centerX} ${y0} L ${x1} ${centerY} L ${centerX} ${y1} L ${x0} ${centerY} Z`;
+      case "trapezoid": {
+        const inset = Math.min(36, (x1 - x0) * 0.2);
+        return `M ${x0 + inset} ${y0} L ${x1 - inset} ${y0} L ${x1} ${y1} L ${x0} ${y1} Z`;
       }
-    }
-    handleHostMessage(msg) {
-      if (!msg || typeof msg !== "object") return;
-      switch (msg.type) {
-        case "host.snapshot": {
-          this.applySnapshot(msg);
-          break;
-        }
-        case "host.operationResult": {
-          if (!msg.ok) {
-            this.optimisticUmlLayouts = {};
-            if (msg.staleRejected) {
-              this.staleNotice = msg.error ?? "Document changed externally during gesture. View refreshed.";
-            } else if (msg.error) {
-              this.statusMessage = msg.error;
-            }
-          } else {
-            this.staleNotice = null;
-            if (msg.createdIds && msg.createdIds.length > 0) {
-              this.selectedIds = this.syncSelectionEdges(msg.createdIds);
-            }
-          }
-          break;
-        }
-        case "host.command": {
-          if (msg.command === "fitContent") {
-            this.onFitContentCallback?.();
-          } else if (msg.command === "resetZoom") {
-            this.onResetZoomCallback?.();
-          } else if (msg.command === "restoreCanvasFocus") {
-            this.onRestoreFocusCallback?.();
-          }
-          break;
-        }
+      case "parallelogram": {
+        const skew = Math.min(32, (x1 - x0) * 0.18);
+        return `M ${x0 + skew} ${y0} L ${x1} ${y0} L ${x1 - skew} ${y1} L ${x0} ${y1} Z`;
       }
+      case "rectangle":
+      default:
+        return `M ${x0} ${y0} L ${x1} ${y0} L ${x1} ${y1} L ${x0} ${y1} Z`;
     }
-    dispatchOperation(operation) {
-      const requestId = `req-${++this.requestCounter}-${Date.now()}`;
-      if (operation.type === "uml.updateNode" && this.umlDoc) {
-        const node = this.umlDoc.nodes.find((n) => n.id === operation.nodeId);
-        if (node) {
-          if (operation.name !== void 0) node.name = operation.name;
-          if (operation.stereotype !== void 0) {
-            if (operation.stereotype) node.stereotype = operation.stereotype;
-            else delete node.stereotype;
-          }
-          if (operation.text !== void 0) node.text = operation.text;
-          if (operation.shape !== void 0) node.shape = operation.shape;
-          if (operation.children !== void 0) node.children = [...operation.children];
-          if (operation.line !== void 0) node.line = operation.line;
-          if (operation.attributes !== void 0) node.attributes = operation.attributes;
-          if (operation.operations !== void 0) node.operations = operation.operations;
-          if (operation.showAttributes !== void 0) node.showAttributes = operation.showAttributes;
-          if (operation.showOperations !== void 0) node.showOperations = operation.showOperations;
-        }
-      } else if (operation.type === "uml.moveResizeNodes" && this.umlDoc) {
-        if (operation.frameChildrenUpdates) {
-          for (const [frameId, children] of Object.entries(operation.frameChildrenUpdates)) {
-            const frameNode = this.umlDoc.nodes.find((n) => n.id === frameId);
-            if (frameNode) {
-              frameNode.children = [...children];
-            }
-          }
-        }
-      } else if (operation.type === "uml.updateEdge" && this.umlDoc) {
-        const edge = this.umlDoc.edges.find((e) => e.id === operation.edgeId);
-        if (edge) {
-          if (operation.label !== void 0) edge.label = operation.label;
-          if (operation.sourceMultiplicity !== void 0) {
-            edge.source.multiplicity = operation.sourceMultiplicity;
-          }
-          if (operation.targetMultiplicity !== void 0) {
-            edge.target.multiplicity = operation.targetMultiplicity;
-          }
-          if (operation.kind !== void 0) edge.kind = operation.kind;
-        }
-      } else if (operation.type === "uml.updateEndpoint" && this.umlDoc) {
-        const edge = this.umlDoc.edges.find((e) => e.id === operation.edgeId);
-        if (edge) {
-          if (!edge.visual) edge.visual = {};
-          edge.visual[operation.end] = { ...operation.decoration };
-        }
-      }
-      postToHost({
-        type: "webview.operation",
-        requestId,
-        expectedDocumentVersion: this.documentVersion,
-        operation
-      });
-      return requestId;
+  }
+
+  // src/webview/state/clipboard.svelte.ts
+  var ClipboardController = class {
+    #state;
+    get state() {
+      return get(this.#state);
     }
-    triggerUndo() {
-      postToHost({ type: "webview.undo" });
+    set state(value) {
+      set(this.#state, value, true);
     }
-    triggerRedo() {
-      postToHost({ type: "webview.redo" });
+    constructor() {
+      this.#state = state(null);
     }
-    checkForExtensionUpdate() {
-      postToHost({ type: "webview.checkForExtensionUpdate" });
+    copy(doc, selectedIds) {
+      if (!doc || selectedIds.length === 0) return;
+      const nodeIds = doc.nodes.filter((node) => selectedIds.includes(node.id)).map((node) => node.id);
+      const edgeIds = doc.edges.filter((edge) => selectedIds.includes(edge.id)).map((edge) => edge.id);
+      if (nodeIds.length === 0 && edgeIds.length === 0) return;
+      this.state = { kind: "uml", nodeIds, edgeIds, pasteCount: 0 };
     }
-    copySelection() {
-      if (this.selectedIds.length === 0) return;
-      if (this.umlDoc) {
-        const nodeIds = this.umlDoc.nodes.filter((n) => this.selectedIds.includes(n.id)).map((n) => n.id);
-        const edgeIds = this.umlDoc.edges.filter((e) => this.selectedIds.includes(e.id)).map((e) => e.id);
-        if (nodeIds.length > 0 || edgeIds.length > 0) {
-          this.clipboard = { kind: "uml", nodeIds, edgeIds, pasteCount: 0 };
-        }
-      }
+    nextPasteOffset() {
+      if (!this.state) return 0;
+      this.state.pasteCount += 1;
+      return this.state.pasteCount * 20;
     }
-    pasteClipboard(stripCustomData = false) {
-      if (this.isReadOnly || !this.clipboard) return;
-      this.clipboard.pasteCount += 1;
-      const step = this.clipboard.pasteCount * 20;
-      if (this.clipboard.kind === "uml" && this.umlDoc) {
-        this.dispatchOperation({
-          type: "uml.duplicateSelection",
-          nodeIds: this.clipboard.nodeIds,
-          edgeIds: this.clipboard.edgeIds,
-          offsetX: step,
-          offsetY: step,
-          stripCustomData
-        });
-      }
+    reset() {
+      this.state = null;
     }
-    createQuickUmlNode(kind, worldX, worldY, shapeGeometry = "rectangle") {
-      if (this.isReadOnly || !this.umlDoc) return;
-      const existingCount = this.umlDoc.nodes.filter((n) => n.kind === kind).length + 1;
-      const shapeLabel = UML_SHAPE_GEOMETRIES.find((g) => g.kind === shapeGeometry)?.label ?? "Shape";
-      const defaultNameMap = {
-        class: `Class${existingCount}`,
-        note: `Note ${existingCount}`,
-        shape: `${shapeLabel} ${existingCount}`,
-        frame: `Frame ${existingCount}`
-      };
-      const name = defaultNameMap[kind];
-      const id = `${kind}-${Date.now().toString(36).slice(-4)}-${existingCount}`;
-      const rawX = worldX ?? Math.round((220 - this.viewport.panX) / this.viewport.zoom) + existingCount % 4 * 40;
-      const rawY = worldY ?? Math.round((140 - this.viewport.panY) / this.viewport.zoom) + existingCount % 4 * 40;
-      const x = snapToGrid(rawX, GRID_SIZE);
-      const y = snapToGrid(rawY, GRID_SIZE);
-      this.dispatchOperation({
-        type: "uml.addNode",
-        id,
-        kind,
-        name,
-        x,
-        y,
-        text: kind === "note" ? "Design note..." : void 0,
-        shape: kind === "shape" ? shapeGeometry : void 0
-      });
+  };
+
+  // src/webview/state/gesture-machine.svelte.ts
+  var GestureStateMachine = class {
+    #gesture;
+    get gesture() {
+      return get(this.#gesture);
     }
-    openContextMenu(x, y, items, title) {
-      const clampedX = Math.max(8, Math.min(x, window.innerWidth - 220));
-      const clampedY = Math.max(8, Math.min(y, window.innerHeight - 260));
-      this.contextMenu = { x: clampedX, y: clampedY, items, title };
+    set gesture(value) {
+      set(this.#gesture, value, true);
     }
-    closeContextMenu() {
-      this.contextMenu = null;
+    constructor() {
+      this.#gesture = state(proxy({ mode: "idle" }));
     }
-    syncSelectionEdges(baseIds, prevIds = this.selectedIds) {
-      if (!this.umlDoc) return baseIds;
-      const selectedSet = new Set(baseIds);
-      const prevNodeIds = new Set(this.umlDoc.nodes.filter((n) => prevIds.includes(n.id)).map((n) => n.id));
-      const nextNodeIds = new Set(this.umlDoc.nodes.filter((n) => selectedSet.has(n.id)).map((n) => n.id));
-      const deselectedNodes = new Set([...prevNodeIds].filter((id) => !nextNodeIds.has(id)));
-      for (const deselectedId of deselectedNodes) {
-        for (const edge of this.umlDoc.edges) {
-          if (edge.source.nodeId === deselectedId || edge.target.nodeId === deselectedId) {
-            selectedSet.delete(edge.id);
-          }
-        }
-      }
-      if (nextNodeIds.size >= 2) {
-        for (const edge of this.umlDoc.edges) {
-          if (nextNodeIds.has(edge.source.nodeId) && nextNodeIds.has(edge.target.nodeId)) {
-            selectedSet.add(edge.id);
-          } else if (edge.source.nodeId && edge.target.nodeId && (!nextNodeIds.has(edge.source.nodeId) || !nextNodeIds.has(edge.target.nodeId))) {
-            selectedSet.delete(edge.id);
-          }
-        }
-      } else {
-        for (const edge of this.umlDoc.edges) {
-          if (selectedSet.has(edge.id) && (nextNodeIds.has(edge.source.nodeId) || nextNodeIds.has(edge.target.nodeId))) {
-            selectedSet.delete(edge.id);
-          }
-        }
-      }
-      return Array.from(selectedSet);
+    get mode() {
+      return this.gesture.mode;
     }
-    setSelectedIds(ids) {
-      this.selectedIds = this.syncSelectionEdges(ids, this.selectedIds);
+    get isIdle() {
+      return this.gesture.mode === "idle";
     }
-    selectSingle(id, additive = false) {
-      let next2;
-      if (additive) {
-        if (this.selectedIds.includes(id)) {
-          next2 = this.selectedIds.filter((x) => x !== id);
-        } else {
-          next2 = [...this.selectedIds, id];
-        }
-      } else {
-        next2 = [id];
-      }
-      this.selectedIds = this.syncSelectionEdges(next2, this.selectedIds);
-    }
-    clearSelection() {
-      this.selectedIds = [];
-    }
-    setViewport(next2) {
-      const clampedZoom = Math.min(3, Math.max(0.2, next2.zoom));
-      this.viewport = {
-        panX: Math.round(next2.panX * 10) / 10,
-        panY: Math.round(next2.panY * 10) / 10,
-        zoom: Math.round(clampedZoom * 1e3) / 1e3
+    startPan(screenX, screenY, panX, panY) {
+      this.gesture = {
+        mode: "panning",
+        startScreenX: screenX,
+        startScreenY: screenY,
+        initialPanX: panX,
+        initialPanY: panY
       };
     }
-    setSidebarWidth(width) {
-      this.sidebarWidth = Math.max(210, Math.min(560, Math.round(width)));
+    startMarquee(startWorld) {
+      this.gesture = { mode: "marquee", startWorld, currentWorld: startWorld };
     }
-    setElementsPaneRatio(ratio) {
-      this.elementsPaneRatio = Math.max(0.12, Math.min(0.92, Math.round(ratio * 1e3) / 1e3));
+    startMove(startWorld, initialLayouts, clickedNodeId, isShift = false) {
+      this.gesture = {
+        mode: "moving_nodes",
+        startWorld,
+        currentWorld: startWorld,
+        initialLayouts,
+        clickedNodeId,
+        isShift
+      };
+    }
+    startResize(nodeId, handle, startWorld, initialBox, minWidth, minHeight, childBounds) {
+      this.gesture = {
+        mode: "resizing_node",
+        nodeId,
+        handle,
+        startWorld,
+        currentWorld: startWorld,
+        initialBox,
+        minWidth,
+        minHeight,
+        childBounds
+      };
+    }
+    startConnect(sourceNodeId, startPoint, currentWorld) {
+      this.gesture = {
+        mode: "connecting_edge",
+        sourceNodeId,
+        startPoint,
+        currentWorld
+      };
+    }
+    updatePoint(point) {
+      const current = this.gesture;
+      if (current.mode === "idle" || current.mode === "panning") return;
+      this.gesture = { ...current, currentWorld: point };
+    }
+    setShift(isShift) {
+      if (this.gesture.mode !== "moving_nodes") return;
+      this.gesture = { ...this.gesture, isShift };
+    }
+    updatePan(screenX, screenY) {
+      if (this.gesture.mode !== "panning") return null;
+      return {
+        panX: this.gesture.initialPanX + (screenX - this.gesture.startScreenX),
+        panY: this.gesture.initialPanY + (screenY - this.gesture.startScreenY)
+      };
+    }
+    end() {
+      const current = this.gesture;
+      if (current.mode === "idle") return null;
+      this.gesture = { mode: "idle" };
+      return current;
+    }
+    cancel() {
+      this.gesture = { mode: "idle" };
     }
   };
 
@@ -8078,11 +7836,11 @@ ${component_stack}
     name: "vizion",
     displayName: "Vizion",
     description: "Custom UML editor for .viz JSON documents with embedded AI guidance.",
-    version: "0.2.0",
+    version: "0.3.0",
     publisher: "Vizionary",
     license: "MIT",
     engines: {
-      vscode: "^1.88.0"
+      vscode: "^1.90.0"
     },
     categories: [
       "Visualization",
@@ -8092,7 +7850,10 @@ ${component_stack}
     activationEvents: [
       "onCustomEditor:vizion.uml",
       "onCommand:vizion.newUmlDiagram",
-      "onCommand:vizion.initializeCurrentDocument"
+      "onCommand:vizion.initializeCurrentDocument",
+      "onCommand:vizion.addNode",
+      "onCommand:vizion.addRelation",
+      "onCommand:vizion.renameEntity"
     ],
     main: "./dist/extension.cjs",
     contributes: {
@@ -8152,6 +7913,24 @@ ${component_stack}
           title: "Reset Canvas Zoom (100%)",
           category: "Vizion",
           icon: "$(zoom-in)"
+        },
+        {
+          command: "vizion.addNode",
+          title: "Add UML Node",
+          category: "Vizion",
+          icon: "$(add)"
+        },
+        {
+          command: "vizion.addRelation",
+          title: "Add UML Relation",
+          category: "Vizion",
+          icon: "$(git-commit)"
+        },
+        {
+          command: "vizion.renameEntity",
+          title: "Rename UML Entity",
+          category: "Vizion",
+          icon: "$(edit)"
         }
       ],
       menus: {
@@ -8173,6 +7952,7 @@ ${component_stack}
       build: "node scripts/build.mjs",
       watch: "node scripts/build.mjs --watch",
       typecheck: "tsc --noEmit",
+      check: "svelte-check --tsconfig ./tsconfig.json",
       test: "vitest run",
       package: "vsce package --no-dependencies --allow-missing-repository"
     },
@@ -8180,14 +7960,15 @@ ${component_stack}
       "jsonc-parser": "^3.3.1"
     },
     devDependencies: {
-      "@sveltejs/vite-plugin-svelte": "^4.0.0",
-      "@types/node": "^20.14.0",
-      "@types/vscode": "^1.88.0",
-      "@vscode/vsce": "^3.0.0",
+      "@types/node": "^22.0.0",
+      "@types/vscode": "^1.90.0",
+      "@vscode/vsce": "^3.2.0",
       esbuild: "^0.24.0",
-      svelte: "^5.16.0",
-      typescript: "^5.6.3",
-      vitest: "^2.1.4"
+      "esbuild-svelte": "^0.8.2",
+      svelte: "^5.15.0",
+      "svelte-check": "^4.1.0",
+      typescript: "^5.7.0",
+      vitest: "^2.1.0"
     }
   };
 
@@ -8317,7 +8098,7 @@ ${component_stack}
     return DOCUMENT_MIGRATIONS.some((step) => step.shouldApply(doc));
   }
 
-  // src/shared/operations/index.ts
+  // src/shared/operations/text-parsers.ts
   function formatVisibilitySign(vis) {
     switch (vis ?? "+") {
       case "+":
@@ -8361,7 +8142,7 @@ ${component_stack}
     return `(${formatted.join(", ")})`;
   }
   function formatAttributesToText(attributes) {
-    return attributes.map((attr2) => {
+    return (attributes ?? []).map((attr2) => {
       const vis = attr2.visibility ?? "+";
       const typeStr = attr2.type ? `: ${attr2.type}` : "";
       return `${vis} ${attr2.name}${typeStr}`;
@@ -8396,7 +8177,7 @@ ${component_stack}
     return result;
   }
   function formatOperationsToText(operations) {
-    return operations.map((op) => {
+    return (operations ?? []).map((op) => {
       const vis = op.visibility ?? "+";
       const sig = op.parameters && op.parameters.length > 0 ? buildOperationSignature(op.parameters) : op.signature ?? "()";
       const retStr = op.returnType ? `: ${op.returnType}` : "";
@@ -8458,1345 +8239,2679 @@ ${component_stack}
     return result;
   }
 
-  // src/webview/common/AccessibleOutline.svelte
-  var itemIcon = ($$anchor, item = noop) => {
-    var svg = root_20();
-    var node_1 = child(svg);
-    {
-      var consequent_10 = ($$anchor2) => {
-        const v = user_derived(() => item().edgeVisual);
-        const hasLeftShape = user_derived(() => get(v).startShape === "diamond" || get(v).startShape === "circle" || get(v).startShape === "square" || get(v).startShape === "triangle");
-        const hasRightShape = user_derived(() => get(v).endShape === "diamond" || get(v).endShape === "circle" || get(v).endShape === "square" || get(v).endShape === "triangle");
-        const startX = user_derived(() => get(hasLeftShape) ? 6 : 1.5);
-        const endX = user_derived(() => get(hasRightShape) ? 10 : 14.5);
-        var fragment = root_10();
-        var line_1 = first_child(fragment);
-        var node_2 = sibling(line_1);
-        {
-          var consequent = ($$anchor3) => {
-            var polygon = root3();
-            template_effect(() => set_attribute2(polygon, "fill", get(v).startFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
-            append($$anchor3, polygon);
-          };
-          var consequent_1 = ($$anchor3) => {
-            var circle = root_13();
-            template_effect(() => set_attribute2(circle, "fill", get(v).startFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
-            append($$anchor3, circle);
-          };
-          var consequent_2 = ($$anchor3) => {
-            var rect_1 = root_23();
-            template_effect(() => set_attribute2(rect_1, "fill", get(v).startFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
-            append($$anchor3, rect_1);
-          };
-          var consequent_3 = ($$anchor3) => {
-            var polygon_1 = root_33();
-            template_effect(() => set_attribute2(polygon_1, "fill", get(v).startFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
-            append($$anchor3, polygon_1);
-          };
-          var consequent_4 = ($$anchor3) => {
-            var path = root_43();
-            append($$anchor3, path);
-          };
-          if_block(node_2, ($$render) => {
-            if (get(v).startShape === "diamond") $$render(consequent);
-            else if (get(v).startShape === "circle") $$render(consequent_1, 1);
-            else if (get(v).startShape === "square") $$render(consequent_2, 2);
-            else if (get(v).startShape === "triangle") $$render(consequent_3, 3);
-            else if (get(v).startShape === "open-arrow") $$render(consequent_4, 4);
-          });
-        }
-        var node_3 = sibling(node_2);
-        {
-          var consequent_5 = ($$anchor3) => {
-            var polygon_2 = root_52();
-            template_effect(() => set_attribute2(polygon_2, "fill", get(v).endFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
-            append($$anchor3, polygon_2);
-          };
-          var consequent_6 = ($$anchor3) => {
-            var circle_1 = root_62();
-            template_effect(() => set_attribute2(circle_1, "fill", get(v).endFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
-            append($$anchor3, circle_1);
-          };
-          var consequent_7 = ($$anchor3) => {
-            var rect_2 = root_72();
-            template_effect(() => set_attribute2(rect_2, "fill", get(v).endFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
-            append($$anchor3, rect_2);
-          };
-          var consequent_8 = ($$anchor3) => {
-            var polygon_3 = root_8();
-            template_effect(() => set_attribute2(polygon_3, "fill", get(v).endFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
-            append($$anchor3, polygon_3);
-          };
-          var consequent_9 = ($$anchor3) => {
-            var path_1 = root_9();
-            append($$anchor3, path_1);
-          };
-          if_block(node_3, ($$render) => {
-            if (get(v).endShape === "diamond") $$render(consequent_5);
-            else if (get(v).endShape === "circle") $$render(consequent_6, 1);
-            else if (get(v).endShape === "square") $$render(consequent_7, 2);
-            else if (get(v).endShape === "triangle") $$render(consequent_8, 3);
-            else if (get(v).endShape === "open-arrow") $$render(consequent_9, 4);
-          });
-        }
-        template_effect(() => {
-          set_attribute2(line_1, "x1", get(startX));
-          set_attribute2(line_1, "x2", get(endX));
-          set_attribute2(line_1, "stroke-dasharray", get(v).line === "dashed" ? "2 1.5" : void 0);
-        });
-        append($$anchor2, fragment);
-      };
-      var consequent_11 = ($$anchor2) => {
-        var fragment_1 = root_11();
-        next(2);
-        append($$anchor2, fragment_1);
-      };
-      var consequent_12 = ($$anchor2) => {
-        var fragment_2 = root_122();
-        next();
-        append($$anchor2, fragment_2);
-      };
-      var consequent_13 = ($$anchor2) => {
-        var fragment_3 = root_132();
-        next(3);
-        append($$anchor2, fragment_3);
-      };
-      var consequent_14 = ($$anchor2) => {
-        var rect_3 = root_14();
-        append($$anchor2, rect_3);
-      };
-      var consequent_15 = ($$anchor2) => {
-        var ellipse = root_15();
-        append($$anchor2, ellipse);
-      };
-      var consequent_16 = ($$anchor2) => {
-        var polygon_4 = root_16();
-        append($$anchor2, polygon_4);
-      };
-      var consequent_17 = ($$anchor2) => {
-        var polygon_5 = root_17();
-        append($$anchor2, polygon_5);
-      };
-      var consequent_18 = ($$anchor2) => {
-        var polygon_6 = root_18();
-        append($$anchor2, polygon_6);
-      };
-      var alternate = ($$anchor2) => {
-        var rect_4 = root_19();
-        append($$anchor2, rect_4);
-      };
-      if_block(node_1, ($$render) => {
-        if (item().isEdge && item().edgeVisual) $$render(consequent_10);
-        else if (item().iconKey === "class") $$render(consequent_11, 1);
-        else if (item().iconKey === "frame") $$render(consequent_12, 2);
-        else if (item().iconKey === "note") $$render(consequent_13, 3);
-        else if (item().iconKey === "rectangle") $$render(consequent_14, 4);
-        else if (item().iconKey === "ellipse") $$render(consequent_15, 5);
-        else if (item().iconKey === "rhombus") $$render(consequent_16, 6);
-        else if (item().iconKey === "trapezoid") $$render(consequent_17, 7);
-        else if (item().iconKey === "parallelogram") $$render(consequent_18, 8);
-        else $$render(alternate, -1);
-      });
+  // src/webview/state/inline-edit.svelte.ts
+  var InlineEditController = class {
+    #state;
+    get state() {
+      return get(this.#state);
     }
-    reset(svg);
-    append($$anchor, svg);
-  };
-  var root3 = from_svg(`<polygon points="1,8 3.5,5.5 6,8 3.5,10.5" stroke-width="1.2"></polygon>`);
-  var root_13 = from_svg(`<circle cx="3.5" cy="8" r="2.5" stroke-width="1.2"></circle>`);
-  var root_23 = from_svg(`<rect x="1" y="5.5" width="5" height="5" stroke-width="1.2"></rect>`);
-  var root_33 = from_svg(`<polygon points="6,5 1,8 6,11" stroke-width="1.2"></polygon>`);
-  var root_43 = from_svg(`<path d="M5 5.5 L1.5 8 L5 10.5" stroke-width="1.3"></path>`);
-  var root_52 = from_svg(`<polygon points="10,8 12.5,5.5 15,8 12.5,10.5" stroke-width="1.2"></polygon>`);
-  var root_62 = from_svg(`<circle cx="12.5" cy="8" r="2.5" stroke-width="1.2"></circle>`);
-  var root_72 = from_svg(`<rect x="10" y="5.5" width="5" height="5" stroke-width="1.2"></rect>`);
-  var root_8 = from_svg(`<polygon points="10,5 15,8 10,11" stroke-width="1.2"></polygon>`);
-  var root_9 = from_svg(`<path d="M11 5.5 L14.5 8 L11 10.5" stroke-width="1.3"></path>`);
-  var root_10 = from_svg(`<line y1="8" y2="8" stroke-width="1.3"></line><!><!>`, 1);
-  var root_11 = from_svg(`<rect x="2" y="2" width="12" height="12" rx="1.5" stroke-width="1.3"></rect><line x1="2" y1="6" x2="14" y2="6" stroke-width="1.1"></line><line x1="2" y1="10" x2="14" y2="10" stroke-width="1.1"></line>`, 1);
-  var root_122 = from_svg(`<rect x="2" y="2" width="12" height="12" rx="1.5" stroke-width="1.3"></rect><path d="M2 6 h5 v-4" stroke-width="1.1"></path>`, 1);
-  var root_132 = from_svg(`<path d="M3 2 h7 l3 3 v8 a1 1 0 0 1 -1 1 h-9 a1 1 0 0 1 -1 -1 v-10 a1 1 0 0 1 1 -1 z" stroke-width="1.3"></path><path d="M10 2 v3 h3" stroke-width="1.1"></path><line x1="5" y1="8" x2="11" y2="8" stroke-width="1"></line><line x1="5" y1="11" x2="9" y2="11" stroke-width="1"></line>`, 1);
-  var root_14 = from_svg(`<rect x="2" y="3.5" width="12" height="9" rx="1" stroke-width="1.3"></rect>`);
-  var root_15 = from_svg(`<ellipse cx="8" cy="8" rx="6" ry="4.5" stroke-width="1.3"></ellipse>`);
-  var root_16 = from_svg(`<polygon points="8,2 14,8 8,14 2,8" stroke-width="1.3"></polygon>`);
-  var root_17 = from_svg(`<polygon points="4.5,4 11.5,4 13.5,12 2.5,12" stroke-width="1.3"></polygon>`);
-  var root_18 = from_svg(`<polygon points="4.5,4 13.5,4 11.5,12 2.5,12" stroke-width="1.3"></polygon>`);
-  var root_19 = from_svg(`<rect x="2" y="2" width="12" height="12" rx="2" stroke-width="1.3"></rect>`);
-  var root_20 = from_svg(`<svg class="vz-outline-icon-svg" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!></svg>`);
-  var root_21 = from_html(`<span></span> <span class="vz-outline-edge-label"> </span> <span></span>`, 1);
-  var root_222 = from_html(`<span></span>`);
-  var root_232 = from_html(`<div class="vz-outline-edge-row"><span class="vz-outline-endpoint"> </span> <span class="vz-outline-connector" aria-hidden="true"><!></span> <span class="vz-outline-endpoint"> </span></div>`);
-  var root_24 = from_html(`<span class="vz-outline-stereotype"> </span>`);
-  var root_25 = from_html(`<span class="vz-outline-label"> </span> <!>`, 1);
-  var root_26 = from_html(`<button type="button"><span class="vz-outline-icon" aria-hidden="true"><!></span> <!></button>`);
-  var root_27 = from_html(`<button type="button" class="vz-add-dropdown-item" role="menuitem"><span> </span> <kbd class="vz-kbd"> </kbd></button>`);
-  var root_28 = from_html(`<button type="button" class="vz-add-dropdown-item" role="menuitem"><span> </span></button>`);
-  var root_29 = from_html(`<div class="vz-add-dropdown" role="menu"><!> <div class="vz-context-divider"></div> <div class="vz-dropdown-section-label">Shapes</div> <!></div>`);
-  var root_30 = from_html(`<div class="vz-add-dropdown-wrap"><button type="button" class="vz-plus-btn" title="Add New UML Element" aria-label="Add New UML Element">\uFF0B</button> <!></div>`);
-  var root_31 = from_html(`No elements yet. Click <strong>\uFF0B</strong> or right-click here to add one.`, 1);
-  var root_322 = from_html(`<div class="vz-empty-hint"><!></div>`);
-  var root_332 = from_html(`<li role="option"><!></li>`);
-  var root_34 = from_html(`<ul class="vz-outline-list" role="listbox" aria-label="Diagram elements"></ul>`);
-  var root_35 = from_html(`<section class="vz-outline-section" aria-label="Elements List"><div class="vz-outline-header"><span class="vz-sidebar-title"> </span> <!></div> <div class="vz-outline-search-row"><input type="search" class="vz-input" placeholder="Search" aria-label="Search elements"/></div> <!></section>  <div class="vz-section-splitter" role="separator" aria-orientation="horizontal" aria-label="Resize Elements and Inspector sections" tabindex="0"></div>`, 1);
-  function AccessibleOutline($$anchor, $$props) {
-    push($$props, true);
-    const outlineItemButton = ($$anchor2, item = noop) => {
-      const isSelected = user_derived(() => store().selectedIds.includes(item().id));
-      var button = root_26();
-      let classes;
-      var span = child(button);
-      var node_4 = child(span);
-      itemIcon(node_4, item);
-      reset(span);
-      var node_5 = sibling(span, 2);
-      {
-        var consequent_20 = ($$anchor3) => {
-          var div = root_232();
-          var span_1 = child(div);
-          var text2 = only_child(span_1, true);
-          var span_2 = sibling(span_1, 2);
-          var node_6 = child(span_2);
-          {
-            var consequent_19 = ($$anchor4) => {
-              var fragment_4 = root_21();
-              var span_3 = first_child(fragment_4);
-              let classes_1;
-              var span_4 = sibling(span_3, 2);
-              var text_1 = only_child(span_4, true);
-              var span_5 = sibling(span_4, 2);
-              let classes_2;
-              template_effect(() => {
-                classes_1 = set_class(span_3, 1, "vz-outline-connector-line", null, classes_1, { dashed: item().isDashed });
-                set_attribute2(span_4, "title", item().edgeLabel);
-                set_text(text_1, item().edgeLabel);
-                classes_2 = set_class(span_5, 1, "vz-outline-connector-line", null, classes_2, { dashed: item().isDashed });
-              });
-              append($$anchor4, fragment_4);
-            };
-            var alternate_1 = ($$anchor4) => {
-              var span_6 = root_222();
-              let classes_3;
-              template_effect(() => classes_3 = set_class(span_6, 1, "vz-outline-connector-line", null, classes_3, { dashed: item().isDashed }));
-              append($$anchor4, span_6);
-            };
-            if_block(node_6, ($$render) => {
-              if (item().edgeLabel) $$render(consequent_19);
-              else $$render(alternate_1, -1);
-            });
-          }
-          reset(span_2);
-          var span_7 = sibling(span_2, 2);
-          var text_2 = only_child(span_7, true);
-          reset(div);
-          template_effect(() => {
-            set_attribute2(span_1, "title", item().sourceName);
-            set_text(text2, item().sourceName);
-            set_attribute2(span_7, "title", item().targetName);
-            set_text(text_2, item().targetName);
-          });
-          append($$anchor3, div);
-        };
-        var alternate_2 = ($$anchor3) => {
-          var fragment_5 = root_25();
-          var span_8 = first_child(fragment_5);
-          var text_3 = only_child(span_8, true);
-          var node_7 = sibling(span_8, 2);
-          {
-            var consequent_21 = ($$anchor4) => {
-              var span_9 = root_24();
-              var text_4 = only_child(span_9);
-              template_effect(() => set_text(text_4, `\xAB${item().stereotype ?? ""}\xBB`));
-              append($$anchor4, span_9);
-            };
-            if_block(node_7, ($$render) => {
-              if (item().stereotype) $$render(consequent_21);
-            });
-          }
-          template_effect(() => set_text(text_3, item().label));
-          append($$anchor3, fragment_5);
-        };
-        if_block(node_5, ($$render) => {
-          if (item().isEdge) $$render(consequent_20);
-          else $$render(alternate_2, -1);
-        });
+    set state(value) {
+      set(this.#state, value, true);
+    }
+    constructor(host) {
+      this.host = host;
+      this.#state = state(proxy({ mode: "none" }));
+    }
+    get editingNodeId() {
+      return this.state.mode === "node" ? this.state.nodeId : null;
+    }
+    get editingEdgeId() {
+      return this.state.mode === "edgeLabel" ? this.state.edgeId : null;
+    }
+    get hasActiveEdit() {
+      return this.state.mode !== "none";
+    }
+    cancelAll() {
+      this.state = { mode: "none" };
+    }
+    beginNode(node) {
+      if (this.state.mode === "node" && this.state.nodeId !== node.id) this.commitNode();
+      if (this.state.mode === "edgeLabel") this.commitEdgeLabel();
+      if (this.state.mode === "multiplicity") this.commitMultiplicity();
+      this.state = {
+        mode: "node",
+        nodeId: node.id,
+        name: node.name ?? "",
+        stereotype: node.kind === "note" || node.kind === "shape" || node.kind === "frame" ? "" : node.stereotype ?? "",
+        text: node.text ?? "",
+        attributes: formatAttributesToText(node.attributes ?? []),
+        operations: formatOperationsToText(node.operations ?? [])
+      };
+    }
+    updateNodeDraft(patch) {
+      if (this.state.mode !== "node") return;
+      this.state = { ...this.state, ...patch };
+    }
+    flushNodeHeader(node) {
+      if (this.state.mode !== "node") return;
+      const nodeId = this.state.nodeId;
+      const targetNode = node ?? this.host.umlDoc?.nodes.find((candidate) => candidate.id === nodeId);
+      if (!targetNode) return;
+      const nextName = this.state.name.trim();
+      const nextStereo = this.state.stereotype.replace(/^[«<]+|[»>]+$/g, "").trim();
+      const updates = {};
+      if (nextName !== targetNode.name) updates.name = nextName;
+      if (targetNode.kind !== "note" && targetNode.kind !== "shape" && targetNode.kind !== "frame" && nextStereo !== (targetNode.stereotype ?? "")) {
+        updates.stereotype = nextStereo;
       }
-      reset(button);
-      template_effect(() => {
-        classes = set_class(button, 1, "vz-outline-item", null, classes, { selected: get(isSelected) });
-        set_attribute2(button, "title", item().tooltip);
-        set_attribute2(span, "title", item().iconTitle);
-      });
-      delegated("click", button, (e) => store().selectSingle(item().id, e.shiftKey || e.metaKey || e.ctrlKey));
-      delegated("contextmenu", button, (e) => openItemContextMenu(e, item().id, item().contextLabel));
-      append($$anchor2, button);
-    };
-    let store = prop($$props, "store", 7);
-    let outlineSectionEl = state(void 0);
-    let showAddMenu = state(false);
-    let addDropdownWrapEl = state(void 0);
-    let resizingVertical = state(null);
-    function handleWindowPointerDown(e) {
-      if (!get(showAddMenu)) return;
-      if (get(addDropdownWrapEl) && !get(addDropdownWrapEl).contains(e.target)) {
-        set(showAddMenu, false);
+      if (Object.keys(updates).length > 0) {
+        this.host.dispatchOperation({ type: "uml.updateNode", nodeId: targetNode.id, ...updates });
       }
     }
-    function handleWindowKeyDown(e) {
-      if (e.key === "Escape" && get(showAddMenu)) {
-        set(showAddMenu, false);
-      }
-    }
-    function keepDropdownInView(node) {
-      const rect = node.getBoundingClientRect();
-      if (rect.left < 8) {
-        node.style.left = "8px";
-        node.style.right = "auto";
-      }
-      if (rect.bottom > window.innerHeight - 8) {
-        const overflowY = rect.bottom - (window.innerHeight - 8);
-        node.style.top = `${26 - overflowY}px`;
-      }
-    }
-    const umlCreationOptions = [
-      { kind: "class", label: "Class", shortcut: "Alt+C" },
-      { kind: "note", label: "Note", shortcut: "Alt+N" },
-      { kind: "frame", label: "Frame", shortcut: "Alt+F" }
-    ];
-    const allItems = user_derived(() => {
-      if (store().umlDoc) {
-        const nodeMap = new Map(store().umlDoc.nodes.map((n) => [n.id, n]));
-        const nodeItems = store().umlDoc.nodes.map((n) => {
-          const desc = getUmlNodeKind(n.kind);
-          const stereotype = n.kind === "note" ? "" : n.stereotype || desc?.defaultStereotype || "";
-          const iconKey = n.kind === "shape" && n.shape ? n.shape : n.kind;
-          const label = n.name || n.id;
-          return {
-            id: n.id,
-            isEdge: false,
-            label,
-            stereotype,
-            iconKey,
-            iconTitle: n.kind === "shape" ? `Shape: ${n.shape}` : `Node: ${n.kind}`,
-            tooltip: stereotype ? `${label} \xAB${stereotype}\xBB` : label,
-            contextLabel: label
-          };
-        });
-        const edgeItems = store().umlDoc.edges.map((e) => {
-          const sourceNode = nodeMap.get(e.source.nodeId);
-          const targetNode = nodeMap.get(e.target.nodeId);
-          const sourceName = sourceNode?.name || e.source.nodeId;
-          const targetName = targetNode?.name || e.target.nodeId;
-          const edgeLabel = e.label?.trim() || "";
-          const preset = getUmlRelationPreset(e.kind);
-          const touchesNote = sourceNode?.kind === "note" || targetNode?.kind === "note";
-          const defaultLine = touchesNote ? "dashed" : preset?.line ?? "solid";
-          const line = e.visual?.line ?? defaultLine;
-          const isDashed = line === "dashed";
-          const startShape = e.visual?.start?.shape ?? preset?.start?.shape ?? "none";
-          const startFill = e.visual?.start?.fill ?? preset?.start?.fill ?? "hollow";
-          const endShape = e.visual?.end?.shape ?? preset?.end?.shape ?? "none";
-          const endFill = e.visual?.end?.fill ?? preset?.end?.fill ?? "hollow";
-          const repr = edgeLabel ? `${sourceName} \u2500\u2500 ${edgeLabel} \u2500\u2500 ${targetName}` : `${sourceName} \u2500\u2500 ${targetName}`;
-          return {
-            id: e.id,
-            isEdge: true,
-            sourceName,
-            targetName,
-            sourceNodeId: e.source.nodeId,
-            targetNodeId: e.target.nodeId,
-            edgeLabel,
-            edgeKind: e.kind,
-            isDashed,
-            edgeVisual: { line, isDashed, startShape, startFill, endShape, endFill },
-            label: repr,
-            stereotype: "",
-            iconKey: e.kind,
-            iconTitle: `Relation: ${e.kind} (${line})`,
-            tooltip: repr,
-            contextLabel: repr
-          };
-        });
-        return [...nodeItems, ...edgeItems];
-      }
-      return [];
-    });
-    function matchesItemQuery(item, q) {
-      if (!q) return true;
-      if (item.isEdge) {
-        return (item.sourceName || "").toLowerCase().includes(q) || (item.targetName || "").toLowerCase().includes(q) || (item.edgeLabel || "").toLowerCase().includes(q) || (item.edgeKind || "").toLowerCase().includes(q) || item.id.toLowerCase().includes(q);
-      }
-      return (item.label || "").toLowerCase().includes(q) || (item.stereotype || "").toLowerCase().includes(q) || `\xAB${(item.stereotype || "").toLowerCase()}\xBB`.includes(q) || (item.iconKey || "").toLowerCase().includes(q) || item.id.toLowerCase().includes(q);
-    }
-    const filteredItems = user_derived(() => {
-      const q = store().outlineSearchQuery.trim().toLowerCase();
-      if (!q) return get(allItems);
-      return get(allItems).filter((item) => matchesItemQuery(item, q));
-    });
-    function handleExplorerContextMenu(e) {
-      const target2 = e.target;
-      if (target2?.closest('input, textarea, select, [contenteditable="true"]')) {
+    flushNodeMembers(node) {
+      if (this.state.mode !== "node") return;
+      const nodeId = this.state.nodeId;
+      const targetNode = node ?? this.host.umlDoc?.nodes.find((candidate) => candidate.id === nodeId);
+      if (!targetNode || targetNode.kind === "note" || targetNode.kind === "shape" || targetNode.kind === "frame") {
         return;
       }
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    function openItemContextMenu(e, itemId, itemLabel) {
-      e.preventDefault();
-      e.stopPropagation();
-      store().selectSingle(itemId, false);
-      store().openContextMenu(
-        e.clientX,
-        e.clientY,
-        [
-          {
-            label: "Copy",
-            shortcut: "Ctrl+C",
-            action: () => store().copySelection()
-          },
-          {
-            label: "Duplicate",
-            shortcut: "Ctrl+D",
-            action: () => $$props.onDuplicateSelected()
-          },
-          {
-            label: "Paste as new",
-            shortcut: "Ctrl+Shift+V",
-            action: () => {
-              store().copySelection();
-              store().pasteClipboard(true);
-            }
-          },
-          {
-            label: "Delete",
-            shortcut: "Del",
-            danger: true,
-            dividerBefore: true,
-            action: () => $$props.onDeleteSelected()
-          }
-        ],
-        itemLabel
-      );
-    }
-    function handleSplitterPointerDown(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.currentTarget?.setPointerCapture?.(e.pointerId);
-      const parentSidebar = get(outlineSectionEl)?.parentElement;
-      const sidebarHeight = Math.max(200, parentSidebar?.clientHeight ?? 600);
-      set(
-        resizingVertical,
-        {
-          startY: e.clientY,
-          initialRatio: store().elementsPaneRatio,
-          sidebarHeight
-        },
-        true
-      );
-    }
-    function handleWindowPointerMove(e) {
-      if (!get(resizingVertical)) return;
-      const dy = e.clientY - get(resizingVertical).startY;
-      const deltaRatio = dy / get(resizingVertical).sidebarHeight;
-      store().setElementsPaneRatio(get(resizingVertical).initialRatio + deltaRatio);
-    }
-    function handleWindowPointerUp() {
-      if (get(resizingVertical)) {
-        set(resizingVertical, null);
+      const nextAttrs = parseAttributesFromText(this.state.attributes, targetNode.id, targetNode.attributes ?? []);
+      const nextOps = parseOperationsFromText(this.state.operations, targetNode.id, targetNode.operations ?? []);
+      const updates = {};
+      const currentAttrs = targetNode.attributes ?? [];
+      const attrsChanged = nextAttrs.length !== currentAttrs.length || nextAttrs.some((attr2, index2) => {
+        const current = currentAttrs[index2];
+        return !current || attr2.name !== current.name || (attr2.type ?? "") !== (current.type ?? "") || (attr2.visibility ?? "+") !== (current.visibility ?? "+");
+      });
+      if (attrsChanged) updates.attributes = nextAttrs;
+      const currentOps = targetNode.operations ?? [];
+      const opsChanged = nextOps.length !== currentOps.length || nextOps.some((op, index2) => {
+        const current = currentOps[index2];
+        return !current || op.name !== current.name || (op.returnType ?? "") !== (current.returnType ?? "") || (op.visibility ?? "+") !== (current.visibility ?? "+") || (op.signature ?? "()") !== (current.signature ?? "()");
+      });
+      if (opsChanged) updates.operations = nextOps;
+      if (Object.keys(updates).length > 0) {
+        this.host.dispatchOperation({ type: "uml.updateNode", nodeId: targetNode.id, ...updates });
       }
     }
-    var fragment_6 = root_35();
-    event("pointerdown", $window, handleWindowPointerDown);
-    event("pointermove", $window, handleWindowPointerMove);
-    event("pointerup", $window, handleWindowPointerUp);
-    event("keydown", $window, handleWindowKeyDown);
-    var section = first_child(fragment_6);
-    var div_1 = child(section);
-    var span_10 = child(div_1);
-    var text_5 = only_child(span_10);
-    var node_8 = sibling(span_10, 2);
-    {
-      var consequent_23 = ($$anchor2) => {
-        var div_2 = root_30();
-        var button_1 = child(div_2);
-        var node_9 = sibling(button_1, 2);
-        {
-          var consequent_22 = ($$anchor3) => {
-            var div_3 = root_29();
-            var node_10 = child(div_3);
-            each(node_10, 17, () => umlCreationOptions, (opt) => opt.kind, ($$anchor4, opt) => {
-              var button_2 = root_27();
-              var span_11 = child(button_2);
-              var text_6 = only_child(span_11, true);
-              var kbd = sibling(span_11, 2);
-              var text_7 = only_child(kbd, true);
-              reset(button_2);
-              template_effect(() => {
-                set_text(text_6, get(opt).label);
-                set_text(text_7, get(opt).shortcut);
-              });
-              delegated("click", button_2, () => {
-                set(showAddMenu, false);
-                store().createQuickUmlNode(get(opt).kind);
-              });
-              append($$anchor4, button_2);
-            });
-            var node_11 = sibling(node_10, 6);
-            each(node_11, 17, () => UML_SHAPE_GEOMETRIES, (sh) => sh.kind, ($$anchor4, sh) => {
-              var button_3 = root_28();
-              var span_12 = child(button_3);
-              var text_8 = only_child(span_12, true);
-              reset(button_3);
-              template_effect(() => set_text(text_8, get(sh).label));
-              delegated("click", button_3, () => {
-                set(showAddMenu, false);
-                store().createQuickUmlNode("shape", void 0, void 0, get(sh).kind);
-              });
-              append($$anchor4, button_3);
-            });
-            reset(div_3);
-            action(div_3, ($$node) => keepDropdownInView?.($$node));
-            append($$anchor3, div_3);
-          };
-          if_block(node_9, ($$render) => {
-            if (get(showAddMenu)) $$render(consequent_22);
-          });
-        }
-        reset(div_2);
-        bind_this(div_2, ($$value) => set(addDropdownWrapEl, $$value), () => get(addDropdownWrapEl));
-        template_effect(() => set_attribute2(button_1, "aria-expanded", get(showAddMenu)));
-        delegated("click", button_1, () => {
-          set(showAddMenu, !get(showAddMenu));
+    flushNodeText(node) {
+      if (this.state.mode !== "node") return;
+      const nodeId = this.state.nodeId;
+      const targetNode = node ?? this.host.umlDoc?.nodes.find((candidate) => candidate.id === nodeId);
+      if (!targetNode || targetNode.kind !== "note") return;
+      if (this.state.text !== (targetNode.text ?? "")) {
+        this.host.dispatchOperation({
+          type: "uml.updateNode",
+          nodeId: targetNode.id,
+          text: this.state.text
         });
-        append($$anchor2, div_2);
+      }
+    }
+    commitNode(node) {
+      this.flushNodeHeader(node);
+      this.flushNodeMembers(node);
+      this.flushNodeText(node);
+      this.state = { mode: "none" };
+    }
+    beginEdgeLabel(edge) {
+      if (this.state.mode === "node") this.commitNode();
+      if (this.state.mode === "multiplicity") this.commitMultiplicity();
+      this.state = { mode: "edgeLabel", edgeId: edge.id, label: edge.label ?? "" };
+    }
+    commitEdgeLabel(edge) {
+      if (this.state.mode !== "edgeLabel") return;
+      const edgeId = this.state.edgeId;
+      const nextLabel = this.state.label.trim();
+      const targetEdge = edge ?? this.host.umlDoc?.edges.find((candidate) => candidate.id === edgeId);
+      this.state = { mode: "none" };
+      if (!targetEdge) return;
+      if (nextLabel !== (targetEdge.label ?? "")) {
+        this.host.dispatchOperation({
+          type: "uml.updateEdge",
+          edgeId: targetEdge.id,
+          label: nextLabel
+        });
+      }
+    }
+    beginMultiplicity(edge, end) {
+      if (this.state.mode === "node") this.commitNode();
+      if (this.state.mode === "edgeLabel") this.commitEdgeLabel();
+      this.state = {
+        mode: "multiplicity",
+        edgeId: edge.id,
+        end,
+        draft: end === "start" ? edge.source.multiplicity ?? "" : edge.target.multiplicity ?? ""
       };
-      if_block(node_8, ($$render) => {
-        if (store().expectedKind === "uml" && !store().isReadOnly) $$render(consequent_23);
+    }
+    commitMultiplicity(edge) {
+      if (this.state.mode !== "multiplicity") return;
+      const { edgeId, end, draft } = this.state;
+      const targetEdge = edge ?? this.host.umlDoc?.edges.find((candidate) => candidate.id === edgeId);
+      this.state = { mode: "none" };
+      if (!targetEdge) return;
+      const cleaned = draft.trim();
+      const previous = end === "start" ? targetEdge.source.multiplicity ?? "" : targetEdge.target.multiplicity ?? "";
+      if (cleaned !== previous) {
+        this.host.dispatchOperation({
+          type: "uml.updateEdge",
+          edgeId: targetEdge.id,
+          ...end === "start" ? { sourceMultiplicity: cleaned } : { targetMultiplicity: cleaned }
+        });
+      }
+    }
+    beginEndpointPopup(x, y, edge, end, current) {
+      this.closeEndpointPopup();
+      this.state = {
+        mode: "endpointPopup",
+        x: Math.max(12, Math.min(x, (globalThis.innerWidth ?? 1024) - 260)),
+        y: Math.max(12, Math.min(y, (globalThis.innerHeight ?? 768) - 360)),
+        edgeId: edge.id,
+        end,
+        current,
+        multiplicityDraft: end === "start" ? edge.source.multiplicity ?? "" : edge.target.multiplicity ?? ""
+      };
+    }
+    commitEndpointMultiplicity() {
+      if (this.state.mode !== "endpointPopup") return;
+      const { edgeId, end, multiplicityDraft } = this.state;
+      const targetEdge = this.host.umlDoc?.edges.find((candidate) => candidate.id === edgeId);
+      if (!targetEdge) return;
+      const cleaned = multiplicityDraft.trim();
+      const previous = end === "start" ? targetEdge.source.multiplicity ?? "" : targetEdge.target.multiplicity ?? "";
+      if (cleaned !== previous) {
+        this.host.dispatchOperation({
+          type: "uml.updateEdge",
+          edgeId: targetEdge.id,
+          ...end === "start" ? { sourceMultiplicity: cleaned } : { targetMultiplicity: cleaned }
+        });
+      }
+    }
+    closeEndpointPopup() {
+      if (this.state.mode !== "endpointPopup") return;
+      this.commitEndpointMultiplicity();
+      this.state = { mode: "none" };
+    }
+    clearEndpointPopup() {
+      if (this.state.mode === "endpointPopup") this.state = { mode: "none" };
+    }
+  };
+
+  // src/webview/state/selection.svelte.ts
+  var SelectionController = class {
+    #selectedIds;
+    get selectedIds() {
+      return get(this.#selectedIds);
+    }
+    set selectedIds(value) {
+      set(this.#selectedIds, value, true);
+    }
+    constructor() {
+      this.#selectedIds = state(proxy([]));
+    }
+    isSelected(id) {
+      return this.selectedIds.includes(id);
+    }
+    setSelectedIds(doc, ids) {
+      this.selectedIds = this.syncSelectionEdges(doc, ids, this.selectedIds);
+    }
+    selectSingle(doc, id, additive = false) {
+      let next2;
+      if (additive) {
+        next2 = this.selectedIds.includes(id) ? this.selectedIds.filter((existing) => existing !== id) : [...this.selectedIds, id];
+      } else {
+        next2 = [id];
+      }
+      this.selectedIds = this.syncSelectionEdges(doc, next2, this.selectedIds);
+    }
+    clear() {
+      this.selectedIds = [];
+    }
+    /**
+     * Drops ids that no longer exist in the authoritative document.
+     */
+    prune(doc) {
+      if (!doc) return;
+      const validIds = /* @__PURE__ */ new Set([
+        ...doc.nodes.map((node) => node.id),
+        ...doc.edges.map((edge) => edge.id)
+      ]);
+      const filtered = this.selectedIds.filter((id) => validIds.has(id));
+      if (filtered.length !== this.selectedIds.length) {
+        this.selectedIds = this.syncSelectionEdges(doc, filtered, this.selectedIds);
+      }
+    }
+    syncSelectionEdges(doc, baseIds, prevIds = this.selectedIds) {
+      if (!doc) return baseIds;
+      const selectedSet = new Set(baseIds);
+      const prevNodeIds = new Set(doc.nodes.filter((node) => prevIds.includes(node.id)).map((node) => node.id));
+      const nextNodeIds = new Set(doc.nodes.filter((node) => selectedSet.has(node.id)).map((node) => node.id));
+      const deselectedNodes = new Set([...prevNodeIds].filter((id) => !nextNodeIds.has(id)));
+      for (const deselectedId of deselectedNodes) {
+        for (const edge of doc.edges) {
+          if (edge.source.nodeId === deselectedId || edge.target.nodeId === deselectedId) {
+            selectedSet.delete(edge.id);
+          }
+        }
+      }
+      if (nextNodeIds.size >= 2) {
+        for (const edge of doc.edges) {
+          if (nextNodeIds.has(edge.source.nodeId) && nextNodeIds.has(edge.target.nodeId)) {
+            selectedSet.add(edge.id);
+          } else if (edge.source.nodeId && edge.target.nodeId && (!nextNodeIds.has(edge.source.nodeId) || !nextNodeIds.has(edge.target.nodeId))) {
+            selectedSet.delete(edge.id);
+          }
+        }
+      } else {
+        for (const edge of doc.edges) {
+          if (selectedSet.has(edge.id) && (nextNodeIds.has(edge.source.nodeId) || nextNodeIds.has(edge.target.nodeId))) {
+            selectedSet.delete(edge.id);
+          }
+        }
+      }
+      return Array.from(selectedSet);
+    }
+  };
+
+  // src/webview/state/viewport.svelte.ts
+  var MIN_ZOOM = 0.2;
+  var MAX_ZOOM = 3;
+  var DEFAULT_VIEWPORT = { panX: 40, panY: 40, zoom: 1 };
+  var ViewportController = class {
+    #panX;
+    get panX() {
+      return get(this.#panX);
+    }
+    set panX(value) {
+      set(this.#panX, value, true);
+    }
+    #panY;
+    get panY() {
+      return get(this.#panY);
+    }
+    set panY(value) {
+      set(this.#panY, value, true);
+    }
+    #zoom;
+    get zoom() {
+      return get(this.#zoom);
+    }
+    set zoom(value) {
+      set(this.#zoom, value, true);
+    }
+    constructor() {
+      this.#panX = state(proxy(DEFAULT_VIEWPORT.panX));
+      this.#panY = state(proxy(DEFAULT_VIEWPORT.panY));
+      this.#zoom = state(proxy(DEFAULT_VIEWPORT.zoom));
+    }
+    get transform() {
+      return { panX: this.panX, panY: this.panY, zoom: this.zoom };
+    }
+    setViewport(next2) {
+      const clampedZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next2.zoom));
+      this.panX = Math.round(next2.panX * 10) / 10;
+      this.panY = Math.round(next2.panY * 10) / 10;
+      this.zoom = Math.round(clampedZoom * 1e3) / 1e3;
+    }
+    resetZoom() {
+      this.setViewport(DEFAULT_VIEWPORT);
+    }
+    panBy(dx, dy) {
+      this.setViewport({ panX: this.panX + dx, panY: this.panY + dy, zoom: this.zoom });
+    }
+    /**
+     * Zooms around a cursor position expressed in viewport-local pixels.
+     * Keeps the world point under the cursor stationary.
+     */
+    zoomAt(cursorX, cursorY, factor) {
+      const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, this.zoom * factor));
+      const scaleChange = nextZoom / this.zoom;
+      this.setViewport({
+        zoom: nextZoom,
+        panX: cursorX - (cursorX - this.panX) * scaleChange,
+        panY: cursorY - (cursorY - this.panY) * scaleChange
       });
     }
-    reset(div_1);
-    var div_4 = sibling(div_1, 2);
-    var input = child(div_4);
-    remove_input_defaults(input);
-    reset(div_4);
-    var node_12 = sibling(div_4, 2);
-    {
-      var consequent_25 = ($$anchor2) => {
-        var div_5 = root_322();
-        var node_13 = child(div_5);
-        {
-          var consequent_24 = ($$anchor3) => {
-            var text_9 = text();
-            template_effect(() => set_text(text_9, `No matching elements for "${store().outlineSearchQuery ?? ""}".`));
-            append($$anchor3, text_9);
-          };
-          var d = user_derived(() => store().outlineSearchQuery.trim());
-          var alternate_3 = ($$anchor3) => {
-            var fragment_8 = root_31();
-            next(2);
-            append($$anchor3, fragment_8);
-          };
-          if_block(node_13, ($$render) => {
-            if (get(d)) $$render(consequent_24);
-            else $$render(alternate_3, -1);
-          });
-        }
-        reset(div_5);
-        append($$anchor2, div_5);
-      };
-      var alternate_4 = ($$anchor2) => {
-        var ul = root_34();
-        each(ul, 21, () => get(filteredItems), (item) => item.id, ($$anchor3, item) => {
-          var li = root_332();
-          var node_14 = child(li);
-          outlineItemButton(node_14, () => get(item));
-          reset(li);
-          template_effect(($0) => set_attribute2(li, "aria-selected", $0), [() => store().selectedIds.includes(get(item).id)]);
-          append($$anchor3, li);
-        });
-        reset(ul);
-        append($$anchor2, ul);
-      };
-      if_block(node_12, ($$render) => {
-        if (get(filteredItems).length === 0) $$render(consequent_25);
-        else $$render(alternate_4, -1);
+    /**
+     * Fits the supplied world-space content bounds into the viewport.
+     * Measurement of the viewport element is the caller's responsibility and
+     * should happen only on explicit fit commands, never during a gesture.
+     */
+    fitContent(bounds, viewportWidth, viewportHeight, padding = 60) {
+      const contentWidth = Math.max(200, bounds.width + padding * 2);
+      const contentHeight = Math.max(200, bounds.height + padding * 2);
+      const viewWidth = Math.max(300, viewportWidth);
+      const viewHeight = Math.max(300, viewportHeight);
+      const zoom = Math.min(1.5, Math.max(MIN_ZOOM, Math.min(viewWidth / contentWidth, viewHeight / contentHeight)));
+      this.setViewport({
+        zoom,
+        panX: (viewWidth - bounds.width * zoom) / 2 - bounds.x * zoom,
+        panY: (viewHeight - bounds.height * zoom) / 2 - bounds.y * zoom
       });
     }
-    reset(section);
-    bind_this(section, ($$value) => set(outlineSectionEl, $$value), () => get(outlineSectionEl));
-    var div_6 = sibling(section, 2);
-    template_effect(() => {
-      set_style(section, `height: ${store().elementsPaneRatio * 100}%;`);
-      set_text(text_5, `Elements (${get(filteredItems).length ?? ""})`);
+  };
+
+  // src/webview/state.svelte.ts
+  var VizionWebviewStore = class {
+    #expectedKind;
+    get expectedKind() {
+      return get(this.#expectedKind);
+    }
+    set expectedKind(value) {
+      set(this.#expectedKind, value, true);
+    }
+    #documentVersion;
+    get documentVersion() {
+      return get(this.#documentVersion);
+    }
+    set documentVersion(value) {
+      set(this.#documentVersion, value, true);
+    }
+    #isReadOnly;
+    get isReadOnly() {
+      return get(this.#isReadOnly);
+    }
+    set isReadOnly(value) {
+      set(this.#isReadOnly, value, true);
+    }
+    #isEmptyDocument;
+    get isEmptyDocument() {
+      return get(this.#isEmptyDocument);
+    }
+    set isEmptyDocument(value) {
+      set(this.#isEmptyDocument, value, true);
+    }
+    #canExplicitlyInitialize;
+    get canExplicitlyInitialize() {
+      return get(this.#canExplicitlyInitialize);
+    }
+    set canExplicitlyInitialize(value) {
+      set(this.#canExplicitlyInitialize, value, true);
+    }
+    #valid;
+    get valid() {
+      return get(this.#valid);
+    }
+    set valid(value) {
+      set(this.#valid, value, true);
+    }
+    #document;
+    get document() {
+      return get(this.#document);
+    }
+    set document(value) {
+      set(this.#document, value, true);
+    }
+    #lastValidDocument;
+    get lastValidDocument() {
+      return get(this.#lastValidDocument);
+    }
+    set lastValidDocument(value) {
+      set(this.#lastValidDocument, value, true);
+    }
+    #issues;
+    get issues() {
+      return get(this.#issues);
+    }
+    set issues(value) {
+      set(this.#issues, value, true);
+    }
+    #hasUnsupportedConstructs;
+    get hasUnsupportedConstructs() {
+      return get(this.#hasUnsupportedConstructs);
+    }
+    set hasUnsupportedConstructs(value) {
+      set(this.#hasUnsupportedConstructs, value, true);
+    }
+    #optimisticUmlLayouts;
+    get optimisticUmlLayouts() {
+      return get(this.#optimisticUmlLayouts);
+    }
+    set optimisticUmlLayouts(value) {
+      set(this.#optimisticUmlLayouts, value, true);
+    }
+    #outlineSearchQuery;
+    get outlineSearchQuery() {
+      return get(this.#outlineSearchQuery);
+    }
+    set outlineSearchQuery(value) {
+      set(this.#outlineSearchQuery, value, true);
+    }
+    #sidebarWidth;
+    get sidebarWidth() {
+      return get(this.#sidebarWidth);
+    }
+    set sidebarWidth(value) {
+      set(this.#sidebarWidth, value, true);
+    }
+    #elementsPaneRatio;
+    get elementsPaneRatio() {
+      return get(this.#elementsPaneRatio);
+    }
+    set elementsPaneRatio(value) {
+      set(this.#elementsPaneRatio, value, true);
+    }
+    #statusMessage;
+    get statusMessage() {
+      return get(this.#statusMessage);
+    }
+    set statusMessage(value) {
+      set(this.#statusMessage, value, true);
+    }
+    #staleNotice;
+    get staleNotice() {
+      return get(this.#staleNotice);
+    }
+    set staleNotice(value) {
+      set(this.#staleNotice, value, true);
+    }
+    #contextMenu;
+    get contextMenu() {
+      return get(this.#contextMenu);
+    }
+    set contextMenu(value) {
+      set(this.#contextMenu, value, true);
+    }
+    constructor(initialKind2) {
+      this.#expectedKind = state("uml");
+      this.#documentVersion = state(1);
+      this.#isReadOnly = state(false);
+      this.#isEmptyDocument = state(false);
+      this.#canExplicitlyInitialize = state(false);
+      this.#valid = state(true);
+      this.#document = state(void 0);
+      this.#lastValidDocument = state(void 0);
+      this.#issues = state(proxy([]));
+      this.#hasUnsupportedConstructs = state(false);
+      this.#optimisticUmlLayouts = state(proxy({}));
+      this.viewportController = new ViewportController();
+      this.selectionController = new SelectionController();
+      this.clipboardController = new ClipboardController();
+      this.gestureMachine = new GestureStateMachine();
+      this.inlineEdit = new InlineEditController(this);
+      this.#outlineSearchQuery = state("");
+      this.#sidebarWidth = state(290);
+      this.#elementsPaneRatio = state(0.4);
+      this.#statusMessage = state(null);
+      this.#staleNotice = state(null);
+      this.#contextMenu = state(null);
+      this.requestCounter = 0;
+      this.expectedKind = initialKind2;
+      if (window.__VIZION_INITIAL_SNAPSHOT__) {
+        this.applySnapshot(window.__VIZION_INITIAL_SNAPSHOT__);
+      }
+      window.addEventListener("message", (event2) => {
+        this.handleHostMessage(event2.data);
+      });
+      postToHost({ type: "webview.ready" });
+    }
+    get viewport() {
+      return this.viewportController.transform;
+    }
+    get selectedIds() {
+      return this.selectionController.selectedIds;
+    }
+    get clipboard() {
+      return this.clipboardController.state;
+    }
+    get umlDoc() {
+      return this.document?.kind === "uml" ? this.document : void 0;
+    }
+    registerCanvasCallbacks(callbacks) {
+      this.onFitContentCallback = callbacks.onFitContent;
+      this.onResetZoomCallback = callbacks.onResetZoom;
+      this.onRestoreFocusCallback = callbacks.onRestoreFocus;
+    }
+    applySnapshot(msg) {
+      this.expectedKind = msg.expectedKind;
+      this.documentVersion = msg.documentVersion;
+      this.isReadOnly = msg.isReadOnly;
+      this.isEmptyDocument = msg.isEmptyDocument;
+      this.canExplicitlyInitialize = msg.canExplicitlyInitialize;
+      this.valid = msg.valid;
+      this.document = msg.document;
+      this.lastValidDocument = msg.lastValidDocument;
+      this.issues = msg.issues;
+      this.hasUnsupportedConstructs = Boolean(msg.hasUnsupportedConstructs);
+      this.optimisticUmlLayouts = {};
+      if (msg.valid && msg.document) {
+        this.selectionController.prune(msg.document);
+      }
+    }
+    handleHostMessage(msg) {
+      if (!msg || typeof msg !== "object") return;
+      switch (msg.type) {
+        case "host.snapshot": {
+          this.applySnapshot(msg);
+          break;
+        }
+        case "host.operationResult": {
+          if (!msg.ok) {
+            this.optimisticUmlLayouts = {};
+            if (msg.staleRejected) {
+              this.staleNotice = msg.error ?? "Document changed externally during gesture. View refreshed.";
+            } else if (msg.error) {
+              this.statusMessage = msg.error;
+            }
+          } else {
+            this.staleNotice = null;
+            if (msg.createdIds && msg.createdIds.length > 0) {
+              this.selectionController.setSelectedIds(this.umlDoc, msg.createdIds);
+            }
+          }
+          break;
+        }
+        case "host.command": {
+          if (msg.command === "fitContent") {
+            this.onFitContentCallback?.();
+          } else if (msg.command === "resetZoom") {
+            this.onResetZoomCallback?.();
+          } else if (msg.command === "restoreCanvasFocus") {
+            this.onRestoreFocusCallback?.();
+          }
+          break;
+        }
+      }
+    }
+    dispatchOperation(operation) {
+      const requestId = `req-${++this.requestCounter}-${Date.now()}`;
+      if (operation.type === "uml.updateNode" && this.umlDoc) {
+        const node = this.umlDoc.nodes.find((n) => n.id === operation.nodeId);
+        if (node) {
+          if (operation.name !== void 0) node.name = operation.name;
+          if (operation.stereotype !== void 0) {
+            if (operation.stereotype) node.stereotype = operation.stereotype;
+            else delete node.stereotype;
+          }
+          if (operation.text !== void 0) node.text = operation.text;
+          if (operation.shape !== void 0) node.shape = operation.shape;
+          if (operation.children !== void 0) node.children = [...operation.children];
+          if (operation.line !== void 0) node.line = operation.line;
+          if (operation.attributes !== void 0) node.attributes = operation.attributes;
+          if (operation.operations !== void 0) node.operations = operation.operations;
+          if (operation.showAttributes !== void 0) node.showAttributes = operation.showAttributes;
+          if (operation.showOperations !== void 0) node.showOperations = operation.showOperations;
+        }
+      } else if (operation.type === "uml.moveResizeNodes" && this.umlDoc) {
+        if (operation.frameChildrenUpdates) {
+          for (const [frameId, children] of Object.entries(operation.frameChildrenUpdates)) {
+            const frameNode = this.umlDoc.nodes.find((n) => n.id === frameId);
+            if (frameNode) {
+              frameNode.children = [...children];
+            }
+          }
+        }
+      } else if (operation.type === "uml.updateEdge" && this.umlDoc) {
+        const edge = this.umlDoc.edges.find((e) => e.id === operation.edgeId);
+        if (edge) {
+          if (operation.label !== void 0) edge.label = operation.label;
+          if (operation.sourceMultiplicity !== void 0) {
+            edge.source.multiplicity = operation.sourceMultiplicity;
+          }
+          if (operation.targetMultiplicity !== void 0) {
+            edge.target.multiplicity = operation.targetMultiplicity;
+          }
+          if (operation.kind !== void 0) edge.kind = operation.kind;
+        }
+      } else if (operation.type === "uml.updateEndpoint" && this.umlDoc) {
+        const edge = this.umlDoc.edges.find((e) => e.id === operation.edgeId);
+        if (edge) {
+          if (!edge.visual) edge.visual = {};
+          edge.visual[operation.end] = { ...operation.decoration };
+        }
+      }
+      postToHost({
+        type: "webview.operation",
+        requestId,
+        expectedDocumentVersion: this.documentVersion,
+        operation
+      });
+      return requestId;
+    }
+    triggerUndo() {
+      postToHost({ type: "webview.undo" });
+    }
+    triggerRedo() {
+      postToHost({ type: "webview.redo" });
+    }
+    checkForExtensionUpdate() {
+      postToHost({ type: "webview.checkForExtensionUpdate" });
+    }
+    setStatusMessage(message) {
+      this.statusMessage = message;
+    }
+    setStaleNotice(message) {
+      this.staleNotice = message;
+    }
+    copySelection() {
+      this.clipboardController.copy(this.umlDoc, this.selectedIds);
+    }
+    pasteClipboard(stripCustomData = false) {
+      const clipboard = this.clipboardController.state;
+      if (this.isReadOnly || !clipboard) return;
+      const step = this.clipboardController.nextPasteOffset();
+      if (clipboard.kind === "uml" && this.umlDoc) {
+        this.dispatchOperation({
+          type: "uml.duplicateSelection",
+          nodeIds: clipboard.nodeIds,
+          edgeIds: clipboard.edgeIds,
+          offsetX: step,
+          offsetY: step,
+          stripCustomData
+        });
+      }
+    }
+    createQuickUmlNode(kind, worldX, worldY, shapeGeometry = "rectangle") {
+      if (this.isReadOnly || !this.umlDoc) return;
+      const existingCount = this.umlDoc.nodes.filter((n) => n.kind === kind).length + 1;
+      const shapeLabel = UML_SHAPE_GEOMETRIES.find((g) => g.kind === shapeGeometry)?.label ?? "Shape";
+      const defaultNameMap = {
+        class: `Class${existingCount}`,
+        note: `Note ${existingCount}`,
+        shape: `${shapeLabel} ${existingCount}`,
+        frame: `Frame ${existingCount}`
+      };
+      const name = defaultNameMap[kind];
+      const id = `${kind}-${Date.now().toString(36).slice(-4)}-${existingCount}`;
+      const rawX = worldX ?? Math.round((220 - this.viewport.panX) / this.viewport.zoom) + existingCount % 4 * 40;
+      const rawY = worldY ?? Math.round((140 - this.viewport.panY) / this.viewport.zoom) + existingCount % 4 * 40;
+      const x = snapToGrid(rawX, GRID_SIZE);
+      const y = snapToGrid(rawY, GRID_SIZE);
+      this.dispatchOperation({
+        type: "uml.addNode",
+        id,
+        kind,
+        name,
+        x,
+        y,
+        text: kind === "note" ? "Design note..." : void 0,
+        shape: kind === "shape" ? shapeGeometry : void 0
+      });
+    }
+    openContextMenu(x, y, items, title) {
+      const clampedX = Math.max(8, Math.min(x, window.innerWidth - 220));
+      const clampedY = Math.max(8, Math.min(y, window.innerHeight - 260));
+      this.contextMenu = { x: clampedX, y: clampedY, items, title };
+    }
+    closeContextMenu() {
+      this.contextMenu = null;
+    }
+    syncSelectionEdges(baseIds, prevIds = this.selectedIds) {
+      return this.selectionController.syncSelectionEdges(this.umlDoc, baseIds, prevIds);
+    }
+    setSelectedIds(ids) {
+      this.selectionController.setSelectedIds(this.umlDoc, ids);
+    }
+    selectSingle(id, additive = false) {
+      this.selectionController.selectSingle(this.umlDoc, id, additive);
+    }
+    clearSelection() {
+      this.selectionController.clear();
+    }
+    setViewport(next2) {
+      this.viewportController.setViewport(next2);
+    }
+    setSidebarWidth(width) {
+      this.sidebarWidth = Math.max(210, Math.min(560, Math.round(width)));
+    }
+    setElementsPaneRatio(ratio) {
+      this.elementsPaneRatio = Math.max(0.12, Math.min(0.92, Math.round(ratio * 1e3) / 1e3));
+    }
+  };
+
+  // src/webview/services/layout-engine.ts
+  var FRAME_PAD_LEFT = 20;
+  var FRAME_PAD_RIGHT = 20;
+  var FRAME_PAD_TOP = 28;
+  var FRAME_PAD_BOTTOM = 20;
+  function estimateNoteLineCount(text2, width) {
+    const usableWidth = Math.max(24, width - 22);
+    const charsPerLine = Math.max(6, Math.floor(usableWidth / 6.4 * 0.85));
+    let lines = 0;
+    for (const rawLine of (text2 || "").split("\n")) {
+      lines += Math.max(1, Math.ceil(rawLine.length / charsPerLine));
+    }
+    return Math.max(1, lines);
+  }
+  function computeNodeMinSize(node, isEditing = false, width = 220, draft) {
+    if (node.kind === "shape") return { minWidth: 80, minHeight: 60 };
+    if (node.kind === "frame") return { minWidth: 160, minHeight: 120 };
+    let contentHeight;
+    if (isEditing) {
+      if (node.kind === "note") {
+        const editedText = draft?.text ?? node.text ?? node.name ?? "";
+        const editedName = draft?.name ?? node.name ?? "";
+        const lineCount = Math.max(1, estimateNoteLineCount(editedText, width));
+        const nameLines = estimateNoteLineCount(editedName, width);
+        contentHeight = 52 + Math.max(0, nameLines - 1) * 16 + 20 + lineCount * 18 + 6;
+      } else {
+        const draftAttrsRows = draft?.attributes?.split("\n").length;
+        const draftOpsRows = draft?.operations?.split("\n").length;
+        const editAttrsRows = Math.max(1, draftAttrsRows ?? (node.attributes ?? []).length + 1);
+        const editOpsRows = Math.max(1, draftOpsRows ?? (node.operations ?? []).length + 1);
+        const headerHeight = 100;
+        const attrsHeight = node.showAttributes !== false ? 30 + editAttrsRows * 20 : 30;
+        const opsHeight = node.showOperations !== false ? 30 + editOpsRows * 20 : 30;
+        contentHeight = headerHeight + attrsHeight + opsHeight + 10;
+      }
+    } else if (node.kind === "note") {
+      const lineCount = estimateNoteLineCount(node.text || node.name || "", width);
+      const nameLines = estimateNoteLineCount(node.name || "", width);
+      contentHeight = 30 + Math.max(0, nameLines - 1) * 16 + 16 + lineCount * 18 + 2;
+    } else {
+      const headerHeight = (node.stereotype ? 18 : 0) + 36;
+      const attrsCount = node.showAttributes !== false ? (node.attributes ?? []).length : 0;
+      const opsCount = node.showOperations !== false ? (node.operations ?? []).length : 0;
+      const attrsHeight = attrsCount > 0 ? 12 + attrsCount * 19 : 0;
+      const opsHeight = opsCount > 0 ? 12 + opsCount * 19 : 0;
+      contentHeight = headerHeight + attrsHeight + opsHeight + 4;
+    }
+    return {
+      minWidth: isEditing ? node.kind === "note" ? 200 : 240 : node.kind === "note" ? 100 : 120,
+      minHeight: Math.max(60, Math.ceil(contentHeight / GRID_SIZE) * GRID_SIZE)
+    };
+  }
+  function defaultLayoutFor(node, index2) {
+    return {
+      x: 80 + index2 % 3 * 260,
+      y: 80 + Math.floor(index2 / 3) * 190,
+      width: node.kind === "frame" ? 260 : 220,
+      height: node.kind === "frame" ? 180 : 140
+    };
+  }
+  function computeEffectiveLayouts(doc, optimisticLayouts, gesture, editingNodeId, editingDraft) {
+    if (!doc) return {};
+    const base = {};
+    doc.nodes.forEach((node, index2) => {
+      const persisted = doc.layout.nodes[node.id] ?? defaultLayoutFor(node, index2);
+      const raw = optimisticLayouts[node.id] ?? persisted;
+      const minSize = computeNodeMinSize(
+        node,
+        editingNodeId === node.id,
+        raw.width,
+        editingNodeId === node.id ? editingDraft : void 0
+      );
+      base[node.id] = {
+        ...raw,
+        width: Math.max(minSize.minWidth, snapToGrid(raw.width, GRID_SIZE)),
+        height: Math.max(minSize.minHeight, snapToGrid(raw.height, GRID_SIZE))
+      };
     });
-    delegated("contextmenu", section, handleExplorerContextMenu);
-    bind_value(input, () => store().outlineSearchQuery, ($$value) => store().outlineSearchQuery = $$value);
-    delegated("pointerdown", div_6, handleSplitterPointerDown);
-    append($$anchor, fragment_6);
+    if (gesture.mode === "moving_nodes") {
+      const rawDx = gesture.currentWorld.x - gesture.startWorld.x;
+      const rawDy = gesture.currentWorld.y - gesture.startWorld.y;
+      const snappedDx = snapToGrid(rawDx, GRID_SIZE);
+      const snappedDy = snapToGrid(rawDy, GRID_SIZE);
+      for (const [id, initial] of Object.entries(gesture.initialLayouts)) {
+        base[id] = {
+          ...initial,
+          x: snapToGrid(initial.x + snappedDx, GRID_SIZE),
+          y: snapToGrid(initial.y + snappedDy, GRID_SIZE)
+        };
+      }
+      if (gesture.isShift) {
+        for (const node of doc.nodes) {
+          if (node.kind !== "frame" || !node.children || node.children.length === 0) continue;
+          const movingChildBoxes = node.children.filter((childId) => childId in gesture.initialLayouts).map((childId) => base[childId]).filter((box) => Boolean(box));
+          if (movingChildBoxes.length === 0) continue;
+          const currentBox = base[node.id];
+          if (!currentBox) continue;
+          const minX = Math.min(...movingChildBoxes.map((box) => box.x));
+          const minY = Math.min(...movingChildBoxes.map((box) => box.y));
+          const maxX = Math.max(...movingChildBoxes.map((box) => box.x + box.width));
+          const maxY = Math.max(...movingChildBoxes.map((box) => box.y + box.height));
+          const frameX = Math.min(currentBox.x, snapToGrid(minX - FRAME_PAD_LEFT, GRID_SIZE));
+          const frameY = Math.min(currentBox.y, snapToGrid(minY - FRAME_PAD_TOP, GRID_SIZE));
+          const frameRight = Math.max(
+            currentBox.x + currentBox.width,
+            snapToGrid(maxX + FRAME_PAD_RIGHT, GRID_SIZE)
+          );
+          const frameBottom = Math.max(
+            currentBox.y + currentBox.height,
+            snapToGrid(maxY + FRAME_PAD_BOTTOM, GRID_SIZE)
+          );
+          base[node.id] = {
+            x: frameX,
+            y: frameY,
+            width: Math.max(160, frameRight - frameX),
+            height: Math.max(120, frameBottom - frameY)
+          };
+        }
+      }
+    } else if (gesture.mode === "resizing_node") {
+      const rawDx = gesture.currentWorld.x - gesture.startWorld.x;
+      const rawDy = gesture.currentWorld.y - gesture.startWorld.y;
+      const minWidth = gesture.minWidth;
+      let minHeight = gesture.minHeight;
+      const initial = gesture.initialBox;
+      const direction = gesture.handle;
+      const childBounds = gesture.childBounds;
+      const resizingNode = doc.nodes.find((candidate) => candidate.id === gesture.nodeId);
+      if (resizingNode?.kind === "note") {
+        const widthGuess = direction === "e" || direction === "ne" || direction === "se" ? initial.width + rawDx : direction === "w" || direction === "nw" || direction === "sw" ? initial.width - rawDx : initial.width;
+        minHeight = Math.max(
+          minHeight,
+          computeNodeMinSize(resizingNode, false, Math.max(40, widthGuess)).minHeight
+        );
+      }
+      base[gesture.nodeId] = resolveResizeBox(
+        initial,
+        direction,
+        rawDx,
+        rawDy,
+        minWidth,
+        minHeight,
+        childBounds
+      );
+    }
+    if (editingNodeId) {
+      for (const node of doc.nodes) {
+        if (node.kind !== "frame" || !node.children || !node.children.includes(editingNodeId)) continue;
+        const editedBox = base[editingNodeId];
+        const currentBox = base[node.id];
+        if (!editedBox || !currentBox) continue;
+        const right = Math.max(
+          currentBox.x + currentBox.width,
+          snapToGrid(editedBox.x + editedBox.width + FRAME_PAD_RIGHT, GRID_SIZE)
+        );
+        const bottom = Math.max(
+          currentBox.y + currentBox.height,
+          snapToGrid(editedBox.y + editedBox.height + FRAME_PAD_BOTTOM, GRID_SIZE)
+        );
+        if (right > currentBox.x + currentBox.width || bottom > currentBox.y + currentBox.height) {
+          base[node.id] = {
+            ...currentBox,
+            width: Math.max(currentBox.width, right - currentBox.x),
+            height: Math.max(currentBox.height, bottom - currentBox.y)
+          };
+        }
+      }
+    }
+    return base;
+  }
+  function resolveResizeBox(initial, direction, rawDx, rawDy, minWidth, minHeight, childBounds) {
+    let newX = initial.x;
+    let newY = initial.y;
+    let newWidth = initial.width;
+    let newHeight = initial.height;
+    if (direction === "e" || direction === "ne" || direction === "se") {
+      const minRight = childBounds ? snapToGrid(childBounds.maxX + FRAME_PAD_RIGHT, GRID_SIZE) : initial.x + minWidth;
+      const targetWidth = initial.width + rawDx;
+      newWidth = Math.max(minWidth, minRight - initial.x, snapToGrid(targetWidth, GRID_SIZE));
+    } else if (direction === "w" || direction === "nw" || direction === "sw") {
+      const rightEdge = initial.x + initial.width;
+      const maxLeft = childBounds ? snapToGrid(childBounds.minX - FRAME_PAD_LEFT, GRID_SIZE) : rightEdge - minWidth;
+      const targetX = initial.x + rawDx;
+      newX = Math.min(rightEdge - minWidth, maxLeft, snapToGrid(targetX, GRID_SIZE));
+      newWidth = rightEdge - newX;
+    }
+    if (direction === "s" || direction === "sw" || direction === "se") {
+      const minBottom = childBounds ? snapToGrid(childBounds.maxY + FRAME_PAD_BOTTOM, GRID_SIZE) : initial.y + minHeight;
+      const targetHeight = initial.height + rawDy;
+      newHeight = Math.max(minHeight, minBottom - initial.y, snapToGrid(targetHeight, GRID_SIZE));
+    } else if (direction === "n" || direction === "nw" || direction === "ne") {
+      const bottomEdge = initial.y + initial.height;
+      const maxTop = childBounds ? snapToGrid(childBounds.minY - FRAME_PAD_TOP, GRID_SIZE) : bottomEdge - minHeight;
+      const targetY = initial.y + rawDy;
+      newY = Math.min(bottomEdge - minHeight, maxTop, snapToGrid(targetY, GRID_SIZE));
+      newHeight = bottomEdge - newY;
+    }
+    return {
+      x: newX,
+      y: newY,
+      width: Math.max(minWidth, newWidth),
+      height: Math.max(minHeight, newHeight)
+    };
+  }
+  function computeParallelEdgeOffsets(edges) {
+    const pairGroups = /* @__PURE__ */ new Map();
+    for (const edge of edges) {
+      const pairKey = [edge.source.nodeId, edge.target.nodeId].sort().join("::");
+      const group = pairGroups.get(pairKey) ?? [];
+      group.push(edge.id);
+      pairGroups.set(pairKey, group);
+    }
+    const offsets = {};
+    for (const group of pairGroups.values()) {
+      if (group.length <= 1) {
+        offsets[group[0]] = 0;
+      } else {
+        const mid = (group.length - 1) / 2;
+        group.forEach((id, index2) => {
+          offsets[id] = (index2 - mid) * 22;
+        });
+      }
+    }
+    return offsets;
+  }
+  function computeContentBounds(layouts) {
+    const boxes = Object.values(layouts);
+    if (boxes.length === 0) return null;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const box of boxes) {
+      minX = Math.min(minX, box.x);
+      minY = Math.min(minY, box.y);
+      maxX = Math.max(maxX, box.x + box.width);
+      maxY = Math.max(maxY, box.y + box.height);
+    }
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+
+  // src/webview/services/frame-containment.ts
+  var EMPTY_RESULT = { layoutUpdates: {}, childrenUpdates: {} };
+  function findFrameAtPoint(doc, layouts, dropPoint) {
+    if (!doc) return void 0;
+    for (let index2 = doc.nodes.length - 1; index2 >= 0; index2--) {
+      const node = doc.nodes[index2];
+      if (node.kind !== "frame") continue;
+      const box = layouts[node.id];
+      if (!box) continue;
+      const labelWidth = (node.name || "Frame").length * 7.6 + 16;
+      const overLabel = dropPoint.x >= box.x + 16 && dropPoint.x <= box.x + 16 + labelWidth && dropPoint.y >= box.y - 10 && dropPoint.y <= box.y + 10;
+      const overBody = dropPoint.x >= box.x && dropPoint.x <= box.x + box.width && dropPoint.y >= box.y && dropPoint.y <= box.y + box.height;
+      if (overLabel || overBody) return node;
+    }
+    return void 0;
+  }
+  function computeFrameDragDropUpdates(doc, layouts, clickedNodeId, updates, initialLayouts, dropPoint, isShift) {
+    if (!doc) return EMPTY_RESULT;
+    const frames = doc.nodes.filter((node) => node.kind === "frame");
+    if (frames.length === 0) return EMPTY_RESULT;
+    const clickedNode = doc.nodes.find((node) => node.id === clickedNodeId);
+    const movedFrames = Object.keys(updates).filter(
+      (id) => doc.nodes.find((node) => node.id === id && node.kind === "frame")
+    );
+    if (clickedNode?.kind === "frame" || movedFrames.length > 0) return EMPTY_RESULT;
+    const movedNonFrameIds = Object.keys(updates).filter(
+      (id) => doc.nodes.find((node) => node.id === id && node.kind !== "frame")
+    );
+    if (movedNonFrameIds.length === 0) return EMPTY_RESULT;
+    const hoveredFrame = findFrameAtPoint(doc, layouts, dropPoint);
+    const frameChildrenMap = /* @__PURE__ */ new Map();
+    for (const frame of frames) {
+      frameChildrenMap.set(frame.id, [...frame.children ?? []]);
+    }
+    const frameLayoutUpdates = {};
+    if (hoveredFrame) {
+      const originalChildren = new Set(hoveredFrame.children ?? []);
+      const hoveredChildren = frameChildrenMap.get(hoveredFrame.id);
+      let anyNewElementAdded = false;
+      let anyShiftExistingResized = false;
+      for (const nodeId of movedNonFrameIds) {
+        const initialBox = initialLayouts[nodeId];
+        const frameInitialBox = initialLayouts[hoveredFrame.id] ?? layouts[hoveredFrame.id];
+        const wasSpatiallyInside = initialBox && frameInitialBox ? initialBox.x >= frameInitialBox.x && initialBox.y >= frameInitialBox.y && initialBox.x + initialBox.width <= frameInitialBox.x + frameInitialBox.width && initialBox.y + initialBox.height <= frameInitialBox.y + frameInitialBox.height : false;
+        const wasAlreadyInside = originalChildren.has(nodeId) || wasSpatiallyInside;
+        if (!hoveredChildren.includes(nodeId)) hoveredChildren.push(nodeId);
+        if (!wasAlreadyInside) {
+          anyNewElementAdded = true;
+        } else if (isShift) {
+          anyShiftExistingResized = true;
+        }
+        for (const frame of frames) {
+          if (frame.id === hoveredFrame.id) continue;
+          const otherChildren = frameChildrenMap.get(frame.id);
+          if (!otherChildren) continue;
+          const childIndex = otherChildren.indexOf(nodeId);
+          if (childIndex !== -1) otherChildren.splice(childIndex, 1);
+        }
+      }
+      if (anyNewElementAdded || anyShiftExistingResized) {
+        const persistedFrameBox = doc.layout.nodes[hoveredFrame.id];
+        let frameBox = {
+          ...initialLayouts[hoveredFrame.id] ?? persistedFrameBox ?? { x: 0, y: 0, width: 260, height: 180 }
+        };
+        for (const childId of hoveredChildren) {
+          const childBox = updates[childId] ?? layouts[childId];
+          if (!childBox) continue;
+          const frameX = Math.min(frameBox.x, snapToGrid(childBox.x - FRAME_PAD_LEFT, GRID_SIZE));
+          const frameY = Math.min(frameBox.y, snapToGrid(childBox.y - FRAME_PAD_TOP, GRID_SIZE));
+          const frameRight = Math.max(
+            frameBox.x + frameBox.width,
+            snapToGrid(childBox.x + childBox.width + FRAME_PAD_RIGHT, GRID_SIZE)
+          );
+          const frameBottom = Math.max(
+            frameBox.y + frameBox.height,
+            snapToGrid(childBox.y + childBox.height + FRAME_PAD_BOTTOM, GRID_SIZE)
+          );
+          const width = Math.max(160, frameRight - frameX);
+          const height = Math.max(120, frameBottom - frameY);
+          if (frameX !== frameBox.x || frameY !== frameBox.y || width !== frameBox.width || height !== frameBox.height) {
+            frameBox = { x: frameX, y: frameY, width, height };
+          }
+        }
+        const documentBox = doc.layout.nodes[hoveredFrame.id];
+        if (!documentBox || frameBox.x !== documentBox.x || frameBox.y !== documentBox.y || frameBox.width !== documentBox.width || frameBox.height !== documentBox.height) {
+          frameLayoutUpdates[hoveredFrame.id] = frameBox;
+        }
+      }
+    } else {
+      for (const nodeId of movedNonFrameIds) {
+        for (const frame of frames) {
+          const children = frameChildrenMap.get(frame.id);
+          if (!children) continue;
+          const childIndex = children.indexOf(nodeId);
+          if (childIndex !== -1) children.splice(childIndex, 1);
+        }
+      }
+    }
+    const changedChildren = {};
+    for (const [frameId, children] of frameChildrenMap.entries()) {
+      const frame = doc.nodes.find((node) => node.id === frameId);
+      if (frame && JSON.stringify(frame.children ?? []) !== JSON.stringify(children)) {
+        changedChildren[frameId] = children;
+      }
+    }
+    return { layoutUpdates: frameLayoutUpdates, childrenUpdates: changedChildren };
+  }
+
+  // src/webview/services/diagram-exporter.ts
+  var FALLBACK_THEME = {
+    widgetBg: "#252526",
+    editorFg: "#cccccc",
+    panelBorder: "rgba(128, 128, 128, 0.35)",
+    descriptionFg: "#999999",
+    noteBg: "#252526",
+    editorBg: "#1e1e1e",
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    monoFamily: 'Consolas, "Courier New", monospace',
+    nodeBorder: "rgba(128, 128, 128, 0.35)"
+  };
+  function readTheme(viewportElement) {
+    if (typeof window === "undefined") return FALLBACK_THEME;
+    const viewportStyles = viewportElement ? window.getComputedStyle(viewportElement) : null;
+    const bodyStyles = window.getComputedStyle(document.body);
+    const read = (name, fallback2) => viewportStyles?.getPropertyValue(name)?.trim() || bodyStyles.getPropertyValue(name)?.trim() || fallback2;
+    const widgetBg = read("--vscode-editorWidget-background", FALLBACK_THEME.widgetBg);
+    const panelBorder = read("--vscode-panel-border", FALLBACK_THEME.panelBorder);
+    return {
+      widgetBg,
+      panelBorder,
+      editorFg: read("--vscode-editor-foreground", FALLBACK_THEME.editorFg),
+      descriptionFg: read("--vscode-descriptionForeground", FALLBACK_THEME.descriptionFg),
+      noteBg: read("--vscode-textBlockQuote-background", widgetBg),
+      editorBg: read("--vscode-editor-background", FALLBACK_THEME.editorBg),
+      fontFamily: read("--vscode-font-family", FALLBACK_THEME.fontFamily),
+      monoFamily: read("--vscode-editor-font-family", FALLBACK_THEME.monoFamily),
+      nodeBorder: panelBorder
+    };
+  }
+  function resolveRouting(edge, defaultRouting) {
+    const routing = edge.visual?.routing;
+    if (!routing || routing === "default") return defaultRouting ?? "orthogonal";
+    return routing;
+  }
+  function renderEndpointPath(decoration) {
+    const shape = getEndpointShape(decoration?.shape ?? "none");
+    if (!shape || shape.kind === "none") return { d: "", fill: "none" };
+    const size = decoration?.size ?? shape.defaultSize;
+    const d = shape.buildLocalPath(size);
+    if (!shape.supportsFill) return { d, fill: "none" };
+    return {
+      d,
+      fill: (decoration?.fill ?? shape.defaultFill ?? "hollow") === "filled" ? "filled" : "hollow"
+    };
+  }
+  function renderDiagramToCanvas(options) {
+    const { doc, layouts } = options;
+    if (!doc || doc.nodes.length === 0) return null;
+    if (typeof document === "undefined") return null;
+    const boxes = Object.values(layouts);
+    if (boxes.length === 0) return null;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const box of boxes) {
+      minX = Math.min(minX, box.x);
+      minY = Math.min(minY, box.y);
+      maxX = Math.max(maxX, box.x + box.width);
+      maxY = Math.max(maxY, box.y + box.height);
+    }
+    const theme = { ...readTheme(options.viewportElement), ...options.theme };
+    const parallelOffsets = options.parallelOffsets ?? {};
+    const edgeItems = [];
+    for (const edge of doc.edges) {
+      const sourceBox = layouts[edge.source.nodeId];
+      const targetBox = layouts[edge.target.nodeId];
+      if (!sourceBox || !targetBox) continue;
+      const sourceNode = doc.nodes.find((node) => node.id === edge.source.nodeId);
+      const targetNode = doc.nodes.find((node) => node.id === edge.target.nodeId);
+      const touchesNote = sourceNode?.kind === "note" || targetNode?.kind === "note";
+      const isDashed = (edge.visual?.line ?? (touchesNote ? "dashed" : "solid")) === "dashed";
+      const startDecoration = edge.visual?.start ?? { shape: "none", size: 10 };
+      const endDecoration = edge.visual?.end ?? { shape: "none", size: 10 };
+      const geometry = computeUmlEdgeGeometry(
+        sourceBox,
+        targetBox,
+        resolveRouting(edge, options.defaultRouting),
+        startDecoration,
+        endDecoration,
+        parallelOffsets[edge.id] ?? 0,
+        void 0,
+        void 0,
+        sourceNode?.kind === "shape" ? sourceNode.shape : void 0,
+        targetNode?.kind === "shape" ? targetNode.shape : void 0,
+        edge.label
+      );
+      const startMarker = renderEndpointPath(startDecoration);
+      const endMarker = renderEndpointPath(endDecoration);
+      const startMultiplicityPoint = getMultiplicityLabelPoint(
+        geometry.startTip,
+        geometry.startAngleDeg,
+        edge.source.multiplicity
+      );
+      const endMultiplicityPoint = getMultiplicityLabelPoint(
+        geometry.endTip,
+        geometry.endAngleDeg,
+        edge.target.multiplicity
+      );
+      edgeItems.push({
+        edge,
+        geometry,
+        startDecoration,
+        endDecoration,
+        isDashed,
+        startMarker,
+        endMarker,
+        startMultiplicityPoint,
+        endMultiplicityPoint
+      });
+      if (edge.label) {
+        minX = Math.min(minX, geometry.labelPoint.x - 50);
+        minY = Math.min(minY, geometry.labelPoint.y - 20);
+        maxX = Math.max(maxX, geometry.labelPoint.x + 50);
+        maxY = Math.max(maxY, geometry.labelPoint.y + 20);
+      }
+      if (edge.source.multiplicity) {
+        minX = Math.min(minX, startMultiplicityPoint.x - 30);
+        minY = Math.min(minY, startMultiplicityPoint.y - 15);
+        maxX = Math.max(maxX, startMultiplicityPoint.x + 30);
+        maxY = Math.max(maxY, startMultiplicityPoint.y + 15);
+      }
+      if (edge.target.multiplicity) {
+        minX = Math.min(minX, endMultiplicityPoint.x - 30);
+        minY = Math.min(minY, endMultiplicityPoint.y - 15);
+        maxX = Math.max(maxX, endMultiplicityPoint.x + 30);
+        maxY = Math.max(maxY, endMultiplicityPoint.y + 15);
+      }
+    }
+    const padding = 40;
+    minX -= padding;
+    minY -= padding;
+    maxX += padding;
+    maxY += padding;
+    const width = Math.max(200, Math.ceil(maxX - minX));
+    const height = Math.max(200, Math.ceil(maxY - minY));
+    const scale = options.scale ?? 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.scale(scale, scale);
+    ctx.translate(-minX, -minY);
+    const drawRoundRect = (x, y, w, h, radius) => {
+      ctx.beginPath();
+      if (typeof ctx.roundRect === "function") {
+        ctx.roundRect(x, y, w, h, radius);
+      } else {
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.arcTo(x + w, y, x + w, y + radius, radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.arcTo(x + w, y + h, x + w - radius, y + h, radius);
+        ctx.lineTo(x + radius, y + h);
+        ctx.arcTo(x, y + h, x, y + h - radius, radius);
+        ctx.lineTo(x, y + radius);
+        ctx.arcTo(x, y, x + radius, y, radius);
+        ctx.closePath();
+      }
+    };
+    for (const node of doc.nodes) {
+      if (node.kind !== "frame") continue;
+      const box = layouts[node.id];
+      if (!box) continue;
+      ctx.save();
+      ctx.translate(box.x, box.y);
+      drawRoundRect(0, 0, box.width, box.height, 6);
+      ctx.strokeStyle = theme.nodeBorder;
+      ctx.lineWidth = 3;
+      ctx.setLineDash(node.line === "dashed" ? [8, 6] : []);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = `11px ${theme.fontFamily}`;
+      const label = node.name || "Frame";
+      const metrics = ctx.measureText(label);
+      const badgeWidth = Math.max(label.length * 7.6 + 16, metrics.width + 16);
+      drawRoundRect(16, -10, badgeWidth, 20, 4);
+      ctx.fillStyle = theme.widgetBg;
+      ctx.fill();
+      ctx.strokeStyle = theme.panelBorder;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = theme.editorFg;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, 16 + badgeWidth / 2, 0);
+      ctx.restore();
+    }
+    for (const item of edgeItems) {
+      const { edge, geometry, isDashed, startMarker, endMarker, startDecoration, endDecoration } = item;
+      ctx.save();
+      ctx.strokeStyle = theme.editorFg;
+      ctx.lineWidth = 1.75;
+      ctx.setLineDash(isDashed ? [6, 4] : []);
+      ctx.stroke(new Path2D(geometry.pathD));
+      ctx.restore();
+      const drawMarker = (marker, tip, angle, decoration) => {
+        if (!marker.d) return;
+        ctx.save();
+        ctx.translate(tip.x, tip.y);
+        ctx.rotate(angle * Math.PI / 180);
+        const path = new Path2D(marker.d);
+        if (marker.fill !== "none") {
+          ctx.fillStyle = decoration.fill === "filled" ? theme.editorFg : theme.editorBg;
+          ctx.fill(path);
+        }
+        ctx.strokeStyle = theme.editorFg;
+        ctx.lineWidth = 1.75;
+        ctx.lineJoin = "round";
+        ctx.stroke(path);
+        ctx.restore();
+      };
+      drawMarker(startMarker, geometry.startTip, geometry.startAngleDeg, startDecoration);
+      drawMarker(endMarker, geometry.endTip, geometry.endAngleDeg, endDecoration);
+      const drawMultiplicity = (point, text2) => {
+        ctx.save();
+        ctx.font = `600 10.5px ${theme.monoFamily}`;
+        const metrics = ctx.measureText(text2);
+        const widthBadge = Math.max(text2.length * 7.6 + 12, metrics.width + 12);
+        const left = point.x - widthBadge / 2;
+        const top = point.y - 9;
+        drawRoundRect(left, top, widthBadge, 17, 3);
+        ctx.fillStyle = theme.editorBg;
+        ctx.globalAlpha = 0.9;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = theme.panelBorder;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = theme.editorFg;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text2, point.x, point.y - 0.5);
+        ctx.restore();
+      };
+      if (edge.source.multiplicity) drawMultiplicity(item.startMultiplicityPoint, edge.source.multiplicity);
+      if (edge.target.multiplicity) drawMultiplicity(item.endMultiplicityPoint, edge.target.multiplicity);
+      if (edge.label) {
+        ctx.save();
+        ctx.font = `11px ${theme.fontFamily}`;
+        const metrics = ctx.measureText(edge.label);
+        const widthBadge = Math.max(edge.label.length * 7.6 + 16, metrics.width + 16);
+        drawRoundRect(geometry.labelPoint.x - widthBadge / 2, geometry.labelPoint.y - 10, widthBadge, 20, 4);
+        ctx.fillStyle = theme.widgetBg;
+        ctx.fill();
+        ctx.strokeStyle = theme.panelBorder;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = theme.editorFg;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(edge.label, geometry.labelPoint.x, geometry.labelPoint.y);
+        ctx.restore();
+      }
+    }
+    for (const node of doc.nodes) {
+      if (node.kind === "frame") continue;
+      const box = layouts[node.id];
+      if (!box) continue;
+      if (node.kind === "shape") {
+        ctx.save();
+        ctx.translate(box.x, box.y);
+        const path = new Path2D(buildShapeSvgPath(node.shape, box.width, box.height));
+        ctx.save();
+        ctx.shadowColor = "rgba(0, 0, 0, 0.18)";
+        ctx.shadowBlur = 5;
+        ctx.shadowOffsetY = 2;
+        ctx.fillStyle = theme.widgetBg;
+        ctx.fill(path);
+        ctx.restore();
+        ctx.strokeStyle = theme.nodeBorder;
+        ctx.lineWidth = 1.75;
+        ctx.lineJoin = "round";
+        ctx.stroke(path);
+        ctx.fillStyle = theme.editorFg;
+        ctx.font = `600 13px ${theme.fontFamily}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(node.name || "", box.width / 2, box.height / 2);
+        ctx.restore();
+        continue;
+      }
+      const kindDescriptor = getUmlNodeKind(node.kind);
+      const stereotype = node.stereotype || kindDescriptor?.defaultStereotype || (!kindDescriptor ? `unsupported: ${node.kind}` : "");
+      const headerHeight = node.kind === "note" ? 30 : stereotype ? 42 : 30;
+      ctx.save();
+      ctx.translate(box.x, box.y);
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.16)";
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetY = 2;
+      drawRoundRect(0, 0, box.width, box.height, 5);
+      ctx.fillStyle = node.kind === "note" ? theme.noteBg : theme.widgetBg;
+      ctx.fill();
+      ctx.restore();
+      drawRoundRect(0, 0, box.width, box.height, 5);
+      ctx.strokeStyle = theme.nodeBorder;
+      ctx.lineWidth = 1.5;
+      if (node.kind === "note") ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.save();
+      drawRoundRect(0, 0, box.width, box.height, 5);
+      ctx.clip();
+      if (stereotype) {
+        ctx.fillStyle = theme.descriptionFg;
+        ctx.font = `11px ${theme.fontFamily}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(`\xAB${stereotype}\xBB`, box.width / 2, 7);
+      }
+      ctx.fillStyle = theme.editorFg;
+      ctx.font = `600 13px ${theme.fontFamily}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText(node.name || "", box.width / 2, stereotype ? 22 : (headerHeight - 16) / 2);
+      ctx.strokeStyle = theme.panelBorder;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, headerHeight);
+      ctx.lineTo(box.width, headerHeight);
+      ctx.stroke();
+      let currentY = headerHeight;
+      if (node.kind === "note") {
+        const content = node.text || "";
+        const contentFont = `12px ${theme.fontFamily}`;
+        ctx.font = contentFont;
+        ctx.fillStyle = theme.editorFg;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        const padX = 10;
+        const lineHeight = 16.8;
+        let lineY = headerHeight + 8;
+        const maxWidth = box.width - padX * 2;
+        for (const rawLine of content.split("\n")) {
+          if (lineY + lineHeight > box.height) break;
+          if (!rawLine) {
+            lineY += lineHeight;
+            continue;
+          }
+          let currentLine = "";
+          for (const word of rawLine.split(" ")) {
+            const candidate = currentLine ? `${currentLine} ${word}` : word;
+            if (ctx.measureText(candidate).width > maxWidth && currentLine) {
+              ctx.fillText(currentLine, padX, lineY);
+              lineY += lineHeight;
+              if (lineY + lineHeight > box.height) break;
+              currentLine = word;
+            } else {
+              currentLine = candidate;
+            }
+          }
+          if (currentLine && lineY + lineHeight <= box.height + 4) {
+            ctx.fillText(currentLine, padX, lineY);
+            lineY += lineHeight;
+          }
+        }
+      } else {
+        const memberLineHeight = 16.7;
+        const memberPadX = 8;
+        const attributes = node.showAttributes !== false ? node.attributes ?? [] : [];
+        if (attributes.length > 0) {
+          let lineY = currentY + 5;
+          for (const attribute of attributes) {
+            ctx.font = `bold 11.5px ${theme.monoFamily}`;
+            ctx.fillStyle = theme.editorFg;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText(formatVisibilitySign(attribute.visibility), memberPadX, lineY);
+            const nameX = memberPadX + 16;
+            ctx.font = `11.5px ${theme.monoFamily}`;
+            ctx.fillText(attribute.name || "", nameX, lineY);
+            if (attribute.type) {
+              const nameWidth = ctx.measureText(attribute.name || "").width;
+              ctx.fillStyle = theme.descriptionFg;
+              ctx.fillText(`: ${attribute.type}`, nameX + nameWidth, lineY);
+            }
+            lineY += memberLineHeight;
+          }
+          currentY = lineY + 5;
+          ctx.strokeStyle = theme.panelBorder;
+          ctx.beginPath();
+          ctx.moveTo(0, currentY);
+          ctx.lineTo(box.width, currentY);
+          ctx.stroke();
+        }
+        const operations = node.showOperations !== false ? node.operations ?? [] : [];
+        if (operations.length > 0) {
+          let lineY = currentY + 5;
+          for (const operation of operations) {
+            ctx.font = `bold 11.5px ${theme.monoFamily}`;
+            ctx.fillStyle = theme.editorFg;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText(formatVisibilitySign(operation.visibility), memberPadX, lineY);
+            const nameX = memberPadX + 16;
+            ctx.font = `11.5px ${theme.monoFamily}`;
+            const parameters = extractOperationParameters(operation).map((parameter) => parameter.name + (parameter.type ? `: ${parameter.type}` : "")).join(", ");
+            const signature = `${operation.name || ""}(${parameters})`;
+            ctx.fillText(signature, nameX, lineY);
+            if (operation.returnType) {
+              const signatureWidth = ctx.measureText(signature).width;
+              ctx.fillStyle = theme.descriptionFg;
+              ctx.fillText(`: ${operation.returnType}`, nameX + signatureWidth, lineY);
+            }
+            lineY += memberLineHeight;
+          }
+        }
+      }
+      ctx.restore();
+      ctx.restore();
+    }
+    return { canvas, width, height };
+  }
+  function canvasToPngBase64(canvas) {
+    return canvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, "");
+  }
+  function canvasToPngBlob(canvas) {
+    return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), "image/png"));
+  }
+
+  // src/webview/canvas/nodes/parts/NodeCompartment.svelte
+  var root3 = from_html(`<textarea class="vz-inline-textarea"></textarea>`);
+  var root_13 = from_html(`<div class="vz-inline-sec-hdr"><span> </span> <button type="button"> </button></div> <!>`, 1);
+  var root_23 = from_html(`<span class="vz-type"> </span>`);
+  var root_33 = from_html(`<div class="vz-uml-member"><span class="vz-vis"> </span> <span> </span> <!></div>`);
+  var root_43 = from_html(`<span>,</span>`);
+  var root_52 = from_html(`<!> <span> </span> <!>`, 1);
+  var root_62 = from_html(`<div class="vz-uml-member"><span class="vz-vis"> </span> <span> </span> <!> <span>)</span> <!></div>`);
+  var root_72 = from_html(`<div class="vz-uml-compartment"><!></div>`);
+  function NodeCompartment($$anchor, $$props) {
+    push($$props, true);
+    let visible = prop($$props, "visible", 3, true), editing = prop($$props, "editing", 3, false), draft = prop($$props, "draft", 3, ""), readOnly = prop($$props, "readOnly", 3, false);
+    const title = user_derived(() => $$props.kind === "attributes" ? "Attributes" : "Operations");
+    const placeholder = user_derived(() => $$props.kind === "attributes" ? "+ name: type\n- privateField: string" : "+ method(): returnType\n+ execute(arg: type)");
+    const memberCount = user_derived(() => $$props.kind === "attributes" ? ($$props.node.attributes ?? []).length : ($$props.node.operations ?? []).length);
+    function handleBlur(event2) {
+      const next2 = event2.relatedTarget;
+      if (next2?.closest(`[data-node-id="${$$props.node.id}"]`)) return;
+      $$props.onCommit?.();
+    }
+    var fragment = comment();
+    var node_1 = first_child(fragment);
+    {
+      var consequent_7 = ($$anchor2) => {
+        var div = root_72();
+        var node_2 = child(div);
+        {
+          var consequent_1 = ($$anchor3) => {
+            var fragment_1 = root_13();
+            var div_1 = first_child(fragment_1);
+            var span = child(div_1);
+            var text2 = only_child(span, true);
+            var button = sibling(span, 2);
+            let classes;
+            var text_1 = only_child(button, true);
+            reset(div_1);
+            var node_3 = sibling(div_1, 2);
+            {
+              var consequent = ($$anchor4) => {
+                var textarea = root3();
+                remove_textarea_child(textarea);
+                template_effect(
+                  ($0) => {
+                    set_attribute2(textarea, "rows", $0);
+                    set_attribute2(textarea, "placeholder", get(placeholder));
+                    set_value(textarea, draft());
+                    set_attribute2(textarea, "aria-label", get(title));
+                  },
+                  [() => Math.max(1, draft().split("\n").length)]
+                );
+                delegated("input", textarea, (event2) => $$props.onDraftChange?.(event2.currentTarget.value));
+                event("blur", textarea, handleBlur);
+                delegated("keydown", textarea, (event2) => {
+                  if (event2.key === "Escape") $$props.onCancel?.();
+                });
+                append($$anchor4, textarea);
+              };
+              if_block(node_3, ($$render) => {
+                if (visible()) $$render(consequent);
+              });
+            }
+            template_effect(() => {
+              set_text(text2, get(title));
+              classes = set_class(button, 1, "vz-eye-toggle-btn", null, classes, { off: !visible() });
+              set_attribute2(button, "title", visible() ? `Hide ${get(title)}` : `Show ${get(title)}`);
+              set_attribute2(button, "aria-label", visible() ? `Hide ${get(title)}` : `Show ${get(title)}`);
+              button.disabled = readOnly();
+              set_text(text_1, visible() ? "\u25C9" : "\u25CB");
+            });
+            delegated("click", button, (event2) => {
+              event2.stopPropagation();
+              $$props.onToggle?.();
+            });
+            append($$anchor3, fragment_1);
+          };
+          var consequent_3 = ($$anchor3) => {
+            var fragment_2 = comment();
+            var node_4 = first_child(fragment_2);
+            each(node_4, 17, () => $$props.node.attributes ?? [], (attribute) => attribute.id, ($$anchor4, attribute) => {
+              var div_2 = root_33();
+              var span_1 = child(div_2);
+              var text_2 = only_child(span_1, true);
+              var span_2 = sibling(span_1, 2);
+              var text_3 = only_child(span_2, true);
+              var node_5 = sibling(span_2, 2);
+              {
+                var consequent_2 = ($$anchor5) => {
+                  var span_3 = root_23();
+                  var text_4 = only_child(span_3);
+                  template_effect(() => set_text(text_4, `: ${get(attribute).type ?? ""}`));
+                  append($$anchor5, span_3);
+                };
+                if_block(node_5, ($$render) => {
+                  if (get(attribute).type) $$render(consequent_2);
+                });
+              }
+              reset(div_2);
+              template_effect(
+                ($0) => {
+                  set_text(text_2, $0);
+                  set_text(text_3, get(attribute).name);
+                },
+                [() => formatVisibilitySign(get(attribute).visibility)]
+              );
+              append($$anchor4, div_2);
+            });
+            append($$anchor3, fragment_2);
+          };
+          var alternate = ($$anchor3) => {
+            var fragment_3 = comment();
+            var node_6 = first_child(fragment_3);
+            each(node_6, 17, () => $$props.node.operations ?? [], (operation) => operation.id, ($$anchor4, operation) => {
+              const parameters = user_derived(() => extractOperationParameters(get(operation)));
+              var div_3 = root_62();
+              var span_4 = child(div_3);
+              var text_5 = only_child(span_4, true);
+              var span_5 = sibling(span_4, 2);
+              var text_6 = only_child(span_5);
+              var node_7 = sibling(span_5, 2);
+              each(node_7, 19, () => get(parameters), (parameter, index2) => parameter.id ?? index2, ($$anchor5, parameter, index2) => {
+                var fragment_4 = root_52();
+                var node_8 = first_child(fragment_4);
+                {
+                  var consequent_4 = ($$anchor6) => {
+                    var span_6 = root_43();
+                    append($$anchor6, span_6);
+                  };
+                  if_block(node_8, ($$render) => {
+                    if (get(index2) > 0) $$render(consequent_4);
+                  });
+                }
+                var span_7 = sibling(node_8, 2);
+                var text_7 = only_child(span_7, true);
+                var node_9 = sibling(span_7, 2);
+                {
+                  var consequent_5 = ($$anchor6) => {
+                    var span_8 = root_23();
+                    var text_8 = only_child(span_8);
+                    template_effect(() => set_text(text_8, `: ${get(parameter).type ?? ""}`));
+                    append($$anchor6, span_8);
+                  };
+                  if_block(node_9, ($$render) => {
+                    if (get(parameter).type) $$render(consequent_5);
+                  });
+                }
+                template_effect(() => set_text(text_7, get(parameter).name));
+                append($$anchor5, fragment_4);
+              });
+              var node_10 = sibling(node_7, 4);
+              {
+                var consequent_6 = ($$anchor5) => {
+                  var span_9 = root_23();
+                  var text_9 = only_child(span_9);
+                  template_effect(() => set_text(text_9, `: ${get(operation).returnType ?? ""}`));
+                  append($$anchor5, span_9);
+                };
+                if_block(node_10, ($$render) => {
+                  if (get(operation).returnType) $$render(consequent_6);
+                });
+              }
+              reset(div_3);
+              template_effect(
+                ($0) => {
+                  set_text(text_5, $0);
+                  set_text(text_6, `${get(operation).name ?? ""}(`);
+                },
+                [() => formatVisibilitySign(get(operation).visibility)]
+              );
+              append($$anchor4, div_3);
+            });
+            append($$anchor3, fragment_3);
+          };
+          if_block(node_2, ($$render) => {
+            if (editing()) $$render(consequent_1);
+            else if ($$props.kind === "attributes") $$render(consequent_3, 1);
+            else $$render(alternate, -1);
+          });
+        }
+        reset(div);
+        append($$anchor2, div);
+      };
+      if_block(node_1, ($$render) => {
+        if (editing() || visible() && get(memberCount) > 0) $$render(consequent_7);
+      });
+    }
+    append($$anchor, fragment);
     pop();
   }
-  delegate(["click", "contextmenu", "pointerdown"]);
+  delegate(["click", "input", "keydown"]);
 
-  // src/webview/uml/UmlInspector.svelte
-  var eyeIcon = ($$anchor, visible = noop) => {
+  // src/webview/canvas/nodes/parts/NodeHeader.svelte
+  var root4 = from_html(`<div class="vz-inline-field"><div class="vz-inline-sec-hdr"><span>Name</span></div> <input type="text" class="vz-inline-input" aria-label="Note name"/></div>`);
+  var root_14 = from_html(`<div class="vz-inline-field"><div class="vz-inline-sec-hdr"><span>Stereotype</span></div> <input type="text" class="vz-inline-input" placeholder="e.g. entity, service" aria-label="Stereotype"/></div>`);
+  var root_24 = from_html(`<div class="vz-inline-fields"><div class="vz-inline-field"><div class="vz-inline-sec-hdr"><span>Name</span></div> <input type="text" class="vz-inline-input" placeholder="Name" aria-label="Node name"/></div> <!></div>`);
+  var root_34 = from_html(`<div class="vz-uml-stereotype"> </div>`);
+  var root_44 = from_html(`<!> <div class="vz-uml-node-title"> </div>`, 1);
+  var root_53 = from_html(`<div><!></div>`);
+  function NodeHeader($$anchor, $$props) {
+    push($$props, true);
+    let editing = prop($$props, "editing", 3, false), name = prop($$props, "name", 3, ""), stereotype = prop($$props, "stereotype", 3, ""), readOnly = prop($$props, "readOnly", 3, false);
+    const kindDescriptor = user_derived(() => getUmlNodeKind($$props.node.kind));
+    const displayStereotype = user_derived(() => $$props.node.stereotype || get(kindDescriptor)?.defaultStereotype || "");
+    function handleKeyDown(event2) {
+      if (event2.key === "Enter") {
+        event2.preventDefault();
+        $$props.onCommit?.();
+      } else if (event2.key === "Escape") {
+        event2.preventDefault();
+        $$props.onCancel?.();
+      }
+    }
+    function handleBlur(event2) {
+      const next2 = event2.relatedTarget;
+      if (next2?.closest(`[data-node-id="${$$props.node.id}"]`)) return;
+      $$props.onCommit?.();
+    }
+    var div = root_53();
+    let classes;
+    var node_1 = child(div);
+    {
+      var consequent_2 = ($$anchor2) => {
+        var fragment = comment();
+        var node_2 = first_child(fragment);
+        {
+          var consequent = ($$anchor3) => {
+            var div_1 = root4();
+            var input = sibling(child(div_1), 2);
+            remove_input_defaults(input);
+            reset(div_1);
+            template_effect(() => set_value(input, name()));
+            delegated("input", input, (event2) => $$props.onDraftChange?.({ name: event2.currentTarget.value }));
+            event("blur", input, handleBlur);
+            delegated("keydown", input, handleKeyDown);
+            append($$anchor3, div_1);
+          };
+          var alternate = ($$anchor3) => {
+            var div_2 = root_24();
+            var div_3 = child(div_2);
+            var input_1 = sibling(child(div_3), 2);
+            remove_input_defaults(input_1);
+            reset(div_3);
+            var node_3 = sibling(div_3, 2);
+            {
+              var consequent_1 = ($$anchor4) => {
+                var div_4 = root_14();
+                var input_2 = sibling(child(div_4), 2);
+                remove_input_defaults(input_2);
+                reset(div_4);
+                template_effect(() => set_value(input_2, stereotype()));
+                delegated("input", input_2, (event2) => $$props.onDraftChange?.({ stereotype: event2.currentTarget.value }));
+                event("blur", input_2, handleBlur);
+                delegated("keydown", input_2, handleKeyDown);
+                append($$anchor4, div_4);
+              };
+              if_block(node_3, ($$render) => {
+                if ($$props.node.kind !== "note") $$render(consequent_1);
+              });
+            }
+            reset(div_2);
+            template_effect(() => set_value(input_1, name()));
+            delegated("input", input_1, (event2) => $$props.onDraftChange?.({ name: event2.currentTarget.value }));
+            event("blur", input_1, handleBlur);
+            delegated("keydown", input_1, handleKeyDown);
+            append($$anchor3, div_2);
+          };
+          if_block(node_2, ($$render) => {
+            if ($$props.node.kind === "note") $$render(consequent);
+            else $$render(alternate, -1);
+          });
+        }
+        append($$anchor2, fragment);
+      };
+      var alternate_1 = ($$anchor2) => {
+        var fragment_1 = root_44();
+        var node_4 = first_child(fragment_1);
+        {
+          var consequent_3 = ($$anchor3) => {
+            var div_5 = root_34();
+            var text2 = only_child(div_5);
+            template_effect(() => set_text(text2, `\xAB${get(displayStereotype) ?? ""}\xBB`));
+            append($$anchor3, div_5);
+          };
+          var consequent_4 = ($$anchor3) => {
+            var div_6 = root_34();
+            var text_1 = only_child(div_6);
+            template_effect(() => set_text(text_1, `\xABunsupported: ${$$props.node.kind ?? ""}\xBB`));
+            append($$anchor3, div_6);
+          };
+          if_block(node_4, ($$render) => {
+            if ($$props.node.kind !== "note" && get(displayStereotype)) $$render(consequent_3);
+            else if (!get(kindDescriptor)) $$render(consequent_4, 1);
+          });
+        }
+        var div_7 = sibling(node_4, 2);
+        var text_2 = only_child(div_7, true);
+        template_effect(() => set_text(text_2, $$props.node.name));
+        append($$anchor2, fragment_1);
+      };
+      if_block(node_1, ($$render) => {
+        if (editing()) $$render(consequent_2);
+        else $$render(alternate_1, -1);
+      });
+    }
+    reset(div);
+    template_effect(() => classes = set_class(div, 1, "vz-uml-node-header", null, classes, { editing: editing() }));
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["input", "keydown"]);
+
+  // src/webview/canvas/nodes/parts/ResizeHandles.svelte
+  var root5 = from_html(`<div class="vz-resize-handle vz-resize-corner" title="Drag to resize (snaps to 20px grid)" role="presentation"></div>`);
+  var root_15 = from_html(`<div class="vz-resize-handle" title="Drag to resize (snaps to 20px grid)" role="presentation"></div> <!>`, 1);
+  function ResizeHandles($$anchor, $$props) {
+    push($$props, true);
+    let selected = prop($$props, "selected", 3, false), visible = prop($$props, "visible", 3, false), showCorner = prop($$props, "showCorner", 3, true);
+    var fragment = comment();
+    var node = first_child(fragment);
+    {
+      var consequent_1 = ($$anchor2) => {
+        var fragment_1 = root_15();
+        var div = first_child(fragment_1);
+        var node_1 = sibling(div, 2);
+        {
+          var consequent = ($$anchor3) => {
+            var div_1 = root5();
+            delegated("pointerdown", div_1, (event2) => $$props.onresize?.(event2, "se"));
+            append($$anchor3, div_1);
+          };
+          if_block(node_1, ($$render) => {
+            if (selected() && showCorner()) $$render(consequent);
+          });
+        }
+        delegated("pointerdown", div, (event2) => $$props.onresize?.(event2, "se"));
+        append($$anchor2, fragment_1);
+      };
+      if_block(node, ($$render) => {
+        if (visible()) $$render(consequent_1);
+      });
+    }
+    append($$anchor, fragment);
+    pop();
+  }
+  delegate(["pointerdown"]);
+
+  // src/webview/canvas/nodes/parts/ConnectPorts.svelte
+  var root6 = from_html(`<div class="vz-connect-port" title="Drag to another node to connect relation" role="presentation"></div>`);
+  function ConnectPorts($$anchor, $$props) {
+    push($$props, true);
+    let visible = prop($$props, "visible", 3, false);
     var fragment = comment();
     var node = first_child(fragment);
     {
       var consequent = ($$anchor2) => {
-        var svg = root4();
-        append($$anchor2, svg);
-      };
-      var alternate = ($$anchor2) => {
-        var svg_1 = root_110();
-        append($$anchor2, svg_1);
+        var div = root6();
+        delegated("pointerdown", div, (event2) => $$props.onconnect?.(event2));
+        append($$anchor2, div);
       };
       if_block(node, ($$render) => {
         if (visible()) $$render(consequent);
-        else $$render(alternate, -1);
       });
     }
     append($$anchor, fragment);
-  };
-  var root4 = from_svg(`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`);
-  var root_110 = from_svg(`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`);
-  var root_210 = from_html(`<div class="vz-warning-box">Unsupported node kind <code> </code>. Shown in non-destructive read-only fallback mode.</div>`);
-  var root_36 = from_html(`<div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label">Content</span></div> <textarea class="vz-textarea" rows="4"></textarea></div>`);
-  var root_44 = from_html(`<option> </option>`);
-  var root_53 = from_html(`<label class="vz-field"><span class="vz-field-label">Shape Geometry</span> <select class="vz-select" aria-label="Shape geometry"></select></label>`);
-  var root_63 = from_html(`<label class="vz-field"><span class="vz-field-label">Border Style</span> <select class="vz-select" aria-label="Frame border style"><option>Solid</option><option>Dashed</option></select></label>`);
-  var root_73 = from_html(`<textarea class="vz-textarea vz-inspector-members-textarea" data-field="inspector-attributes" aria-label="Attributes" placeholder="+ name: type
-- secret: number"></textarea>`);
-  var root_82 = from_html(`<textarea class="vz-textarea vz-inspector-members-textarea" data-field="inspector-operations" aria-label="Operations" placeholder="+ method(a: string): void
-- helper(): boolean"></textarea>`);
-  var root_92 = from_html(`<label class="vz-field"><span class="vz-field-label">Stereotype (optional)</span> <input type="text" class="vz-input" placeholder="e.g. entity, service, aggregate"/></label> <div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label">Attributes</span> <button type="button"><!></button></div> <!></div> <div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label">Operations</span> <button type="button"><!></button></div> <!></div>`, 1);
-  var root_102 = from_html(`<label class="vz-field"><span class="vz-field-label">Name</span> <input type="text" class="vz-input"/></label> <!>`, 1);
-  var root_112 = from_html(`<div class="vz-sidebar-header"><span class="vz-sidebar-title"> </span></div> <div class="vz-inspector-body"><!></div>`, 1);
-  var root_123 = from_html(`<label class="vz-field"><span class="vz-field-label">Fill</span> <select class="vz-select"><option>Hollow</option><option>Filled</option></select></label>`);
-  var root_133 = from_html(`<div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label"> </span></div> <label class="vz-field"><span class="vz-field-label">Multiplicity (optional)</span> <input type="text" class="vz-input" placeholder="e.g. 1, *, 1..5, 2..*"/></label> <div class="vz-field-grid"><label class="vz-field"><span class="vz-field-label">Shape</span> <select class="vz-select"></select></label> <!></div></div>`);
-  var root_142 = from_html(`<div class="vz-sidebar-header"><span class="vz-sidebar-title"> </span></div> <div class="vz-inspector-body"><label class="vz-field"><span class="vz-field-label">Semantic Relation</span> <select class="vz-select" aria-label="Relation kind"></select></label> <label class="vz-field"><span class="vz-field-label">Label</span> <input type="text" class="vz-input" placeholder="e.g. belongs to, uses"/></label> <button type="button" class="vz-btn">\u21C4 Switch Direction</button> <div class="vz-field-grid"><label class="vz-field"><span class="vz-field-label">Line Style</span> <select class="vz-select"><option>Solid</option><option>Dashed</option></select></label> <label class="vz-field"><span class="vz-field-label">Routing</span> <select class="vz-select"><option>Default</option><option>Orthogonal</option><option>Straight</option><option>Smooth</option></select></label></div> <!></div>`, 1);
-  var root_152 = from_html(`<div class="vz-migration-banner vz-compatibility-banner"><div class="vz-migration-header"><span class="vz-migration-title">Compatibility Warning</span></div> <p class="vz-migration-text"> </p> <button type="button" class="vz-btn vz-btn-primary vz-migration-btn">Update</button></div>`);
-  var root_162 = from_html(`<div class="vz-migration-banner"><div class="vz-migration-header"><span class="vz-migration-title">Update Available</span></div> <p class="vz-migration-text"> </p> <button type="button" class="vz-btn vz-btn-primary vz-migration-btn">Migrate Document</button></div>`);
-  var root_172 = from_html(`<div class="vz-sidebar-header"><span class="vz-sidebar-title">UML Document</span></div> <div class="vz-inspector-body"><!> <label class="vz-field"><span class="vz-field-label">Title</span> <input type="text" class="vz-input"/></label> <label class="vz-field"><span class="vz-field-label">Description</span> <textarea class="vz-textarea" rows="4" placeholder="Describe the purpose of this architecture model\u2026"></textarea></label> <label class="vz-field"><span class="vz-field-label">Default Routing</span> <select class="vz-select" aria-label="Default Routing"><option>Orthogonal</option><option>Straight</option><option>Smooth</option></select></label></div>`, 1);
-  var root_182 = from_html(`<div class="vz-sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Resize Sidebar Width" tabindex="0"></div> <aside class="vz-sidebar vz-inspector" aria-label="UML Property Inspector"><!> <div class="vz-inspector-pane"><!></div></aside>`, 1);
-  function UmlInspector($$anchor, $$props) {
-    push($$props, true);
-    let resizingSidebar = state(null);
-    function handleSidebarResizeStart(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.currentTarget?.setPointerCapture?.(e.pointerId);
-      set(resizingSidebar, { startX: e.clientX, initialWidth: $$props.store.sidebarWidth }, true);
-    }
-    function handleWindowPointerMove(e) {
-      if (!get(resizingSidebar)) return;
-      const dx = get(resizingSidebar).startX - e.clientX;
-      $$props.store.setSidebarWidth(get(resizingSidebar).initialWidth + dx);
-    }
-    function handleWindowPointerUp() {
-      if (get(resizingSidebar)) {
-        set(resizingSidebar, null);
-      }
-    }
-    const selectedNode = user_derived(() => $$props.store.umlDoc?.nodes.find((n) => $$props.store.selectedIds.includes(n.id)));
-    const selectedEdge = user_derived(() => $$props.store.umlDoc?.edges.find((e) => $$props.store.selectedIds.includes(e.id)));
-    const selectedEdgeTouchesNote = user_derived(() => {
-      if (!get(selectedEdge) || !$$props.store.umlDoc) return false;
-      const s = $$props.store.umlDoc.nodes.find((n) => n.id === get(selectedEdge).source.nodeId);
-      const t = $$props.store.umlDoc.nodes.find((n) => n.id === get(selectedEdge).target.nodeId);
-      return s?.kind === "note" || t?.kind === "note";
-    });
-    const relationPresets = listUmlRelationPresets();
-    const endpointShapes = listEndpointShapes();
-    let inspectorAttributesDraft = state("");
-    let inspectorOperationsDraft = state("");
-    user_effect(() => {
-      if (get(selectedNode)) {
-        const activeEl = typeof document !== "undefined" ? document.activeElement : null;
-        const isEditingAttrs = activeEl?.getAttribute("data-field") === "inspector-attributes";
-        const isEditingOps = activeEl?.getAttribute("data-field") === "inspector-operations";
-        if (!isEditingAttrs) {
-          set(inspectorAttributesDraft, formatAttributesToText(get(selectedNode).attributes ?? []), true);
-        }
-        if (!isEditingOps) {
-          set(inspectorOperationsDraft, formatOperationsToText(get(selectedNode).operations ?? []), true);
-        }
-      } else {
-        set(inspectorAttributesDraft, "");
-        set(inspectorOperationsDraft, "");
-      }
-    });
-    function flushInspectorAttributes() {
-      if (!get(selectedNode) || get(selectedNode).kind === "note" || get(selectedNode).kind === "shape" || get(selectedNode).kind === "frame") return;
-      const nextAttrs = parseAttributesFromText(get(inspectorAttributesDraft), get(selectedNode).id, get(selectedNode).attributes ?? []);
-      const currAttrs = get(selectedNode).attributes ?? [];
-      const attrsChanged = nextAttrs.length !== currAttrs.length || nextAttrs.some((a, i) => {
-        const c = currAttrs[i];
-        return !c || a.name !== c.name || (a.type ?? "") !== (c.type ?? "") || (a.visibility ?? "+") !== (c.visibility ?? "+");
-      });
-      if (attrsChanged) {
-        $$props.store.dispatchOperation({
-          type: "uml.updateNode",
-          nodeId: get(selectedNode).id,
-          attributes: nextAttrs
-        });
-      }
-      set(inspectorAttributesDraft, formatAttributesToText(nextAttrs), true);
-    }
-    function flushInspectorOperations() {
-      if (!get(selectedNode) || get(selectedNode).kind === "note" || get(selectedNode).kind === "shape" || get(selectedNode).kind === "frame") return;
-      const nextOps = parseOperationsFromText(get(inspectorOperationsDraft), get(selectedNode).id, get(selectedNode).operations ?? []);
-      const currOps = get(selectedNode).operations ?? [];
-      const opsChanged = nextOps.length !== currOps.length || nextOps.some((o, i) => {
-        const c = currOps[i];
-        return !c || o.name !== c.name || (o.signature ?? "()") !== (c.signature ?? "()") || (o.returnType ?? "") !== (c.returnType ?? "") || (o.visibility ?? "+") !== (c.visibility ?? "+");
-      });
-      if (opsChanged) {
-        $$props.store.dispatchOperation({
-          type: "uml.updateNode",
-          nodeId: get(selectedNode).id,
-          operations: nextOps
-        });
-      }
-      set(inspectorOperationsDraft, formatOperationsToText(nextOps), true);
-    }
-    var fragment_1 = comment();
-    event("pointermove", $window, handleWindowPointerMove);
-    event("pointerup", $window, handleWindowPointerUp);
-    var node_1 = first_child(fragment_1);
-    {
-      var consequent_12 = ($$anchor2) => {
-        var fragment_2 = root_182();
-        var div = first_child(fragment_2);
-        var aside = sibling(div, 2);
-        var node_2 = child(aside);
-        AccessibleOutline(node_2, {
-          get store() {
-            return $$props.store;
-          },
-          get onDeleteSelected() {
-            return $$props.onDeleteSelected;
-          },
-          get onDuplicateSelected() {
-            return $$props.onDuplicateSelected;
-          }
-        });
-        var div_1 = sibling(node_2, 2);
-        var node_3 = child(div_1);
-        {
-          var consequent_7 = ($$anchor3) => {
-            const nodeDesc = user_derived(() => getUmlNodeKind(get(selectedNode).kind));
-            const attrsVisible = user_derived(() => get(selectedNode).showAttributes !== false);
-            const opsVisible = user_derived(() => get(selectedNode).showOperations !== false);
-            var fragment_3 = root_112();
-            var div_2 = first_child(fragment_3);
-            var span = child(div_2);
-            var text2 = only_child(span);
-            reset(div_2);
-            var div_3 = sibling(div_2, 2);
-            var node_4 = child(div_3);
-            {
-              var consequent_1 = ($$anchor4) => {
-                var div_4 = root_210();
-                var code = sibling(child(div_4));
-                var text_1 = only_child(code, true);
-                next();
-                reset(div_4);
-                template_effect(() => set_text(text_1, get(selectedNode).kind));
-                append($$anchor4, div_4);
-              };
-              var alternate_2 = ($$anchor4) => {
-                var fragment_4 = root_102();
-                var label = first_child(fragment_4);
-                var input = sibling(child(label), 2);
-                remove_input_defaults(input);
-                reset(label);
-                var node_5 = sibling(label, 2);
-                {
-                  var consequent_2 = ($$anchor5) => {
-                    var div_5 = root_36();
-                    var textarea = sibling(child(div_5), 4);
-                    remove_textarea_child(textarea);
-                    reset(div_5);
-                    template_effect(() => {
-                      set_value(textarea, get(selectedNode).text ?? "");
-                      textarea.disabled = $$props.store.isReadOnly;
-                    });
-                    delegated("change", textarea, (e) => $$props.store.dispatchOperation({
-                      type: "uml.updateNode",
-                      nodeId: get(selectedNode).id,
-                      text: e.currentTarget.value
-                    }));
-                    append($$anchor5, div_5);
-                  };
-                  var consequent_3 = ($$anchor5) => {
-                    var label_1 = root_53();
-                    var select = sibling(child(label_1), 2);
-                    each(select, 21, () => UML_SHAPE_GEOMETRIES, (sh) => sh.kind, ($$anchor6, sh) => {
-                      var option = root_44();
-                      var text_2 = only_child(option, true);
-                      var option_value = {};
-                      template_effect(() => {
-                        set_text(text_2, get(sh).label);
-                        if (option_value !== (option_value = get(sh).kind)) {
-                          option.value = (option.__value = option_value) ?? "";
-                        }
-                      });
-                      append($$anchor6, option);
-                    });
-                    reset(select);
-                    var select_value;
-                    init_select(select);
-                    reset(label_1);
-                    template_effect(() => {
-                      select.disabled = $$props.store.isReadOnly;
-                      if (select_value !== (select_value = get(selectedNode).shape ?? "rectangle")) {
-                        select.value = (select.__value = select_value) ?? "", select_option(select, select_value);
-                      }
-                    });
-                    delegated("change", select, (e) => $$props.store.dispatchOperation({
-                      type: "uml.updateNode",
-                      nodeId: get(selectedNode).id,
-                      shape: e.currentTarget.value
-                    }));
-                    append($$anchor5, label_1);
-                  };
-                  var consequent_4 = ($$anchor5) => {
-                    var label_2 = root_63();
-                    var select_1 = sibling(child(label_2), 2);
-                    var option_1 = child(select_1);
-                    option_1.value = option_1.__value = "solid";
-                    var option_2 = sibling(option_1);
-                    option_2.value = option_2.__value = "dashed";
-                    reset(select_1);
-                    var select_1_value;
-                    init_select(select_1);
-                    reset(label_2);
-                    template_effect(() => {
-                      select_1.disabled = $$props.store.isReadOnly;
-                      if (select_1_value !== (select_1_value = get(selectedNode).line ?? "solid")) {
-                        select_1.value = (select_1.__value = select_1_value) ?? "", select_option(select_1, select_1_value);
-                      }
-                    });
-                    delegated("change", select_1, (e) => $$props.store.dispatchOperation({
-                      type: "uml.updateNode",
-                      nodeId: get(selectedNode).id,
-                      line: e.currentTarget.value
-                    }));
-                    append($$anchor5, label_2);
-                  };
-                  var alternate_1 = ($$anchor5) => {
-                    var fragment_5 = root_92();
-                    var label_3 = first_child(fragment_5);
-                    var input_1 = sibling(child(label_3), 2);
-                    remove_input_defaults(input_1);
-                    reset(label_3);
-                    var div_6 = sibling(label_3, 2);
-                    var div_7 = sibling(child(div_6), 2);
-                    var button = sibling(child(div_7), 2);
-                    let classes;
-                    var node_6 = child(button);
-                    eyeIcon(node_6, () => get(attrsVisible));
-                    reset(button);
-                    reset(div_7);
-                    var node_7 = sibling(div_7, 2);
-                    {
-                      var consequent_5 = ($$anchor6) => {
-                        var textarea_1 = root_73();
-                        remove_textarea_child(textarea_1);
-                        template_effect(
-                          ($0) => {
-                            set_attribute2(textarea_1, "rows", $0);
-                            textarea_1.disabled = $$props.store.isReadOnly;
-                          },
-                          [
-                            () => Math.max(4, get(inspectorAttributesDraft).split("\n").length || 1)
-                          ]
-                        );
-                        event("blur", textarea_1, flushInspectorAttributes);
-                        delegated("change", textarea_1, flushInspectorAttributes);
-                        bind_value(textarea_1, () => get(inspectorAttributesDraft), ($$value) => set(inspectorAttributesDraft, $$value));
-                        append($$anchor6, textarea_1);
-                      };
-                      if_block(node_7, ($$render) => {
-                        if (get(attrsVisible)) $$render(consequent_5);
-                      });
-                    }
-                    reset(div_6);
-                    var div_8 = sibling(div_6, 2);
-                    var div_9 = sibling(child(div_8), 2);
-                    var button_1 = sibling(child(div_9), 2);
-                    let classes_1;
-                    var node_8 = child(button_1);
-                    eyeIcon(node_8, () => get(opsVisible));
-                    reset(button_1);
-                    reset(div_9);
-                    var node_9 = sibling(div_9, 2);
-                    {
-                      var consequent_6 = ($$anchor6) => {
-                        var textarea_2 = root_82();
-                        remove_textarea_child(textarea_2);
-                        template_effect(
-                          ($0) => {
-                            set_attribute2(textarea_2, "rows", $0);
-                            textarea_2.disabled = $$props.store.isReadOnly;
-                          },
-                          [
-                            () => Math.max(4, get(inspectorOperationsDraft).split("\n").length || 1)
-                          ]
-                        );
-                        event("blur", textarea_2, flushInspectorOperations);
-                        delegated("change", textarea_2, flushInspectorOperations);
-                        bind_value(textarea_2, () => get(inspectorOperationsDraft), ($$value) => set(inspectorOperationsDraft, $$value));
-                        append($$anchor6, textarea_2);
-                      };
-                      if_block(node_9, ($$render) => {
-                        if (get(opsVisible)) $$render(consequent_6);
-                      });
-                    }
-                    reset(div_8);
-                    template_effect(() => {
-                      set_value(input_1, get(selectedNode).stereotype ?? "");
-                      input_1.disabled = $$props.store.isReadOnly;
-                      classes = set_class(button, 1, "vz-eye-toggle-btn compact", null, classes, { off: !get(attrsVisible) });
-                      set_attribute2(button, "title", get(attrsVisible) ? "Hide Attributes section on node" : "Show Attributes section on node");
-                      set_attribute2(button, "aria-label", get(attrsVisible) ? "Hide Attributes section" : "Show Attributes section");
-                      button.disabled = $$props.store.isReadOnly;
-                      classes_1 = set_class(button_1, 1, "vz-eye-toggle-btn compact", null, classes_1, { off: !get(opsVisible) });
-                      set_attribute2(button_1, "title", get(opsVisible) ? "Hide Operations section on node" : "Show Operations section on node");
-                      set_attribute2(button_1, "aria-label", get(opsVisible) ? "Hide Operations section" : "Show Operations section");
-                      button_1.disabled = $$props.store.isReadOnly;
-                    });
-                    delegated("change", input_1, (e) => $$props.store.dispatchOperation({
-                      type: "uml.updateNode",
-                      nodeId: get(selectedNode).id,
-                      stereotype: e.currentTarget.value
-                    }));
-                    delegated("click", button, () => $$props.store.dispatchOperation({
-                      type: "uml.updateNode",
-                      nodeId: get(selectedNode).id,
-                      showAttributes: !get(attrsVisible)
-                    }));
-                    delegated("click", button_1, () => $$props.store.dispatchOperation({
-                      type: "uml.updateNode",
-                      nodeId: get(selectedNode).id,
-                      showOperations: !get(opsVisible)
-                    }));
-                    append($$anchor5, fragment_5);
-                  };
-                  if_block(node_5, ($$render) => {
-                    if (get(selectedNode).kind === "note") $$render(consequent_2);
-                    else if (get(selectedNode).kind === "shape") $$render(consequent_3, 1);
-                    else if (get(selectedNode).kind === "frame") $$render(consequent_4, 2);
-                    else $$render(alternate_1, -1);
-                  });
-                }
-                template_effect(() => {
-                  set_value(input, get(selectedNode).name);
-                  input.disabled = $$props.store.isReadOnly;
-                });
-                delegated("change", input, (e) => $$props.store.dispatchOperation({
-                  type: "uml.updateNode",
-                  nodeId: get(selectedNode).id,
-                  name: e.currentTarget.value
-                }));
-                append($$anchor4, fragment_4);
-              };
-              if_block(node_4, ($$render) => {
-                if (!get(nodeDesc)) $$render(consequent_1);
-                else $$render(alternate_2, -1);
-              });
-            }
-            reset(div_3);
-            template_effect(() => set_text(text2, `${get(nodeDesc)?.label ?? get(selectedNode).kind ?? ""}: ${get(selectedNode).name ?? ""}`));
-            append($$anchor3, fragment_3);
-          };
-          var consequent_9 = ($$anchor3) => {
-            var fragment_6 = root_142();
-            var div_10 = first_child(fragment_6);
-            var span_1 = child(div_10);
-            var text_3 = only_child(span_1);
-            reset(div_10);
-            var div_11 = sibling(div_10, 2);
-            var label_4 = child(div_11);
-            var select_2 = sibling(child(label_4), 2);
-            each(select_2, 21, () => relationPresets, index, ($$anchor4, preset) => {
-              var option_3 = root_44();
-              var text_4 = only_child(option_3, true);
-              var option_3_value = {};
-              template_effect(() => {
-                set_text(text_4, get(preset).label);
-                if (option_3_value !== (option_3_value = get(preset).kind)) {
-                  option_3.value = (option_3.__value = option_3_value) ?? "";
-                }
-              });
-              append($$anchor4, option_3);
-            });
-            reset(select_2);
-            var select_2_value;
-            init_select(select_2);
-            reset(label_4);
-            var label_5 = sibling(label_4, 2);
-            var input_2 = sibling(child(label_5), 2);
-            remove_input_defaults(input_2);
-            reset(label_5);
-            var button_2 = sibling(label_5, 2);
-            var div_12 = sibling(button_2, 2);
-            var label_6 = child(div_12);
-            var select_3 = sibling(child(label_6), 2);
-            var option_4 = child(select_3);
-            option_4.value = option_4.__value = "solid";
-            var option_5 = sibling(option_4);
-            option_5.value = option_5.__value = "dashed";
-            reset(select_3);
-            var select_3_value;
-            init_select(select_3);
-            reset(label_6);
-            var label_7 = sibling(label_6, 2);
-            var select_4 = sibling(child(label_7), 2);
-            var option_6 = child(select_4);
-            option_6.value = option_6.__value = "default";
-            var option_7 = sibling(option_6);
-            option_7.value = option_7.__value = "orthogonal";
-            var option_8 = sibling(option_7);
-            option_8.value = option_8.__value = "straight";
-            var option_9 = sibling(option_8);
-            option_9.value = option_9.__value = "bezier";
-            reset(select_4);
-            var select_4_value;
-            init_select(select_4);
-            reset(label_7);
-            reset(div_12);
-            var node_10 = sibling(div_12, 2);
-            each(node_10, 16, () => ["start", "end"], index, ($$anchor4, endKey) => {
-              const currentDec = user_derived(() => get(selectedEdge).visual?.[endKey] ?? { shape: "none" });
-              const shapeObj = user_derived(() => endpointShapes.find((s) => s.kind === get(currentDec).shape));
-              const currentMult = user_derived(() => endKey === "start" ? get(selectedEdge).source.multiplicity ?? "" : get(selectedEdge).target.multiplicity ?? "");
-              var div_13 = root_133();
-              var div_14 = sibling(child(div_13), 2);
-              var span_2 = child(div_14);
-              var text_5 = only_child(span_2, true);
-              reset(div_14);
-              var label_8 = sibling(div_14, 2);
-              var input_3 = sibling(child(label_8), 2);
-              remove_input_defaults(input_3);
-              reset(label_8);
-              var div_15 = sibling(label_8, 2);
-              var label_9 = child(div_15);
-              var select_5 = sibling(child(label_9), 2);
-              each(select_5, 21, () => endpointShapes, index, ($$anchor5, sh) => {
-                var option_10 = root_44();
-                var text_6 = only_child(option_10, true);
-                var option_10_value = {};
-                template_effect(() => {
-                  set_text(text_6, get(sh).label);
-                  if (option_10_value !== (option_10_value = get(sh).kind)) {
-                    option_10.value = (option_10.__value = option_10_value) ?? "";
-                  }
-                });
-                append($$anchor5, option_10);
-              });
-              reset(select_5);
-              var select_5_value;
-              init_select(select_5);
-              reset(label_9);
-              var node_11 = sibling(label_9, 2);
-              {
-                var consequent_8 = ($$anchor5) => {
-                  var label_10 = root_123();
-                  var select_6 = sibling(child(label_10), 2);
-                  var option_11 = child(select_6);
-                  option_11.value = option_11.__value = "hollow";
-                  var option_12 = sibling(option_11);
-                  option_12.value = option_12.__value = "filled";
-                  reset(select_6);
-                  var select_6_value;
-                  init_select(select_6);
-                  reset(label_10);
-                  template_effect(() => {
-                    set_attribute2(select_6, "aria-label", `${endKey ?? ""} endpoint fill`);
-                    select_6.disabled = $$props.store.isReadOnly;
-                    if (select_6_value !== (select_6_value = get(currentDec).fill ?? get(shapeObj).defaultFill ?? "hollow")) {
-                      select_6.value = (select_6.__value = select_6_value) ?? "", select_option(select_6, select_6_value);
-                    }
-                  });
-                  delegated("change", select_6, (e) => {
-                    if (!get(selectedEdge)) return;
-                    $$props.store.dispatchOperation({
-                      type: "uml.updateEndpoint",
-                      edgeId: get(selectedEdge).id,
-                      end: endKey,
-                      decoration: { ...get(currentDec), fill: e.currentTarget.value }
-                    });
-                  });
-                  append($$anchor5, label_10);
-                };
-                if_block(node_11, ($$render) => {
-                  if (get(shapeObj)?.supportsFill) $$render(consequent_8);
-                });
-              }
-              reset(div_15);
-              reset(div_13);
-              template_effect(() => {
-                set_text(text_5, endKey === "start" ? `Start Side (${get(selectedEdge).source.nodeId})` : `End Side (${get(selectedEdge).target.nodeId})`);
-                set_value(input_3, get(currentMult));
-                input_3.disabled = $$props.store.isReadOnly;
-                set_attribute2(select_5, "aria-label", `${endKey ?? ""} endpoint shape`);
-                select_5.disabled = $$props.store.isReadOnly;
-                if (select_5_value !== (select_5_value = get(currentDec).shape)) {
-                  select_5.value = (select_5.__value = select_5_value) ?? "", select_option(select_5, select_5_value);
-                }
-              });
-              delegated("change", input_3, (e) => {
-                if (!get(selectedEdge)) return;
-                $$props.store.dispatchOperation({
-                  type: "uml.updateEdge",
-                  edgeId: get(selectedEdge).id,
-                  ...endKey === "start" ? { sourceMultiplicity: e.currentTarget.value.trim() } : { targetMultiplicity: e.currentTarget.value.trim() }
-                });
-              });
-              delegated("change", select_5, (e) => {
-                if (!get(selectedEdge)) return;
-                $$props.store.dispatchOperation({
-                  type: "uml.updateEndpoint",
-                  edgeId: get(selectedEdge).id,
-                  end: endKey,
-                  decoration: { ...get(currentDec), shape: e.currentTarget.value }
-                });
-              });
-              append($$anchor4, div_13);
-            });
-            reset(div_11);
-            template_effect(() => {
-              set_text(text_3, `Relation: ${get(selectedEdge).id ?? ""}`);
-              select_2.disabled = $$props.store.isReadOnly;
-              if (select_2_value !== (select_2_value = get(selectedEdge).kind)) {
-                select_2.value = (select_2.__value = select_2_value) ?? "", select_option(select_2, select_2_value);
-              }
-              set_value(input_2, get(selectedEdge).label ?? "");
-              input_2.disabled = $$props.store.isReadOnly;
-              button_2.disabled = $$props.store.isReadOnly;
-              set_attribute2(button_2, "title", `Switch Direction (${get(selectedEdge).target.nodeId} \u2192 ${get(selectedEdge).source.nodeId})`);
-              select_3.disabled = $$props.store.isReadOnly;
-              if (select_3_value !== (select_3_value = get(selectedEdge).visual?.line ?? (get(selectedEdgeTouchesNote) ? "dashed" : "solid"))) {
-                select_3.value = (select_3.__value = select_3_value) ?? "", select_option(select_3, select_3_value);
-              }
-              select_4.disabled = $$props.store.isReadOnly;
-              if (select_4_value !== (select_4_value = get(selectedEdge).visual?.routing ?? "default")) {
-                select_4.value = (select_4.__value = select_4_value) ?? "", select_option(select_4, select_4_value);
-              }
-            });
-            delegated("change", select_2, (e) => {
-              if (!get(selectedEdge)) return;
-              $$props.store.dispatchOperation({
-                type: "uml.updateEdge",
-                edgeId: get(selectedEdge).id,
-                kind: e.currentTarget.value
-              });
-            });
-            delegated("change", input_2, (e) => {
-              if (!get(selectedEdge)) return;
-              $$props.store.dispatchOperation({
-                type: "uml.updateEdge",
-                edgeId: get(selectedEdge).id,
-                label: e.currentTarget.value
-              });
-            });
-            delegated("click", button_2, () => {
-              if (!get(selectedEdge)) return;
-              $$props.store.dispatchOperation({
-                type: "uml.updateEdge",
-                edgeId: get(selectedEdge).id,
-                reverseDirection: true
-              });
-            });
-            delegated("change", select_3, (e) => {
-              if (!get(selectedEdge)) return;
-              $$props.store.dispatchOperation({
-                type: "uml.updateEdge",
-                edgeId: get(selectedEdge).id,
-                line: e.currentTarget.value
-              });
-            });
-            delegated("change", select_4, (e) => {
-              if (!get(selectedEdge)) return;
-              $$props.store.dispatchOperation({
-                type: "uml.updateEdge",
-                edgeId: get(selectedEdge).id,
-                routing: e.currentTarget.value
-              });
-            });
-            append($$anchor3, fragment_6);
-          };
-          var alternate_3 = ($$anchor3) => {
-            var fragment_7 = root_172();
-            var div_16 = sibling(first_child(fragment_7), 2);
-            var node_12 = child(div_16);
-            {
-              var consequent_10 = ($$anchor4) => {
-                var div_17 = root_152();
-                var p = sibling(child(div_17), 2);
-                var text_7 = only_child(p);
-                var button_3 = sibling(p, 2);
-                reset(div_17);
-                template_effect(() => set_text(text_7, `This document was created with a newer version of Vizion (${$$props.store.umlDoc.version ?? "future" ?? ""}). Please update the extension to ensure full compatibility.`));
-                delegated("click", button_3, () => $$props.store.checkForExtensionUpdate());
-                append($$anchor4, div_17);
-              };
-              var d = user_derived(() => isNewerVersionDocument($$props.store.umlDoc));
-              var consequent_11 = ($$anchor4) => {
-                var div_18 = root_162();
-                var p_1 = sibling(child(div_18), 2);
-                var text_8 = only_child(p_1);
-                var button_4 = sibling(p_1, 2);
-                reset(div_18);
-                template_effect(() => {
-                  set_text(text_8, `Document version (${$$props.store.umlDoc.version ?? "legacy" ?? ""}) does not match the latest rules (${EXTENSION_VERSION ?? ""}).`);
-                  button_4.disabled = $$props.store.isReadOnly;
-                });
-                delegated("click", button_4, () => $$props.store.dispatchOperation({ type: "uml.migrateDocument" }));
-                append($$anchor4, div_18);
-              };
-              var d_1 = user_derived(() => isMigrationNeeded($$props.store.umlDoc));
-              if_block(node_12, ($$render) => {
-                if (get(d)) $$render(consequent_10);
-                else if (get(d_1)) $$render(consequent_11, 1);
-              });
-            }
-            var label_11 = sibling(node_12, 2);
-            var input_4 = sibling(child(label_11), 2);
-            remove_input_defaults(input_4);
-            reset(label_11);
-            var label_12 = sibling(label_11, 2);
-            var textarea_3 = sibling(child(label_12), 2);
-            remove_textarea_child(textarea_3);
-            reset(label_12);
-            var label_13 = sibling(label_12, 2);
-            var select_7 = sibling(child(label_13), 2);
-            var option_13 = child(select_7);
-            option_13.value = option_13.__value = "orthogonal";
-            var option_14 = sibling(option_13);
-            option_14.value = option_14.__value = "straight";
-            var option_15 = sibling(option_14);
-            option_15.value = option_15.__value = "bezier";
-            reset(select_7);
-            var select_7_value;
-            init_select(select_7);
-            reset(label_13);
-            reset(div_16);
-            template_effect(() => {
-              set_value(input_4, $$props.store.umlDoc.title);
-              input_4.disabled = $$props.store.isReadOnly;
-              set_value(textarea_3, $$props.store.umlDoc.description ?? $$props.store.umlDoc.ai?.purpose ?? "");
-              textarea_3.disabled = $$props.store.isReadOnly;
-              select_7.disabled = $$props.store.isReadOnly;
-              if (select_7_value !== (select_7_value = $$props.store.umlDoc.defaultRouting ?? "orthogonal")) {
-                select_7.value = (select_7.__value = select_7_value) ?? "", select_option(select_7, select_7_value);
-              }
-            });
-            delegated("change", input_4, (e) => $$props.store.dispatchOperation({ type: "uml.updateMetadata", title: e.currentTarget.value }));
-            delegated("change", textarea_3, (e) => $$props.store.dispatchOperation({
-              type: "uml.updateMetadata",
-              description: e.currentTarget.value
-            }));
-            delegated("change", select_7, (e) => $$props.store.dispatchOperation({
-              type: "uml.updateMetadata",
-              defaultRouting: e.currentTarget.value
-            }));
-            append($$anchor3, fragment_7);
-          };
-          if_block(node_3, ($$render) => {
-            if (get(selectedNode)) $$render(consequent_7);
-            else if (get(selectedEdge)) $$render(consequent_9, 1);
-            else $$render(alternate_3, -1);
-          });
-        }
-        reset(div_1);
-        reset(aside);
-        template_effect(() => set_style(aside, `width: ${$$props.store.sidebarWidth ?? ""}px;`));
-        delegated("pointerdown", div, handleSidebarResizeStart);
-        delegated("contextmenu", div_1, (e) => {
-          const target2 = e.target;
-          if (target2?.closest('input, textarea, select, [contenteditable="true"]')) {
-            return;
-          }
-          e.preventDefault();
-          e.stopPropagation();
-        });
-        append($$anchor2, fragment_2);
-      };
-      if_block(node_1, ($$render) => {
-        if ($$props.store.umlDoc) $$render(consequent_12);
-      });
-    }
-    append($$anchor, fragment_1);
     pop();
   }
-  delegate(["pointerdown", "contextmenu", "change", "click"]);
+  delegate(["pointerdown"]);
 
-  // src/webview/uml/UmlCanvas.svelte
-  var eyeIcon2 = ($$anchor, visible = noop) => {
-    var fragment = comment();
-    var node_1 = first_child(fragment);
+  // src/webview/canvas/nodes/ClassNode.svelte
+  var root7 = from_html(`<div role="button"><!> <!> <!> <!> <!></div>`);
+  function ClassNode($$anchor, $$props) {
+    push($$props, true);
+    let selected = prop($$props, "selected", 3, false);
+    const editingState = user_derived(() => $$props.store.inlineEdit.state.mode === "node" && $$props.store.inlineEdit.state.nodeId === $$props.node.id ? $$props.store.inlineEdit.state : null);
+    const isEditing = user_derived(() => Boolean(get(editingState)));
+    const readOnly = user_derived(() => $$props.store.isReadOnly);
+    const showAttributes = user_derived(() => $$props.node.showAttributes !== false);
+    const showOperations = user_derived(() => $$props.node.showOperations !== false);
+    function toggleCompartment(kind) {
+      if (get(readOnly)) return;
+      $$props.store.dispatchOperation({
+        type: "uml.updateNode",
+        nodeId: $$props.node.id,
+        ...kind === "attributes" ? { showAttributes: $$props.node.showAttributes === false } : { showOperations: $$props.node.showOperations === false }
+      });
+    }
+    var div = root7();
+    let classes;
+    var node_1 = child(div);
+    {
+      let $0 = user_derived(() => get(editingState)?.name ?? "");
+      let $1 = user_derived(() => get(editingState)?.stereotype ?? "");
+      NodeHeader(node_1, {
+        get node() {
+          return $$props.node;
+        },
+        get editing() {
+          return get(isEditing);
+        },
+        get name() {
+          return get($0);
+        },
+        get stereotype() {
+          return get($1);
+        },
+        get readOnly() {
+          return get(readOnly);
+        },
+        onDraftChange: (patch) => $$props.store.inlineEdit.updateNodeDraft(patch),
+        onCommit: () => $$props.store.inlineEdit.commitNode($$props.node)
+      });
+    }
+    var node_2 = sibling(node_1, 2);
+    {
+      let $0 = user_derived(() => get(editingState)?.attributes ?? "");
+      NodeCompartment(node_2, {
+        get node() {
+          return $$props.node;
+        },
+        kind: "attributes",
+        get visible() {
+          return get(showAttributes);
+        },
+        get editing() {
+          return get(isEditing);
+        },
+        get draft() {
+          return get($0);
+        },
+        get readOnly() {
+          return get(readOnly);
+        },
+        onToggle: () => toggleCompartment("attributes"),
+        onDraftChange: (value) => $$props.store.inlineEdit.updateNodeDraft({ attributes: value }),
+        onCommit: () => $$props.store.inlineEdit.commitNode($$props.node)
+      });
+    }
+    var node_3 = sibling(node_2, 2);
+    {
+      let $0 = user_derived(() => get(editingState)?.operations ?? "");
+      NodeCompartment(node_3, {
+        get node() {
+          return $$props.node;
+        },
+        kind: "operations",
+        get visible() {
+          return get(showOperations);
+        },
+        get editing() {
+          return get(isEditing);
+        },
+        get draft() {
+          return get($0);
+        },
+        get readOnly() {
+          return get(readOnly);
+        },
+        onToggle: () => toggleCompartment("operations"),
+        onDraftChange: (value) => $$props.store.inlineEdit.updateNodeDraft({ operations: value }),
+        onCommit: () => $$props.store.inlineEdit.commitNode($$props.node)
+      });
+    }
+    var node_4 = sibling(node_3, 2);
+    {
+      let $0 = user_derived(() => selected() && !get(readOnly));
+      ResizeHandles(node_4, {
+        get selected() {
+          return selected();
+        },
+        get visible() {
+          return get($0);
+        },
+        onresize: (event2, handle) => $$props.onresizestart?.(event2, $$props.node, handle)
+      });
+    }
+    var node_5 = sibling(node_4, 2);
+    {
+      let $0 = user_derived(() => selected() && !get(readOnly) && !get(isEditing));
+      ConnectPorts(node_5, {
+        get visible() {
+          return get($0);
+        },
+        onconnect: (event2) => $$props.onconnectstart?.(event2, $$props.node)
+      });
+    }
+    reset(div);
+    template_effect(() => {
+      classes = set_class(div, 1, "vz-uml-node kind-class", null, classes, { selected: selected(), "inline-editing": get(isEditing) });
+      set_attribute2(div, "data-node-id", $$props.node.id);
+      set_style(div, `left: ${$$props.box.x ?? ""}px; top: ${$$props.box.y ?? ""}px; width: ${$$props.box.width ?? ""}px; height: ${$$props.box.height ?? ""}px;`);
+      set_attribute2(div, "tabindex", get(readOnly) ? -1 : 0);
+      set_attribute2(div, "aria-label", `${$$props.node.kind ?? ""}: ${$$props.node.name ?? ""}`);
+      set_attribute2(div, "aria-pressed", selected());
+    });
+    delegated("pointerdown", div, (event2) => $$props.onpointerdown?.(event2, $$props.node));
+    delegated("contextmenu", div, (event2) => $$props.oncontextmenu?.(event2, $$props.node));
+    delegated("dblclick", div, (event2) => $$props.ondblclick?.(event2, $$props.node));
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["pointerdown", "contextmenu", "dblclick"]);
+
+  // src/webview/canvas/nodes/FrameNode.svelte
+  var root8 = from_html(`<div role="presentation"></div>`);
+  var root_16 = from_html(`<div class="vz-resize-handle" title="Drag to resize frame (snaps to 20px grid)" role="presentation"></div>`);
+  var root_25 = from_html(`<div role="button"><!> <!></div>`);
+  function FrameNode($$anchor, $$props) {
+    push($$props, true);
+    let selected = prop($$props, "selected", 3, false);
+    const readOnly = user_derived(() => $$props.store.isReadOnly);
+    const handles = [
+      {
+        direction: "n",
+        className: "top",
+        label: "Drag to resize top side"
+      },
+      {
+        direction: "s",
+        className: "bottom",
+        label: "Drag to resize bottom side"
+      },
+      {
+        direction: "w",
+        className: "left",
+        label: "Drag to resize left side"
+      },
+      {
+        direction: "e",
+        className: "right",
+        label: "Drag to resize right side"
+      }
+    ];
+    var div = root_25();
+    let classes;
+    var node_1 = child(div);
     {
       var consequent = ($$anchor2) => {
-        var svg = root5();
-        append($$anchor2, svg);
-      };
-      var alternate = ($$anchor2) => {
-        var svg_1 = root_111();
-        append($$anchor2, svg_1);
+        var fragment = comment();
+        var node_2 = first_child(fragment);
+        each(node_2, 17, () => handles, (handle) => handle.direction, ($$anchor3, handle) => {
+          var div_1 = root8();
+          template_effect(() => {
+            set_class(div_1, 1, `vz-frame-edge-hit ${get(handle).className ?? ""}`);
+            set_attribute2(div_1, "title", get(handle).label);
+          });
+          delegated("pointerdown", div_1, (event2) => $$props.onresizestart?.(event2, $$props.node, get(handle).direction));
+          append($$anchor3, div_1);
+        });
+        append($$anchor2, fragment);
       };
       if_block(node_1, ($$render) => {
-        if (visible()) $$render(consequent);
+        if (!get(readOnly)) $$render(consequent);
+      });
+    }
+    var node_3 = sibling(node_1, 2);
+    {
+      var consequent_1 = ($$anchor2) => {
+        var div_2 = root_16();
+        delegated("pointerdown", div_2, (event2) => $$props.onresizestart?.(event2, $$props.node, "se"));
+        append($$anchor2, div_2);
+      };
+      if_block(node_3, ($$render) => {
+        if (selected() && !get(readOnly)) $$render(consequent_1);
+      });
+    }
+    reset(div);
+    template_effect(() => {
+      classes = set_class(div, 1, "vz-uml-node kind-frame", null, classes, { selected: selected(), dashed: $$props.node.line === "dashed" });
+      set_attribute2(div, "data-node-id", $$props.node.id);
+      set_style(div, `left: ${$$props.box.x ?? ""}px; top: ${$$props.box.y ?? ""}px; width: ${$$props.box.width ?? ""}px; height: ${$$props.box.height ?? ""}px;`);
+      set_attribute2(div, "tabindex", get(readOnly) ? -1 : 0);
+      set_attribute2(div, "aria-label", `UML frame ${$$props.node.name ?? ""}`);
+      set_attribute2(div, "aria-pressed", selected());
+    });
+    delegated("pointerdown", div, (event2) => $$props.onpointerdown?.(event2, $$props.node));
+    delegated("contextmenu", div, (event2) => $$props.oncontextmenu?.(event2, $$props.node));
+    delegated("dblclick", div, (event2) => $$props.ondblclick?.(event2, $$props.node));
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["pointerdown", "contextmenu", "dblclick"]);
+
+  // src/webview/canvas/nodes/NoteNode.svelte
+  var root9 = from_html(`<div class="vz-note-body editing"><textarea class="vz-inline-textarea vz-note-textarea" placeholder="Write architecture notes, constraints, or implementation guidance\u2026" aria-label="Note text"></textarea></div>`);
+  var root_17 = from_html(`<div class="vz-note-text"> </div>`);
+  var root_26 = from_html(`<div class="vz-note-placeholder">Double-click to add note text</div>`);
+  var root_35 = from_html(`<div class="vz-note-body"><!></div>`);
+  var root_45 = from_html(`<div role="button"><!> <!> <!> <!></div>`);
+  function NoteNode($$anchor, $$props) {
+    push($$props, true);
+    let selected = prop($$props, "selected", 3, false);
+    const editingState = user_derived(() => $$props.store.inlineEdit.state.mode === "node" && $$props.store.inlineEdit.state.nodeId === $$props.node.id ? $$props.store.inlineEdit.state : null);
+    const readOnly = user_derived(() => $$props.store.isReadOnly);
+    var div = root_45();
+    let classes;
+    var node_1 = child(div);
+    {
+      let $0 = user_derived(() => Boolean(get(editingState)));
+      let $1 = user_derived(() => get(editingState)?.name ?? "");
+      NodeHeader(node_1, {
+        get node() {
+          return $$props.node;
+        },
+        get editing() {
+          return get($0);
+        },
+        get name() {
+          return get($1);
+        },
+        get readOnly() {
+          return get(readOnly);
+        },
+        onDraftChange: (patch) => $$props.store.inlineEdit.updateNodeDraft(patch),
+        onCommit: () => $$props.store.inlineEdit.commitNode($$props.node)
+      });
+    }
+    var node_2 = sibling(node_1, 2);
+    {
+      var consequent = ($$anchor2) => {
+        var div_1 = root9();
+        var textarea = child(div_1);
+        remove_textarea_child(textarea);
+        reset(div_1);
+        template_effect(() => set_value(textarea, get(editingState).text));
+        delegated("input", textarea, (event2) => $$props.store.inlineEdit.updateNodeDraft({ text: event2.currentTarget.value }));
+        event("blur", textarea, () => $$props.store.inlineEdit.commitNode($$props.node));
+        delegated("keydown", textarea, (event2) => {
+          if (event2.key === "Escape") $$props.store.inlineEdit.cancelAll();
+        });
+        append($$anchor2, div_1);
+      };
+      var alternate_1 = ($$anchor2) => {
+        var div_2 = root_35();
+        var node_3 = child(div_2);
+        {
+          var consequent_1 = ($$anchor3) => {
+            var div_3 = root_17();
+            var text2 = only_child(div_3, true);
+            template_effect(() => set_text(text2, $$props.node.text));
+            append($$anchor3, div_3);
+          };
+          var alternate = ($$anchor3) => {
+            var div_4 = root_26();
+            append($$anchor3, div_4);
+          };
+          if_block(node_3, ($$render) => {
+            if ($$props.node.text) $$render(consequent_1);
+            else $$render(alternate, -1);
+          });
+        }
+        reset(div_2);
+        append($$anchor2, div_2);
+      };
+      if_block(node_2, ($$render) => {
+        if (get(editingState)) $$render(consequent);
+        else $$render(alternate_1, -1);
+      });
+    }
+    var node_4 = sibling(node_2, 2);
+    {
+      let $0 = user_derived(() => selected() && !get(readOnly));
+      ResizeHandles(node_4, {
+        get selected() {
+          return selected();
+        },
+        get visible() {
+          return get($0);
+        },
+        onresize: (event2, handle) => $$props.onresizestart?.(event2, $$props.node, handle)
+      });
+    }
+    var node_5 = sibling(node_4, 2);
+    {
+      let $0 = user_derived(() => selected() && !get(readOnly) && !get(editingState));
+      ConnectPorts(node_5, {
+        get visible() {
+          return get($0);
+        },
+        onconnect: (event2) => $$props.onconnectstart?.(event2, $$props.node)
+      });
+    }
+    reset(div);
+    template_effect(
+      ($0) => {
+        classes = set_class(div, 1, "vz-uml-node kind-note", null, classes, { selected: selected(), "inline-editing": $0 });
+        set_attribute2(div, "data-node-id", $$props.node.id);
+        set_style(div, `left: ${$$props.box.x ?? ""}px; top: ${$$props.box.y ?? ""}px; width: ${$$props.box.width ?? ""}px; height: ${$$props.box.height ?? ""}px;`);
+        set_attribute2(div, "tabindex", get(readOnly) ? -1 : 0);
+        set_attribute2(div, "aria-label", `Note: ${$$props.node.name ?? ""}`);
+        set_attribute2(div, "aria-pressed", selected());
+      },
+      [() => Boolean(get(editingState))]
+    );
+    delegated("pointerdown", div, (event2) => $$props.onpointerdown?.(event2, $$props.node));
+    delegated("contextmenu", div, (event2) => $$props.oncontextmenu?.(event2, $$props.node));
+    delegated("dblclick", div, (event2) => $$props.ondblclick?.(event2, $$props.node));
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["pointerdown", "contextmenu", "dblclick", "input", "keydown"]);
+
+  // src/webview/canvas/nodes/ShapeNode.svelte
+  var root10 = from_svg(`<rect class="vz-shape-selection-box" x="2" y="2" rx="3"></rect>`);
+  var root_18 = from_html(`<div class="vz-shape-label editing"><input type="text" class="vz-shape-inline-input" aria-label="Shape label"/></div>`);
+  var root_27 = from_html(`<div role="presentation"><!></div>`);
+  var root_36 = from_html(`<div role="button"><svg class="vz-shape-svg" aria-hidden="true"><path class="vz-shape-outline"></path><!></svg> <!> <!> <!></div>`);
+  function ShapeNode($$anchor, $$props) {
+    push($$props, true);
+    let selected = prop($$props, "selected", 3, false);
+    const editingState = user_derived(() => $$props.store.inlineEdit.state.mode === "node" && $$props.store.inlineEdit.state.nodeId === $$props.node.id ? $$props.store.inlineEdit.state : null);
+    const readOnly = user_derived(() => $$props.store.isReadOnly);
+    const isEditing = user_derived(() => Boolean(get(editingState)));
+    const shapePath = user_derived(() => buildShapeSvgPath($$props.node.shape, $$props.box.width, $$props.box.height));
+    let inputEl = state(void 0);
+    user_effect(() => {
+      if (!get(isEditing)) return;
+      const input = get(inputEl);
+      if (!input) return;
+      requestAnimationFrame(() => {
+        if (!input.isConnected) return;
+        input.focus();
+        input.select();
+      });
+    });
+    var div = root_36();
+    let classes;
+    var svg = child(div);
+    var path = child(svg);
+    var node_1 = sibling(path);
+    {
+      var consequent = ($$anchor2) => {
+        var rect = root10();
+        template_effect(
+          ($0, $1) => {
+            set_attribute2(rect, "width", $0);
+            set_attribute2(rect, "height", $1);
+          },
+          [
+            () => Math.max(0, $$props.box.width - 4),
+            () => Math.max(0, $$props.box.height - 4)
+          ]
+        );
+        append($$anchor2, rect);
+      };
+      if_block(node_1, ($$render) => {
+        if (selected()) $$render(consequent);
+      });
+    }
+    reset(svg);
+    var node_2 = sibling(svg, 2);
+    {
+      var consequent_1 = ($$anchor2) => {
+        var div_1 = root_18();
+        var input_1 = child(div_1);
+        remove_input_defaults(input_1);
+        bind_this(input_1, ($$value) => set(inputEl, $$value), () => get(inputEl));
+        reset(div_1);
+        template_effect(() => set_value(input_1, get(editingState).name));
+        delegated("input", input_1, (event2) => $$props.store.inlineEdit.updateNodeDraft({ name: event2.currentTarget.value }));
+        event("blur", input_1, () => $$props.store.inlineEdit.commitNode($$props.node));
+        delegated("keydown", input_1, (event2) => {
+          if (event2.key === "Enter") $$props.store.inlineEdit.commitNode($$props.node);
+          else if (event2.key === "Escape") $$props.store.inlineEdit.cancelAll();
+        });
+        append($$anchor2, div_1);
+      };
+      var alternate = ($$anchor2) => {
+        var div_2 = root_27();
+        let classes_1;
+        var node_3 = child(div_2);
+        NodeHeader(node_3, {
+          get node() {
+            return $$props.node;
+          }
+        });
+        reset(div_2);
+        template_effect(() => classes_1 = set_class(div_2, 1, "vz-shape-label", null, classes_1, { selected: selected() }));
+        delegated("click", div_2, (event2) => {
+          if (!selected() || get(readOnly)) return;
+          event2.stopPropagation();
+          $$props.oneditlabel?.($$props.node);
+        });
+        append($$anchor2, div_2);
+      };
+      if_block(node_2, ($$render) => {
+        if (get(editingState)) $$render(consequent_1);
+        else $$render(alternate, -1);
+      });
+    }
+    var node_4 = sibling(node_2, 2);
+    {
+      let $0 = user_derived(() => selected() && !get(readOnly));
+      ResizeHandles(node_4, {
+        get selected() {
+          return selected();
+        },
+        get visible() {
+          return get($0);
+        },
+        onresize: (event2, handle) => $$props.onresizestart?.(event2, $$props.node, handle)
+      });
+    }
+    var node_5 = sibling(node_4, 2);
+    {
+      let $0 = user_derived(() => selected() && !get(readOnly) && !get(editingState));
+      ConnectPorts(node_5, {
+        get visible() {
+          return get($0);
+        },
+        onconnect: (event2) => $$props.onconnectstart?.(event2, $$props.node)
+      });
+    }
+    reset(div);
+    template_effect(() => {
+      classes = set_class(div, 1, "vz-uml-node kind-shape", null, classes, { selected: selected(), "inline-editing": get(isEditing) });
+      set_attribute2(div, "data-node-id", $$props.node.id);
+      set_style(div, `left: ${$$props.box.x ?? ""}px; top: ${$$props.box.y ?? ""}px; width: ${$$props.box.width ?? ""}px; height: ${$$props.box.height ?? ""}px;`);
+      set_attribute2(div, "tabindex", get(readOnly) ? -1 : 0);
+      set_attribute2(div, "aria-label", `Shape: ${$$props.node.name ?? ""}`);
+      set_attribute2(div, "aria-pressed", selected());
+      set_attribute2(svg, "width", $$props.box.width);
+      set_attribute2(svg, "height", $$props.box.height);
+      set_attribute2(path, "d", get(shapePath));
+    });
+    delegated("pointerdown", div, (event2) => $$props.onpointerdown?.(event2, $$props.node));
+    delegated("contextmenu", div, (event2) => $$props.oncontextmenu?.(event2, $$props.node));
+    delegated("dblclick", div, (event2) => $$props.ondblclick?.(event2, $$props.node));
+    append($$anchor, div);
+    pop();
+  }
+  delegate([
+    "pointerdown",
+    "contextmenu",
+    "dblclick",
+    "input",
+    "keydown",
+    "click"
+  ]);
+
+  // src/webview/canvas/edges/EdgeMarker.svelte
+  var root11 = from_svg(`<g><g><path stroke-linejoin="round"></path></g></g>`);
+  function EdgeMarker($$anchor, $$props) {
+    push($$props, true);
+    let selected = prop($$props, "selected", 3, false);
+    const descriptor = user_derived(() => getEndpointShape($$props.decoration.shape));
+    const pathD = user_derived(() => get(descriptor)?.buildLocalPath($$props.decoration.size ?? get(descriptor).defaultSize) ?? "");
+    const stroke = user_derived(() => selected() ? "var(--vz-accent)" : "var(--vscode-editor-foreground)");
+    const fill = user_derived(() => {
+      if (!get(descriptor)?.supportsFill) return "none";
+      if (($$props.decoration.fill ?? get(descriptor).defaultFill ?? "hollow") !== "filled") {
+        return "var(--vscode-editor-background)";
+      }
+      return selected() ? "var(--vz-accent)" : "var(--vscode-editor-foreground)";
+    });
+    var fragment = comment();
+    var node = first_child(fragment);
+    {
+      var consequent = ($$anchor2) => {
+        var g = root11();
+        let classes;
+        var g_1 = child(g);
+        var path = only_child(g_1);
+        reset(g);
+        template_effect(() => {
+          classes = set_class(g, 0, "vz-edge-marker", null, classes, { selected: selected() });
+          set_attribute2(g_1, "transform", `translate(${$$props.tip.x ?? ""}, ${$$props.tip.y ?? ""}) rotate(${$$props.angleDeg ?? ""})`);
+          set_attribute2(path, "d", get(pathD));
+          set_attribute2(path, "fill", get(fill));
+          set_attribute2(path, "stroke", get(stroke));
+          set_attribute2(path, "stroke-width", selected() ? 2.2 : 1.6);
+        });
+        append($$anchor2, g);
+      };
+      if_block(node, ($$render) => {
+        if (get(pathD)) $$render(consequent);
+      });
+    }
+    append($$anchor, fragment);
+    pop();
+  }
+
+  // src/webview/canvas/edges/EdgePath.svelte
+  var root12 = from_svg(`<path></path><path class="vz-edge-hit-path"></path>`, 1);
+  var root_19 = from_svg(`<path></path>`);
+  function EdgePath($$anchor, $$props) {
+    push($$props, true);
+    let isDashed = prop($$props, "isDashed", 3, false), selected = prop($$props, "selected", 3, false), interactive = prop($$props, "interactive", 3, true);
+    var fragment = comment();
+    var node = first_child(fragment);
+    {
+      var consequent = ($$anchor2) => {
+        var fragment_1 = root12();
+        var path = first_child(fragment_1);
+        let classes;
+        var path_1 = sibling(path);
+        template_effect(() => {
+          classes = set_class(path, 0, "vz-edge-line", null, classes, { dashed: isDashed(), selected: selected() });
+          set_attribute2(path, "d", $$props.pathD);
+          set_attribute2(path_1, "d", $$props.pathD);
+        });
+        delegated("pointerdown", path, (event2) => $$props.onselect?.(event2));
+        delegated("dblclick", path, (event2) => $$props.ondblclick?.(event2));
+        delegated("contextmenu", path, (event2) => $$props.oncontextmenu?.(event2));
+        delegated("pointerdown", path_1, (event2) => $$props.onselect?.(event2));
+        delegated("dblclick", path_1, (event2) => $$props.ondblclick?.(event2));
+        delegated("contextmenu", path_1, (event2) => $$props.oncontextmenu?.(event2));
+        append($$anchor2, fragment_1);
+      };
+      var alternate = ($$anchor2) => {
+        var path_2 = root_19();
+        let classes_1;
+        template_effect(() => {
+          classes_1 = set_class(path_2, 0, "vz-edge-line", null, classes_1, { dashed: isDashed() });
+          set_attribute2(path_2, "d", $$props.pathD);
+        });
+        append($$anchor2, path_2);
+      };
+      if_block(node, ($$render) => {
+        if (interactive()) $$render(consequent);
         else $$render(alternate, -1);
       });
     }
     append($$anchor, fragment);
-  };
-  var root5 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`);
-  var root_111 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`);
-  var root_211 = from_html(`<div class="vz-frame-edge-hit top" title="Drag to resize top side"></div> <div class="vz-frame-edge-hit bottom" title="Drag to resize bottom side"></div> <div class="vz-frame-edge-hit left" title="Drag to resize left side"></div> <div class="vz-frame-edge-hit right" title="Drag to resize right side"></div>`, 1);
-  var root_37 = from_html(`<div class="vz-resize-handle" title="Drag to resize frame (snaps to 20px grid)"></div>`);
-  var root_45 = from_html(`<div role="button" tabindex="0"><!> <!></div>`);
-  var root_54 = from_svg(`<path class="vz-endpoint-marker"></path>`);
-  var root_64 = from_svg(`<g class="vz-edge-mult-group"><rect y="-9" height="17" rx="3" class="vz-edge-mult-bg"></rect><text text-anchor="middle" dy="3" class="vz-edge-mult-text"> </text></g>`);
-  var root_74 = from_svg(`<g class="vz-edge-label-group"><rect y="-10" height="20" rx="4" class="vz-edge-label-bg"></rect><text text-anchor="middle" dominant-baseline="central" class="vz-edge-label-text"> </text></g>`);
-  var root_83 = from_svg(`<g><path class="vz-edge-hit"></path><path class="vz-edge-stroke"></path><!><!><!><!><!></g>`);
-  var root_93 = from_svg(`<g class="vz-edge-label-group vz-frame-label-group" role="button" tabindex="0"><rect x="0" y="-10" height="20" rx="4" class="vz-edge-label-bg"></rect><text y="0" text-anchor="middle" dominant-baseline="central" class="vz-edge-label-text"> </text></g>`);
-  var root_103 = from_html(`<input type="text" class="vz-inline-input vz-shape-inline-input"/>`);
-  var root_113 = from_html(`<div class="vz-uml-node-title"> </div>`);
-  var root_124 = from_html(`<svg class="vz-shape-node-svg" aria-hidden="true"><path class="vz-shape-node-path"></path></svg> <div class="vz-shape-node-content"><!></div>`, 1);
-  var root_134 = from_html(`<div class="vz-inline-field"><div class="vz-inline-sec-hdr"><span>Name</span></div> <input type="text" class="vz-inline-input"/></div>`);
-  var root_143 = from_html(`<div class="vz-inline-fields"><div class="vz-inline-field"><div class="vz-inline-sec-hdr"><span>Name</span></div> <input type="text" class="vz-inline-input" placeholder="Name"/></div> <div class="vz-inline-field"><div class="vz-inline-sec-hdr"><span>Stereotype</span></div> <input type="text" class="vz-inline-input" placeholder="e.g. entity, service"/></div></div>`);
-  var root_153 = from_html(`<div class="vz-uml-stereotype"> </div>`);
-  var root_163 = from_html(`<!> <div class="vz-uml-node-title"> </div>`, 1);
-  var root_173 = from_html(`<div class="vz-uml-note-body"><div class="vz-inline-sec-hdr"><span>Content</span></div> <textarea class="vz-inline-textarea" rows="4" placeholder="Note content\u2026"></textarea></div>`);
-  var root_183 = from_html(`<div class="vz-uml-note-body"> </div>`);
-  var root_192 = from_html(`<textarea class="vz-inline-textarea" placeholder="+ name: type
-- privateField: string"></textarea>`);
-  var root_202 = from_html(`<div class="vz-inline-sec-hdr"><span>Attributes</span> <button type="button"><!></button></div> <!>`, 1);
-  var root_212 = from_html(`<span class="vz-type"> </span>`);
-  var root_223 = from_html(`<div class="vz-uml-member"><span class="vz-vis"> </span> <span> </span> <!></div>`);
-  var root_233 = from_html(`<div class="vz-uml-compartment"><!></div>`);
-  var root_242 = from_html(`<textarea class="vz-inline-textarea" placeholder="+ method(): returnType
-+ execute(arg: type)"></textarea>`);
-  var root_252 = from_html(`<div class="vz-inline-sec-hdr"><span>Operations</span> <button type="button"><!></button></div> <!>`, 1);
-  var root_262 = from_html(`<!><span> </span><!>`, 1);
-  var root_272 = from_html(`<div class="vz-uml-member"><span class="vz-vis"> </span> <span> </span><!><span>)</span> <!></div>`);
-  var root_282 = from_html(`<!> <!>`, 1);
-  var root_292 = from_html(`<div class="vz-uml-node-header"><!></div> <!>`, 1);
-  var root_302 = from_html(`<div class="vz-resize-handle" title="Drag to resize node (snaps to 20px grid)"></div>`);
-  var root_312 = from_html(`<div class="vz-connect-port" title="Drag to another node to connect relation"></div> <!>`, 1);
-  var root_323 = from_svg(`<circle class="vz-endpoint-picker-target"><title>Click to customize START endpoint shape & multiplicity</title></circle><circle class="vz-endpoint-picker-target"><title>Click to customize END endpoint shape & multiplicity</title></circle>`, 1);
-  var root_333 = from_svg(`<line class="vz-gesture-line"></line>`);
-  var root_342 = from_svg(`<rect class="vz-marquee-box"></rect>`);
-  var root_352 = from_html(`<div class="vz-floating-edge-label-editor"><input type="text" class="vz-input" placeholder="Label"/></div>`);
-  var root_362 = from_html(`<div class="vz-floating-edge-label-editor vz-floating-frame-label-editor"><input type="text" class="vz-input" placeholder="Frame"/></div>`);
-  var root_372 = from_html(`<div class="vz-floating-edge-label-editor vz-floating-mult-editor"><input type="text" class="vz-input" placeholder="1, *"/></div>`);
-  var root_38 = from_svg(`<path stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>`);
-  var root_39 = from_html(`<button type="button"><svg width="34" height="18" viewBox="-24 -9 26 18" class="vz-endpoint-preview-svg" aria-hidden="true"><line x1="-22" y1="0" y2="0" stroke="currentColor" stroke-width="1.8"></line><!></svg> <span> </span></button>`);
-  var root_40 = from_html(`<div class="vz-endpoint-popup"><div class="vz-endpoint-mult-row"><span class="vz-field-label">Multiplicity</span> <input type="text" class="vz-input-mini" placeholder="e.g. 1, *, 1..5, 2..*"/></div> <div class="vz-endpoint-icon-grid"></div></div>`);
-  var root_41 = from_html(`<div class="vz-html-frames"></div> <svg class="vz-svg-layer vz-svg-relations vz-svg-overlay" aria-label="UML Relationships"><g><!><!></g></svg> <div class="vz-html-world"></div> <svg class="vz-svg-layer vz-svg-foreground" aria-label="UML Canvas Interactions"><g><!><!><!></g></svg> <!> <!> <!> <!>`, 1);
-  var root_422 = from_html(`<div class="vz-workspace"><div class="vz-main-split"><div tabindex="0" role="application" aria-label="Vizion UML Canvas"><div class="vz-floating-zoom"><button type="button" class="vz-zoom-pill-btn" title="Zoom Out">\uFF0D</button> <button type="button" class="vz-zoom-pill-label" title="Scroll wheel here to adjust by \xB11%, or click to Fit Content"> </button> <button type="button" class="vz-zoom-pill-btn" title="Zoom In">\uFF0B</button></div> <!></div> <!></div></div>`);
-  function UmlCanvas($$anchor, $$props) {
+    pop();
+  }
+  delegate(["pointerdown", "dblclick", "contextmenu"]);
+
+  // src/webview/canvas/edges/UmlEdgeRenderer.svelte
+  var root13 = from_svg(`<g><!><!><!></g>`);
+  function UmlEdgeRenderer($$anchor, $$props) {
+    push($$props, true);
+    let selected = prop($$props, "selected", 3, false);
+    var g = root13();
+    let classes;
+    var node = child(g);
+    EdgePath(node, {
+      get pathD() {
+        return $$props.data.geometry.pathD;
+      },
+      get isDashed() {
+        return $$props.data.isDashed;
+      },
+      get selected() {
+        return selected();
+      },
+      onselect: (event2) => $$props.onselect?.(event2, $$props.data.edge),
+      ondblclick: (event2) => $$props.ondblclick?.(event2, $$props.data.edge),
+      oncontextmenu: (event2) => $$props.oncontextmenu?.(event2, $$props.data.edge)
+    });
+    var node_1 = sibling(node);
+    EdgeMarker(node_1, {
+      get decoration() {
+        return $$props.data.startDecoration;
+      },
+      get tip() {
+        return $$props.data.geometry.startTip;
+      },
+      get angleDeg() {
+        return $$props.data.geometry.startAngleDeg;
+      },
+      get selected() {
+        return selected();
+      }
+    });
+    var node_2 = sibling(node_1);
+    EdgeMarker(node_2, {
+      get decoration() {
+        return $$props.data.endDecoration;
+      },
+      get tip() {
+        return $$props.data.geometry.endTip;
+      },
+      get angleDeg() {
+        return $$props.data.geometry.endAngleDeg;
+      },
+      get selected() {
+        return selected();
+      }
+    });
+    reset(g);
+    template_effect(() => {
+      classes = set_class(g, 0, "vz-edge-renderer", null, classes, { selected: selected() });
+      set_attribute2(g, "data-edge-id", $$props.data.edge.id);
+    });
+    append($$anchor, g);
+    pop();
+  }
+
+  // src/webview/canvas/edges/EdgeLabel.svelte
+  var root14 = from_html(`<div class="vz-edge-inline-editor"><input type="text" class="vz-edge-label-input" aria-label="Relation label"/></div>`);
+  var root_110 = from_html(`<div role="button" tabindex="-1"><span> </span></div>`);
+  function EdgeLabel($$anchor, $$props) {
+    push($$props, true);
+    let selected = prop($$props, "selected", 3, false), editing = prop($$props, "editing", 3, false), draft = prop($$props, "draft", 3, ""), maxWidth = prop($$props, "maxWidth", 3, 220), align = prop($$props, "align", 3, "center"), frameLabel = prop($$props, "frameLabel", 3, false);
+    const width = user_derived(() => editing() ? Math.min(maxWidth(), Math.max(70, draft().length * 7.6 + 24)) : Math.min(maxWidth(), Math.max(28, ($$props.label?.length ?? 0) * 7.6 + 20)));
+    const transform = user_derived(() => align() === "above-left" ? "translateY(-50%)" : "translate(-50%, -50%)");
+    let inputEl = state(void 0);
+    user_effect(() => {
+      if (!editing()) return;
+      const input = get(inputEl);
+      if (!input) return;
+      requestAnimationFrame(() => {
+        if (!input.isConnected) return;
+        input.focus();
+        input.select();
+      });
+    });
+    var fragment = comment();
+    var node = first_child(fragment);
+    {
+      var consequent = ($$anchor2) => {
+        var div = root14();
+        var input_1 = child(div);
+        remove_input_defaults(input_1);
+        bind_this(input_1, ($$value) => set(inputEl, $$value), () => get(inputEl));
+        reset(div);
+        template_effect(() => {
+          set_style(div, `left: ${$$props.point.x ?? ""}px; top: ${$$props.point.y ?? ""}px; width: ${get(width) ?? ""}px; transform: ${get(transform) ?? ""};`);
+          set_value(input_1, draft());
+        });
+        delegated("pointerdown", div, (event2) => event2.stopPropagation());
+        delegated("input", input_1, (event2) => $$props.onDraftChange?.(event2.currentTarget.value));
+        event("blur", input_1, () => $$props.onCommit?.());
+        delegated("keydown", input_1, (event2) => {
+          if (event2.key === "Enter") $$props.onCommit?.();
+          else if (event2.key === "Escape") $$props.onCancel?.();
+        });
+        append($$anchor2, div);
+      };
+      var consequent_1 = ($$anchor2) => {
+        var div_1 = root_110();
+        let classes;
+        var span = child(div_1);
+        var text2 = only_child(span, true);
+        reset(div_1);
+        template_effect(() => {
+          classes = set_class(div_1, 1, "vz-edge-label-group", null, classes, { selected: selected(), frame: frameLabel() });
+          set_style(div_1, `left: ${$$props.point.x ?? ""}px; top: ${$$props.point.y ?? ""}px; width: ${get(width) ?? ""}px; transform: ${get(transform) ?? ""};`);
+          set_text(text2, $$props.label);
+        });
+        delegated("click", div_1, (event2) => $$props.onselect?.(event2));
+        delegated("dblclick", div_1, (event2) => $$props.ondblclick?.(event2));
+        append($$anchor2, div_1);
+      };
+      if_block(node, ($$render) => {
+        if (editing()) $$render(consequent);
+        else if ($$props.label) $$render(consequent_1, 1);
+      });
+    }
+    append($$anchor, fragment);
+    pop();
+  }
+  delegate(["pointerdown", "input", "keydown", "click", "dblclick"]);
+
+  // src/webview/canvas/edges/MultiplicityTag.svelte
+  var root15 = from_html(`<div class="vz-edge-inline-editor vz-mult-inline-editor"><input type="text" class="vz-edge-label-input" aria-label="Multiplicity" placeholder="1, *, 0..1"/></div>`);
+  var root_111 = from_html(`<div role="button" tabindex="-1"> </div>`);
+  function MultiplicityTag($$anchor, $$props) {
+    push($$props, true);
+    let selected = prop($$props, "selected", 3, false), editing = prop($$props, "editing", 3, false), draft = prop($$props, "draft", 3, "");
+    const width = user_derived(() => Math.max(38, (draft().length || $$props.text?.length || 0) * 8 + 14));
+    var fragment = comment();
+    var node = first_child(fragment);
+    {
+      var consequent = ($$anchor2) => {
+        var div = root15();
+        var input = child(div);
+        remove_input_defaults(input);
+        reset(div);
+        template_effect(() => {
+          set_style(div, `left: ${$$props.point.x ?? ""}px; top: ${$$props.point.y ?? ""}px; width: ${get(width) ?? ""}px; transform: translate(-50%, -50%);`);
+          set_value(input, draft());
+        });
+        delegated("pointerdown", div, (event2) => event2.stopPropagation());
+        delegated("input", input, (event2) => $$props.onDraftChange?.(event2.currentTarget.value));
+        event("blur", input, () => $$props.onCommit?.());
+        delegated("keydown", input, (event2) => {
+          if (event2.key === "Enter") $$props.onCommit?.();
+          else if (event2.key === "Escape") $$props.onCancel?.();
+        });
+        append($$anchor2, div);
+      };
+      var consequent_1 = ($$anchor2) => {
+        var div_1 = root_111();
+        let classes;
+        var text_1 = only_child(div_1, true);
+        template_effect(() => {
+          classes = set_class(div_1, 1, "vz-mult-badge", null, classes, { selected: selected() });
+          set_style(div_1, `left: ${$$props.point.x ?? ""}px; top: ${$$props.point.y ?? ""}px; transform: translate(-50%, -50%);`);
+          set_text(text_1, $$props.text);
+        });
+        delegated("click", div_1, (event2) => $$props.onclick?.(event2));
+        delegated("keydown", div_1, (event2) => {
+          if (event2.key === "Enter" || event2.key === " ") {
+            event2.preventDefault();
+            $$props.onclick?.(event2);
+          }
+        });
+        delegated("dblclick", div_1, (event2) => $$props.ondblclick?.(event2));
+        append($$anchor2, div_1);
+      };
+      if_block(node, ($$render) => {
+        if (editing()) $$render(consequent);
+        else if ($$props.text) $$render(consequent_1, 1);
+      });
+    }
+    append($$anchor, fragment);
+    pop();
+  }
+  delegate(["pointerdown", "input", "keydown", "click", "dblclick"]);
+
+  // src/webview/canvas/edges/edge-geometry.ts
+  function endpointMarkerPath(decoration) {
+    const descriptor = getEndpointShape(decoration?.shape ?? "none");
+    if (!descriptor || descriptor.kind === "none") return { d: "", fill: "none" };
+    const d = descriptor.buildLocalPath(decoration?.size ?? descriptor.defaultSize);
+    if (!descriptor.supportsFill) return { d, fill: "none" };
+    return { d, fill: decoration?.fill ?? descriptor.defaultFill ?? "hollow" };
+  }
+  function endpointVisualCenter(tip, angleDeg, decoration) {
+    const descriptor = getEndpointShape(decoration?.shape ?? "none");
+    if (!descriptor || descriptor.kind === "none") return tip;
+    const size = decoration?.size ?? descriptor.defaultSize;
+    const radians = angleDeg * Math.PI / 180;
+    return {
+      x: tip.x - Math.cos(radians) * (size / 2),
+      y: tip.y - Math.sin(radians) * (size / 2)
+    };
+  }
+  function resolveEdgeRouting(edge, defaultRouting) {
+    const routing = edge.visual?.routing;
+    if (!routing || routing === "default") return defaultRouting ?? "orthogonal";
+    return routing;
+  }
+  function computeEdgeRenderData(edge, sourceBox, targetBox, sourceNode, targetNode, defaultRouting, parallelOffset = 0) {
+    const touchesNote = sourceNode?.kind === "note" || targetNode?.kind === "note";
+    const isDashed = (edge.visual?.line ?? (touchesNote ? "dashed" : "solid")) === "dashed";
+    const startDecoration = edge.visual?.start ?? { shape: "none", size: 10 };
+    const endDecoration = edge.visual?.end ?? { shape: "none", size: 10 };
+    const geometry = computeUmlEdgeGeometry(
+      sourceBox,
+      targetBox,
+      resolveEdgeRouting(edge, defaultRouting),
+      startDecoration,
+      endDecoration,
+      parallelOffset,
+      void 0,
+      void 0,
+      sourceNode?.kind === "shape" ? sourceNode.shape : void 0,
+      targetNode?.kind === "shape" ? targetNode.shape : void 0,
+      edge.label
+    );
+    const startMarker = endpointMarkerPath(startDecoration);
+    const endMarker = endpointMarkerPath(endDecoration);
+    return {
+      edge,
+      geometry,
+      startDecoration,
+      endDecoration,
+      isDashed,
+      startMarkerPath: startMarker.d,
+      endMarkerPath: endMarker.d,
+      startMarkerFill: startMarker.fill,
+      endMarkerFill: endMarker.fill,
+      startCenter: endpointVisualCenter(geometry.startTip, geometry.startAngleDeg, startDecoration),
+      endCenter: endpointVisualCenter(geometry.endTip, geometry.endAngleDeg, endDecoration),
+      startMultiplicityPoint: getMultiplicityLabelPoint(
+        geometry.startTip,
+        geometry.startAngleDeg,
+        edge.source.multiplicity
+      ),
+      endMultiplicityPoint: getMultiplicityLabelPoint(
+        geometry.endTip,
+        geometry.endAngleDeg,
+        edge.target.multiplicity
+      )
+    };
+  }
+
+  // src/webview/canvas/CanvasViewport.svelte
+  var root16 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`);
+  var root_112 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`);
+  var root_28 = from_svg(`<line class="vz-gesture-line"></line>`);
+  var root_37 = from_svg(`<rect class="vz-marquee-box"></rect>`);
+  var root_46 = from_svg(`<circle class="vz-endpoint-handle" r="9" role="presentation"></circle><circle class="vz-endpoint-handle" r="9" role="presentation"></circle>`, 1);
+  var root_54 = from_html(`<!> <!> <!>`, 1);
+  var root_63 = from_svg(`<path stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>`);
+  var root_73 = from_html(`<button type="button"><svg width="34" height="18" viewBox="-24 -9 26 18" class="vz-endpoint-preview-svg" aria-hidden="true"><line x1="-22" y1="0" y2="0" stroke="currentColor" stroke-width="1.8"></line><!></svg> <span> </span></button>`);
+  var root_8 = from_html(`<div class="vz-endpoint-popup"><div class="vz-endpoint-mult-row"><span class="vz-field-label">Multiplicity</span> <input type="text" class="vz-input-mini" placeholder="e.g. 1, *, 1..5, 2..*"/></div> <div class="vz-endpoint-icon-grid"></div></div>`);
+  var root_9 = from_html(`<div class="vz-html-frames"></div> <svg class="vz-svg-layer vz-svg-relations vz-svg-overlay" aria-label="UML Relationships"><g></g></svg> <div class="vz-html-world"></div> <svg class="vz-svg-layer vz-svg-foreground" aria-label="UML Canvas Interactions"><g><!><!><!></g></svg> <div class="vz-html-frames vz-html-edge-labels"><!> <!></div> <!>`, 1);
+  var root_10 = from_html(`<div tabindex="0" role="application" aria-label="Vizion UML Canvas"><div class="vz-floating-zoom"><button type="button" class="vz-zoom-pill-btn" title="Zoom Out">\uFF0D</button> <button type="button" class="vz-zoom-pill-label" title="Scroll wheel here to adjust by \xB11%, or click to Fit Content"> </button> <button type="button" class="vz-zoom-pill-btn" title="Zoom In">\uFF0B</button></div> <!></div>`);
+  function CanvasViewport($$anchor, $$props) {
     push($$props, true);
     let store = prop($$props, "store", 7);
     let viewportEl = state(void 0);
@@ -9911,203 +11026,79 @@ ${component_stack}
         }
       };
     }
-    const FRAME_PAD_LEFT = 20;
-    const FRAME_PAD_RIGHT = 20;
-    const FRAME_PAD_TOP = 28;
-    const FRAME_PAD_BOTTOM = 20;
+    const FRAME_PAD_LEFT2 = 20;
+    const FRAME_PAD_RIGHT2 = 20;
+    const FRAME_PAD_TOP2 = 28;
+    const FRAME_PAD_BOTTOM2 = 20;
     function getNodeMinContentSize(nodeId) {
-      const el = nodeElements.get(nodeId);
-      const node = get(doc)?.nodes.find((n) => n.id === nodeId);
-      if (!node) {
-        return { minWidth: 100, minHeight: 60 };
-      }
-      if (node.kind === "shape") {
-        return { minWidth: 80, minHeight: 60 };
-      }
-      if (node.kind === "frame") {
-        return { minWidth: 160, minHeight: 120 };
-      }
-      let contentHeight = 0;
-      if (el) {
-        for (let i = 0; i < el.children.length; i++) {
-          const child2 = el.children[i];
-          if (child2.classList.contains("vz-connect-port") || child2.classList.contains("vz-resize-handle")) {
-            continue;
-          }
-          contentHeight += child2.offsetHeight;
-        }
-        contentHeight += 4;
-      }
-      const isEditing = get(inlineEditingNodeId) === nodeId;
-      if (isEditing) {
-        if (node.kind === "note") {
-          const lineCount = Math.max(4, (get(inlineNodeTextDraft) || node.text || "").split("\n").length);
-          const editingH = 55 + 24 + lineCount * 18 + 20;
-          contentHeight = Math.max(contentHeight, editingH);
-        } else {
-          const editAttrsRows = Math.max(3, (node.attributes ?? []).length + 1);
-          const editOpsRows = Math.max(3, (node.operations ?? []).length + 1);
-          const headerH = 100;
-          const attrsH = node.showAttributes !== false ? 30 + editAttrsRows * 20 : 30;
-          const opsH = node.showOperations !== false ? 30 + editOpsRows * 20 : 30;
-          contentHeight = Math.max(contentHeight, headerH + attrsH + opsH + 10);
-        }
-      } else if (contentHeight <= 4) {
-        if (node.kind === "note") {
-          const lineCount = (node.text || node.name || "").split("\n").length;
-          contentHeight = 36 + 16 + Math.max(1, lineCount) * 18 + 4;
-        } else {
-          const headerH = (node.stereotype ? 18 : 0) + 36;
-          const attrsCount = (node.attributes ?? []).length;
-          const opsCount = (node.operations ?? []).length;
-          const attrsH = node.showAttributes !== false && attrsCount > 0 ? 12 + attrsCount * 19 : 0;
-          const opsH = node.showOperations !== false && opsCount > 0 ? 12 + opsCount * 19 : 0;
-          contentHeight = headerH + attrsH + opsH + 4;
-        }
-      }
-      const minGridHeight = Math.max(60, Math.ceil(contentHeight / GRID_SIZE) * GRID_SIZE);
-      let minGridWidth = node.kind === "note" ? 100 : 120;
-      if (isEditing) {
-        minGridWidth = node.kind === "note" ? 200 : 240;
-      }
-      return { minWidth: minGridWidth, minHeight: minGridHeight };
+      const node = get(doc)?.nodes.find((candidate) => candidate.id === nodeId);
+      if (!node) return { minWidth: 100, minHeight: 60 };
+      const box = get(effectiveNodeLayouts)[nodeId];
+      return computeNodeMinSize(node, get(inlineEditingNodeId) === nodeId, box?.width, get(inlineDraft));
     }
+    const inlineDraft = user_derived(() => {
+      const state2 = store().inlineEdit.state;
+      if (state2.mode !== "node") return void 0;
+      return {
+        name: state2.name,
+        text: state2.text,
+        attributes: state2.attributes,
+        operations: state2.operations
+      };
+    });
     const effectiveNodeLayouts = user_derived(() => {
       if (!get(doc)) return {};
-      const base = {};
-      get(doc).nodes.forEach((n, idx) => {
-        const persisted = get(doc).layout.nodes[n.id] ?? {
-          x: 80 + idx % 3 * 260,
-          y: 80 + Math.floor(idx / 3) * 190,
-          width: n.kind === "frame" ? 260 : 220,
-          height: n.kind === "frame" ? 180 : 140
+      const current = get(gesture);
+      let adapted;
+      if (current.mode === "moving") {
+        adapted = {
+          mode: "moving_nodes",
+          startWorld: current.startWorld,
+          currentWorld: current.currentWorld,
+          initialLayouts: current.initialLayouts,
+          clickedNodeId: current.clickedNodeId,
+          isShift: Boolean(current.isShift)
         };
-        const raw = store().optimisticUmlLayouts[n.id] ?? persisted;
-        const minSize = getNodeMinContentSize(n.id);
-        base[n.id] = {
-          ...raw,
-          width: Math.max(minSize.minWidth, snapToGrid(raw.width, GRID_SIZE)),
-          height: Math.max(minSize.minHeight, snapToGrid(raw.height, GRID_SIZE))
+      } else if (current.mode === "resizing") {
+        adapted = {
+          mode: "resizing_node",
+          nodeId: current.nodeId,
+          handle: current.handleDirection ?? "se",
+          startWorld: current.startWorld,
+          currentWorld: current.currentWorld,
+          initialBox: current.initialBox,
+          minWidth: current.minWidth ?? 120,
+          minHeight: current.minHeight ?? 60,
+          childBounds: current.childBounds
         };
-      });
-      if (get(gesture).mode === "moving") {
-        const rawDx = get(gesture).currentWorld.x - get(gesture).startWorld.x;
-        const rawDy = get(gesture).currentWorld.y - get(gesture).startWorld.y;
-        const snappedDx = snapToGrid(rawDx, GRID_SIZE);
-        const snappedDy = snapToGrid(rawDy, GRID_SIZE);
-        for (const [id, init2] of Object.entries(get(gesture).initialLayouts)) {
-          base[id] = {
-            ...init2,
-            x: snapToGrid(init2.x + snappedDx, GRID_SIZE),
-            y: snapToGrid(init2.y + snappedDy, GRID_SIZE)
-          };
-        }
-        if (get(gesture).isShift) {
-          for (const n of get(doc).nodes) {
-            if (n.kind === "frame" && n.children && n.children.length > 0) {
-              const movingChildBoxes = n.children.filter((cid) => cid in get(gesture).initialLayouts).map((cid) => base[cid]).filter((b) => Boolean(b));
-              if (movingChildBoxes.length > 0) {
-                const curBox = base[n.id];
-                if (curBox) {
-                  const cMinX = Math.min(...movingChildBoxes.map((b) => b.x));
-                  const cMinY = Math.min(...movingChildBoxes.map((b) => b.y));
-                  const cMaxX = Math.max(...movingChildBoxes.map((b) => b.x + b.width));
-                  const cMaxY = Math.max(...movingChildBoxes.map((b) => b.y + b.height));
-                  const fx = Math.min(curBox.x, snapToGrid(cMinX - FRAME_PAD_LEFT, GRID_SIZE));
-                  const fy = Math.min(curBox.y, snapToGrid(cMinY - FRAME_PAD_TOP, GRID_SIZE));
-                  const fRight = Math.max(curBox.x + curBox.width, snapToGrid(cMaxX + FRAME_PAD_RIGHT, GRID_SIZE));
-                  const fBottom = Math.max(curBox.y + curBox.height, snapToGrid(cMaxY + FRAME_PAD_BOTTOM, GRID_SIZE));
-                  base[n.id] = {
-                    x: fx,
-                    y: fy,
-                    width: Math.max(160, fRight - fx),
-                    height: Math.max(120, fBottom - fy)
-                  };
-                }
-              }
-            }
-          }
-        }
-      } else if (get(gesture).mode === "resizing") {
-        const rawDx = get(gesture).currentWorld.x - get(gesture).startWorld.x;
-        const rawDy = get(gesture).currentWorld.y - get(gesture).startWorld.y;
-        const minW = get(gesture).minWidth ?? 120;
-        const minH = get(gesture).minHeight ?? 60;
-        const init2 = get(gesture).initialBox;
-        const dir = get(gesture).handleDirection ?? "se";
-        const cb = get(gesture).childBounds;
-        let newX = init2.x;
-        let newY = init2.y;
-        let newW = init2.width;
-        let newH = init2.height;
-        if (dir === "e" || dir === "ne" || dir === "se") {
-          const minRight = cb ? snapToGrid(cb.maxX + FRAME_PAD_RIGHT, GRID_SIZE) : init2.x + minW;
-          const targetW = init2.width + rawDx;
-          newW = Math.max(minW, minRight - init2.x, snapToGrid(targetW, GRID_SIZE));
-        } else if (dir === "w" || dir === "nw" || dir === "sw") {
-          const rightEdge = init2.x + init2.width;
-          const maxLeft = cb ? snapToGrid(cb.minX - FRAME_PAD_LEFT, GRID_SIZE) : rightEdge - minW;
-          const targetX = init2.x + rawDx;
-          newX = Math.min(rightEdge - minW, maxLeft, snapToGrid(targetX, GRID_SIZE));
-          newW = rightEdge - newX;
-        }
-        if (dir === "s" || dir === "sw" || dir === "se") {
-          const minBottom = cb ? snapToGrid(cb.maxY + FRAME_PAD_BOTTOM, GRID_SIZE) : init2.y + minH;
-          const targetH = init2.height + rawDy;
-          newH = Math.max(minH, minBottom - init2.y, snapToGrid(targetH, GRID_SIZE));
-        } else if (dir === "n" || dir === "nw" || dir === "ne") {
-          const bottomEdge = init2.y + init2.height;
-          const maxTop = cb ? snapToGrid(cb.minY - FRAME_PAD_TOP, GRID_SIZE) : bottomEdge - minH;
-          const targetY = init2.y + rawDy;
-          newY = Math.min(bottomEdge - minH, maxTop, snapToGrid(targetY, GRID_SIZE));
-          newH = bottomEdge - newY;
-        }
-        base[get(gesture).nodeId] = { x: newX, y: newY, width: newW, height: newH };
+      } else if (current.mode === "marquee") {
+        adapted = current;
+      } else {
+        adapted = { mode: "idle" };
       }
-      if (get(inlineEditingNodeId)) {
-        for (const n of get(doc).nodes) {
-          if (n.kind === "frame" && n.children && n.children.includes(get(inlineEditingNodeId))) {
-            const editedBox = base[get(inlineEditingNodeId)];
-            const curBox = base[n.id];
-            if (editedBox && curBox) {
-              const fRight = Math.max(curBox.x + curBox.width, snapToGrid(editedBox.x + editedBox.width + FRAME_PAD_RIGHT, GRID_SIZE));
-              const fBottom = Math.max(curBox.y + curBox.height, snapToGrid(editedBox.y + editedBox.height + FRAME_PAD_BOTTOM, GRID_SIZE));
-              if (fRight > curBox.x + curBox.width || fBottom > curBox.y + curBox.height) {
-                base[n.id] = {
-                  ...curBox,
-                  width: Math.max(curBox.width, fRight - curBox.x),
-                  height: Math.max(curBox.height, fBottom - curBox.y)
-                };
-              }
-            }
-          }
-        }
-      }
-      return base;
+      return computeEffectiveLayouts(get(doc), store().optimisticUmlLayouts, adapted, get(inlineEditingNodeId), get(inlineDraft));
     });
     const edgeParallelOffsets = user_derived(() => {
       if (!get(doc)) return {};
-      const pairGroups = /* @__PURE__ */ new Map();
-      for (const edge of get(doc).edges) {
-        const pairKey = [edge.source.nodeId, edge.target.nodeId].sort().join("::");
-        const list = pairGroups.get(pairKey) ?? [];
-        list.push(edge.id);
-        pairGroups.set(pairKey, list);
-      }
-      const offsets = {};
-      for (const group of pairGroups.values()) {
-        if (group.length <= 1) {
-          offsets[group[0]] = 0;
-        } else {
-          const mid = (group.length - 1) / 2;
-          group.forEach((id, i) => {
-            offsets[id] = (i - mid) * 22;
-          });
-        }
-      }
-      return offsets;
+      return computeParallelEdgeOffsets(get(doc).edges);
     });
     const marqueeRect = user_derived(() => get(gesture).mode === "marquee" ? normalizeDragRect(get(gesture).startWorld, get(gesture).currentWorld) : null);
+    const resizeCursor = user_derived(() => {
+      if (get(gesture).mode !== "resizing") return null;
+      switch (get(gesture).handleDirection ?? "se") {
+        case "n":
+        case "s":
+          return "ns-resize";
+        case "e":
+        case "w":
+          return "ew-resize";
+        case "nw":
+        case "se":
+          return "nwse-resize";
+        default:
+          return "nesw-resize";
+      }
+    });
     user_effect(() => {
       store().registerCanvasCallbacks({
         onFitContent: fitContent,
@@ -10132,26 +11123,12 @@ ${component_stack}
         store().setViewport({ panX: 40, panY: 40, zoom: 1 });
         return;
       }
-      const layouts = Object.values(get(effectiveNodeLayouts));
-      let minX = Infinity;
-      let minY = Infinity;
-      let maxX = -Infinity;
-      let maxY = -Infinity;
-      for (const box of layouts) {
-        minX = Math.min(minX, box.x);
-        minY = Math.min(minY, box.y);
-        maxX = Math.max(maxX, box.x + box.width);
-        maxY = Math.max(maxY, box.y + box.height);
+      const bounds = computeContentBounds(get(effectiveNodeLayouts));
+      if (!bounds) {
+        store().setViewport({ panX: 40, panY: 40, zoom: 1 });
+        return;
       }
-      const pad = 60;
-      const contentW = Math.max(200, maxX - minX + pad * 2);
-      const contentH = Math.max(200, maxY - minY + pad * 2);
-      const viewW = Math.max(300, get(viewportEl).clientWidth);
-      const viewH = Math.max(300, get(viewportEl).clientHeight);
-      const zoom = Math.min(1.5, Math.max(0.25, Math.min(viewW / contentW, viewH / contentH)));
-      const panX = (viewW - (maxX - minX) * zoom) / 2 - minX * zoom;
-      const panY = (viewH - (maxY - minY) * zoom) / 2 - minY * zoom;
-      store().setViewport({ panX, panY, zoom });
+      store().viewportController.fitContent(bounds, get(viewportEl).clientWidth, get(viewportEl).clientHeight);
     }
     function handleWheel(e) {
       e.preventDefault();
@@ -10303,6 +11280,9 @@ ${component_stack}
       if (e.button === 2) return;
       e.stopPropagation();
       if (store().isReadOnly) return;
+      if (!store().selectedIds.includes(node.id)) {
+        store().selectSingle(node.id, e.shiftKey || e.metaKey || e.ctrlKey);
+      }
       const pt = getRelativeWorldPoint(e);
       const box = get(effectiveNodeLayouts)[node.id];
       if (!box) return;
@@ -10319,8 +11299,8 @@ ${component_stack}
             maxX: Math.max(...childBoxes.map((b) => b.x + b.width)),
             maxY: Math.max(...childBoxes.map((b) => b.y + b.height))
           };
-          minW = Math.max(160, snapToGrid(childBounds.maxX + FRAME_PAD_RIGHT - box.x, GRID_SIZE));
-          minH = Math.max(120, snapToGrid(childBounds.maxY + FRAME_PAD_BOTTOM - box.y, GRID_SIZE));
+          minW = Math.max(160, snapToGrid(childBounds.maxX + FRAME_PAD_RIGHT2 - box.x, GRID_SIZE));
+          minH = Math.max(120, snapToGrid(childBounds.maxY + FRAME_PAD_BOTTOM2 - box.y, GRID_SIZE));
         }
       }
       const localX = pt.x - box.x;
@@ -10479,23 +11459,23 @@ ${component_stack}
         let newW = init2.width;
         let newH = init2.height;
         if (dir === "e" || dir === "ne" || dir === "se") {
-          const minRight = cb ? snapToGrid(cb.maxX + FRAME_PAD_RIGHT, GRID_SIZE) : init2.x + minW;
+          const minRight = cb ? snapToGrid(cb.maxX + FRAME_PAD_RIGHT2, GRID_SIZE) : init2.x + minW;
           const targetW = init2.width + rawDx;
           newW = Math.max(minW, minRight - init2.x, snapToGrid(targetW, GRID_SIZE));
         } else if (dir === "w" || dir === "nw" || dir === "sw") {
           const rightEdge = init2.x + init2.width;
-          const maxLeft = cb ? snapToGrid(cb.minX - FRAME_PAD_LEFT, GRID_SIZE) : rightEdge - minW;
+          const maxLeft = cb ? snapToGrid(cb.minX - FRAME_PAD_LEFT2, GRID_SIZE) : rightEdge - minW;
           const targetX = init2.x + rawDx;
           newX = Math.min(rightEdge - minW, maxLeft, snapToGrid(targetX, GRID_SIZE));
           newW = rightEdge - newX;
         }
         if (dir === "s" || dir === "sw" || dir === "se") {
-          const minBottom = cb ? snapToGrid(cb.maxY + FRAME_PAD_BOTTOM, GRID_SIZE) : init2.y + minH;
+          const minBottom = cb ? snapToGrid(cb.maxY + FRAME_PAD_BOTTOM2, GRID_SIZE) : init2.y + minH;
           const targetH = init2.height + rawDy;
           newH = Math.max(minH, minBottom - init2.y, snapToGrid(targetH, GRID_SIZE));
         } else if (dir === "n" || dir === "nw" || dir === "ne") {
           const bottomEdge = init2.y + init2.height;
-          const maxTop = cb ? snapToGrid(cb.minY - FRAME_PAD_TOP, GRID_SIZE) : bottomEdge - minH;
+          const maxTop = cb ? snapToGrid(cb.minY - FRAME_PAD_TOP2, GRID_SIZE) : bottomEdge - minH;
           const targetY = init2.y + rawDy;
           newY = Math.min(bottomEdge - minH, maxTop, snapToGrid(targetY, GRID_SIZE));
           newH = bottomEdge - newY;
@@ -10533,110 +11513,7 @@ ${component_stack}
       set(gesture, { mode: "idle" }, true);
     }
     function getFrameDragDropUpdates(clickedNodeId, updates, initialLayouts, dropPt, isShift) {
-      if (!get(doc)) return { layoutUpdates: {}, childrenUpdates: {} };
-      const frames = get(doc).nodes.filter((n) => n.kind === "frame");
-      if (frames.length === 0) return { layoutUpdates: {}, childrenUpdates: {} };
-      const clickedNode = get(doc).nodes.find((n) => n.id === clickedNodeId);
-      const movedFrames = Object.keys(updates).filter((id) => get(doc)?.nodes.find((n) => n.id === id && n.kind === "frame"));
-      if (clickedNode?.kind === "frame" || movedFrames.length > 0) {
-        return { layoutUpdates: {}, childrenUpdates: {} };
-      }
-      const movedNonFrameIds = Object.keys(updates).filter((id) => get(doc)?.nodes.find((n) => n.id === id && n.kind !== "frame"));
-      if (movedNonFrameIds.length === 0) {
-        return { layoutUpdates: {}, childrenUpdates: {} };
-      }
-      let hoveredFrame;
-      for (let i = get(doc).nodes.length - 1; i >= 0; i--) {
-        const n = get(doc).nodes[i];
-        if (n.kind !== "frame") continue;
-        const fbox = get(effectiveNodeLayouts)[n.id];
-        if (!fbox) continue;
-        const labelW = (n.name || "Frame").length * 7.6 + 16;
-        const isOverLabel = dropPt.x >= fbox.x + 16 && dropPt.x <= fbox.x + 16 + labelW && dropPt.y >= fbox.y - 10 && dropPt.y <= fbox.y + 10;
-        const isOverBody = dropPt.x >= fbox.x && dropPt.x <= fbox.x + fbox.width && dropPt.y >= fbox.y && dropPt.y <= fbox.y + fbox.height;
-        if (isOverLabel || isOverBody) {
-          hoveredFrame = n;
-          break;
-        }
-      }
-      const frameChildrenMap = /* @__PURE__ */ new Map();
-      for (const fr of frames) {
-        frameChildrenMap.set(fr.id, [...fr.children ?? []]);
-      }
-      const frameLayoutUpdates = {};
-      if (hoveredFrame) {
-        const origChildren = new Set(hoveredFrame.children ?? []);
-        const hChildren = frameChildrenMap.get(hoveredFrame.id);
-        let anyNewElementAdded = false;
-        let anyShiftExistingResized = false;
-        for (const nodeId of movedNonFrameIds) {
-          const initBox = initialLayouts[nodeId];
-          const frInitBox = initialLayouts[hoveredFrame.id] ?? get(effectiveNodeLayouts)[hoveredFrame.id];
-          const wasSpatiallyInside = initBox && frInitBox ? initBox.x >= frInitBox.x && initBox.y >= frInitBox.y && initBox.x + initBox.width <= frInitBox.x + frInitBox.width && initBox.y + initBox.height <= frInitBox.y + frInitBox.height : false;
-          const wasAlreadyInside = origChildren.has(nodeId) || wasSpatiallyInside;
-          if (!hChildren.includes(nodeId)) {
-            hChildren.push(nodeId);
-          }
-          if (!wasAlreadyInside) {
-            anyNewElementAdded = true;
-          } else if (isShift) {
-            anyShiftExistingResized = true;
-          }
-          for (const fr of frames) {
-            if (fr.id === hoveredFrame.id) continue;
-            const otherList = frameChildrenMap.get(fr.id);
-            if (otherList) {
-              const idx = otherList.indexOf(nodeId);
-              if (idx !== -1) otherList.splice(idx, 1);
-            }
-          }
-        }
-        const shouldResize = anyNewElementAdded || anyShiftExistingResized;
-        if (shouldResize) {
-          const baseFrBox = initialLayouts[hoveredFrame.id] ?? get(doc).layout.nodes[hoveredFrame.id] ?? { x: 0, y: 0, width: 260, height: 180 };
-          let frBox = { ...baseFrBox };
-          for (const cid of hChildren) {
-            const nBox = updates[cid] ?? get(effectiveNodeLayouts)[cid];
-            if (!nBox) continue;
-            const fx = Math.min(frBox.x, snapToGrid(nBox.x - FRAME_PAD_LEFT, GRID_SIZE));
-            const fy = Math.min(frBox.y, snapToGrid(nBox.y - FRAME_PAD_TOP, GRID_SIZE));
-            const fRight = Math.max(frBox.x + frBox.width, snapToGrid(nBox.x + nBox.width + FRAME_PAD_RIGHT, GRID_SIZE));
-            const fBottom = Math.max(frBox.y + frBox.height, snapToGrid(nBox.y + nBox.height + FRAME_PAD_BOTTOM, GRID_SIZE));
-            const fw = Math.max(160, fRight - fx);
-            const fh = Math.max(120, fBottom - fy);
-            if (fx !== frBox.x || fy !== frBox.y || fw !== frBox.width || fh !== frBox.height) {
-              frBox = { x: fx, y: fy, width: fw, height: fh };
-            }
-          }
-          const docBox = get(doc).layout.nodes[hoveredFrame.id];
-          if (!docBox || frBox.x !== docBox.x || frBox.y !== docBox.y || frBox.width !== docBox.width || frBox.height !== docBox.height) {
-            frameLayoutUpdates[hoveredFrame.id] = frBox;
-          }
-        }
-      } else {
-        for (const nodeId of movedNonFrameIds) {
-          for (const fr of frames) {
-            const cList = frameChildrenMap.get(fr.id);
-            if (cList) {
-              const idx = cList.indexOf(nodeId);
-              if (idx !== -1) {
-                cList.splice(idx, 1);
-              }
-            }
-          }
-        }
-      }
-      const changedChildren = {};
-      for (const [fId, children] of frameChildrenMap.entries()) {
-        const fr = get(doc).nodes.find((n) => n.id === fId);
-        if (fr && JSON.stringify(fr.children ?? []) !== JSON.stringify(children)) {
-          changedChildren[fId] = children;
-        }
-      }
-      return {
-        layoutUpdates: frameLayoutUpdates,
-        childrenUpdates: changedChildren
-      };
+      return computeFrameDragDropUpdates(get(doc), get(effectiveNodeLayouts), clickedNodeId, updates, initialLayouts, dropPt, isShift);
     }
     function deleteSelected() {
       if (store().isReadOnly || !get(doc) || store().selectedIds.length === 0) return;
@@ -10918,10 +11795,6 @@ ${component_stack}
           {
             label: "Add Operation",
             action: () => addNodeOperationInline(node)
-          },
-          {
-            label: "Add Interface Endpoint",
-            action: () => addNodeInterfaceInline(node)
           }
         ] : [],
         {
@@ -10957,9 +11830,12 @@ ${component_stack}
       if (get(inlineEditingNodeId) && get(inlineEditingNodeId) !== node.id) {
         commitInlineNodeEdit();
       }
+      if (get(inlineEditingEdgeId)) commitInlineEdgeLabel();
+      if (get(inlineEditingMultiplicity)) commitInlineMultiplicity();
       if (!store().selectedIds.includes(node.id)) {
         store().selectSingle(node.id, false);
       }
+      store().inlineEdit.beginNode(node);
       set(inlineEditingNodeId, node.id, true);
       set(
         lastSyncedNodeJson,
@@ -11038,11 +11914,21 @@ ${component_stack}
       }
     }
     function commitInlineNodeEdit(node) {
+      if (store().inlineEdit.state.mode === "node") {
+        store().inlineEdit.commitNode(node);
+        set(inlineEditingNodeId, null);
+        return;
+      }
       flushInlineNodeHeader(node);
       flushInlineNodeMembers(node);
       flushInlineNodeText(node);
       set(inlineEditingNodeId, null);
     }
+    user_effect(() => {
+      if (get(inlineEditingNodeId) && store().inlineEdit.state.mode !== "node") {
+        set(inlineEditingNodeId, null);
+      }
+    });
     function startInlineEdgeLabelEdit(edge) {
       if (get(inlineEditingNodeId)) commitInlineNodeEdit();
       if (get(inlineEditingEdgeId) && get(inlineEditingEdgeId) !== edge.id) commitInlineEdgeLabel();
@@ -11215,7 +12101,7 @@ ${component_stack}
       }
       return r;
     }
-    function renderEndpointPath(dec) {
+    function renderEndpointPath2(dec) {
       const shapeDesc = getEndpointShape(dec?.shape ?? "none");
       if (!shapeDesc || shapeDesc.kind === "none") {
         return { d: "", fill: "none" };
@@ -11249,506 +12135,27 @@ ${component_stack}
       if (!desc?.supportsFill) return true;
       return (a.fill ?? desc.defaultFill ?? "hollow") === (b.fill ?? desc.defaultFill ?? "hollow");
     }
-    function buildShapeSvgPath(shape, w, h) {
-      const pad = 2;
-      const x0 = pad;
-      const y0 = pad;
-      const x1 = Math.max(pad + 10, w - pad);
-      const y1 = Math.max(pad + 10, h - pad);
-      const cx = w / 2;
-      const cy = h / 2;
-      switch (shape ?? "rectangle") {
-        case "ellipse": {
-          const rx = (x1 - x0) / 2;
-          const ry = (y1 - y0) / 2;
-          return `M ${cx - rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx - rx} ${cy} Z`;
-        }
-        case "rhombus": {
-          return `M ${cx} ${y0} L ${x1} ${cy} L ${cx} ${y1} L ${x0} ${cy} Z`;
-        }
-        case "trapezoid": {
-          const inset = Math.min(36, (x1 - x0) * 0.2);
-          return `M ${x0 + inset} ${y0} L ${x1 - inset} ${y0} L ${x1} ${y1} L ${x0} ${y1} Z`;
-        }
-        case "parallelogram": {
-          const skew = Math.min(32, (x1 - x0) * 0.18);
-          return `M ${x0 + skew} ${y0} L ${x1} ${y0} L ${x1 - skew} ${y1} L ${x0} ${y1} Z`;
-        }
-        case "rectangle":
-        default: {
-          return `M ${x0} ${y0} L ${x1} ${y0} L ${x1} ${y1} L ${x0} ${y1} Z`;
-        }
-      }
-    }
-    function renderDiagramToCanvas() {
-      if (!get(doc) || get(doc).nodes.length === 0) return null;
-      const layouts = Object.values(get(effectiveNodeLayouts));
-      if (layouts.length === 0) return null;
-      let minX = Infinity;
-      let minY = Infinity;
-      let maxX = -Infinity;
-      let maxY = -Infinity;
-      for (const b of layouts) {
-        minX = Math.min(minX, b.x);
-        minY = Math.min(minY, b.y);
-        maxX = Math.max(maxX, b.x + b.width);
-        maxY = Math.max(maxY, b.y + b.height);
-      }
-      const edgeItems = [];
-      for (const edge of get(doc).edges) {
-        const srcBox = get(effectiveNodeLayouts)[edge.source.nodeId];
-        const tgtBox = get(effectiveNodeLayouts)[edge.target.nodeId];
-        if (!srcBox || !tgtBox) continue;
-        const srcNode = get(doc).nodes.find((n) => n.id === edge.source.nodeId);
-        const tgtNode = get(doc).nodes.find((n) => n.id === edge.target.nodeId);
-        const touchesNote = srcNode?.kind === "note" || tgtNode?.kind === "note";
-        const isDashed = (edge.visual?.line ?? (touchesNote ? "dashed" : "solid")) === "dashed";
-        const startDec = edge.visual?.start ?? { shape: "none", size: 10 };
-        const endDec = edge.visual?.end ?? { shape: "none", size: 10 };
-        const geom = computeUmlEdgeGeometry(srcBox, tgtBox, getEdgeRouting(edge), startDec, endDec, get(edgeParallelOffsets)[edge.id] ?? 0, void 0, void 0, srcNode?.kind === "shape" ? srcNode.shape : void 0, tgtNode?.kind === "shape" ? tgtNode.shape : void 0, edge.label);
-        const startMarker = renderEndpointPath(startDec);
-        const endMarker = renderEndpointPath(endDec);
-        const startMultPt = getMultiplicityLabelPoint(geom.startTip, geom.startAngleDeg, edge.source.multiplicity);
-        const endMultPt = getMultiplicityLabelPoint(geom.endTip, geom.endAngleDeg, edge.target.multiplicity);
-        edgeItems.push({
-          edge,
-          geom,
-          startDec,
-          endDec,
-          isDashed,
-          startMarker,
-          endMarker,
-          startMultPt,
-          endMultPt
-        });
-        if (edge.label) {
-          minX = Math.min(minX, geom.labelPoint.x - 50);
-          minY = Math.min(minY, geom.labelPoint.y - 20);
-          maxX = Math.max(maxX, geom.labelPoint.x + 50);
-          maxY = Math.max(maxY, geom.labelPoint.y + 20);
-        }
-        if (edge.source.multiplicity) {
-          minX = Math.min(minX, startMultPt.x - 30);
-          minY = Math.min(minY, startMultPt.y - 15);
-          maxX = Math.max(maxX, startMultPt.x + 30);
-          maxY = Math.max(maxY, startMultPt.y + 15);
-        }
-        if (edge.target.multiplicity) {
-          minX = Math.min(minX, endMultPt.x - 30);
-          minY = Math.min(minY, endMultPt.y - 15);
-          maxX = Math.max(maxX, endMultPt.x + 30);
-          maxY = Math.max(maxY, endMultPt.y + 15);
-        }
-      }
-      const PADDING = 40;
-      minX -= PADDING;
-      minY -= PADDING;
-      maxX += PADDING;
-      maxY += PADDING;
-      const width = Math.max(200, Math.ceil(maxX - minX));
-      const height = Math.max(200, Math.ceil(maxY - minY));
-      const compStyles = get(viewportEl) ? window.getComputedStyle(get(viewportEl)) : null;
-      const bodyStyles = typeof document !== "undefined" ? window.getComputedStyle(document.body) : null;
-      function getCssVar(varName, fallback2) {
-        const v = compStyles?.getPropertyValue(varName)?.trim() || bodyStyles?.getPropertyValue(varName)?.trim();
-        return v || fallback2;
-      }
-      const widgetBg = getCssVar("--vscode-editorWidget-background", "#252526");
-      const editorFg = getCssVar("--vscode-editor-foreground", "#cccccc");
-      const panelBorder = getCssVar("--vscode-panel-border", "rgba(128, 128, 128, 0.35)");
-      const descFg = getCssVar("--vscode-descriptionForeground", "#999999");
-      const noteBg = getCssVar("--vscode-textBlockQuote-background", widgetBg);
-      const editorBg = getCssVar("--vscode-editor-background", "#1e1e1e");
-      const fontFamily = getCssVar("--vscode-font-family", '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif');
-      const monoFamily = getCssVar("--vscode-editor-font-family", 'Consolas, "Courier New", monospace');
-      const nodeBorder = panelBorder || editorFg;
-      const canvas = document.createElement("canvas");
-      const scale = 2;
-      canvas.width = width * scale;
-      canvas.height = height * scale;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return null;
-      ctx.scale(scale, scale);
-      ctx.translate(-minX, -minY);
-      function drawRoundRectPath(x, y, w, h, r) {
-        ctx.beginPath();
-        if (typeof ctx.roundRect === "function") {
-          ctx.roundRect(x, y, w, h, r);
-        } else {
-          ctx.moveTo(x + r, y);
-          ctx.lineTo(x + w - r, y);
-          ctx.arcTo(x + w, y, x + w, y + r, r);
-          ctx.lineTo(x + w, y + h - r);
-          ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-          ctx.lineTo(x + r, y + h);
-          ctx.arcTo(x, y + h, x, y + h - r, r);
-          ctx.lineTo(x, y + r);
-          ctx.arcTo(x, y, x + r, y, r);
-          ctx.closePath();
-        }
-      }
-      for (const node of get(doc).nodes) {
-        if (node.kind !== "frame") continue;
-        const box = get(effectiveNodeLayouts)[node.id];
-        if (!box) continue;
-        ctx.save();
-        ctx.translate(box.x, box.y);
-        drawRoundRectPath(0, 0, box.width, box.height, 6);
-        ctx.strokeStyle = nodeBorder;
-        ctx.lineWidth = 3;
-        if (node.line === "dashed") {
-          ctx.setLineDash([8, 6]);
-        } else {
-          ctx.setLineDash([]);
-        }
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.font = `11px ${fontFamily}`;
-        const labelText = node.name || "Frame";
-        const labelMetrics = ctx.measureText(labelText);
-        const badgeW = Math.max(labelText.length * 7.6 + 16, labelMetrics.width + 16);
-        const badgeH = 20;
-        const badgeLeft = 16;
-        const badgeTop = -10;
-        drawRoundRectPath(badgeLeft, badgeTop, badgeW, badgeH, 4);
-        ctx.fillStyle = widgetBg;
-        ctx.fill();
-        ctx.strokeStyle = panelBorder;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = editorFg;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(labelText, badgeLeft + badgeW / 2, badgeTop + badgeH / 2);
-        ctx.restore();
-      }
-      for (const item of edgeItems) {
-        const {
-          edge,
-          geom,
-          isDashed,
-          startMarker,
-          endMarker,
-          startDec,
-          endDec,
-          startMultPt,
-          endMultPt
-        } = item;
-        ctx.save();
-        ctx.strokeStyle = editorFg;
-        ctx.lineWidth = 1.75;
-        if (isDashed) {
-          ctx.setLineDash([6, 4]);
-        } else {
-          ctx.setLineDash([]);
-        }
-        const linePath = new Path2D(geom.pathD);
-        ctx.stroke(linePath);
-        ctx.restore();
-        if (startMarker.d) {
-          ctx.save();
-          ctx.translate(geom.startTip.x, geom.startTip.y);
-          ctx.rotate(geom.startAngleDeg * Math.PI / 180);
-          const mPath = new Path2D(startMarker.d);
-          if (startMarker.fill !== "none") {
-            ctx.fillStyle = startDec.fill === "filled" ? editorFg : editorBg;
-            ctx.fill(mPath);
-          }
-          ctx.strokeStyle = editorFg;
-          ctx.lineWidth = 1.75;
-          ctx.lineJoin = "round";
-          ctx.stroke(mPath);
-          ctx.restore();
-        }
-        if (endMarker.d) {
-          ctx.save();
-          ctx.translate(geom.endTip.x, geom.endTip.y);
-          ctx.rotate(geom.endAngleDeg * Math.PI / 180);
-          const mPath = new Path2D(endMarker.d);
-          if (endMarker.fill !== "none") {
-            ctx.fillStyle = endDec.fill === "filled" ? editorFg : editorBg;
-            ctx.fill(mPath);
-          }
-          ctx.strokeStyle = editorFg;
-          ctx.lineWidth = 1.75;
-          ctx.lineJoin = "round";
-          ctx.stroke(mPath);
-          ctx.restore();
-        }
-        const drawMult = (pt, text2) => {
-          ctx.save();
-          ctx.font = `600 10.5px ${monoFamily}`;
-          const metrics = ctx.measureText(text2);
-          const w = Math.max(text2.length * 7.6 + 12, metrics.width + 12);
-          const h = 17;
-          const left = pt.x - w / 2;
-          const top = pt.y - 9;
-          drawRoundRectPath(left, top, w, h, 3);
-          ctx.fillStyle = editorBg;
-          ctx.globalAlpha = 0.9;
-          ctx.fill();
-          ctx.globalAlpha = 1;
-          ctx.strokeStyle = panelBorder;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-          ctx.fillStyle = editorFg;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(text2, pt.x, pt.y - 0.5);
-          ctx.restore();
-        };
-        if (edge.source.multiplicity) {
-          drawMult(startMultPt, edge.source.multiplicity);
-        }
-        if (edge.target.multiplicity) {
-          drawMult(endMultPt, edge.target.multiplicity);
-        }
-        if (edge.label) {
-          ctx.save();
-          ctx.font = `11px ${fontFamily}`;
-          const metrics = ctx.measureText(edge.label);
-          const w = Math.max(edge.label.length * 7.6 + 16, metrics.width + 16);
-          const h = 20;
-          const left = geom.labelPoint.x - w / 2;
-          const top = geom.labelPoint.y - 10;
-          drawRoundRectPath(left, top, w, h, 4);
-          ctx.fillStyle = widgetBg;
-          ctx.fill();
-          ctx.strokeStyle = panelBorder;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-          ctx.fillStyle = editorFg;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(edge.label, geom.labelPoint.x, geom.labelPoint.y);
-          ctx.restore();
-        }
-      }
-      for (const node of get(doc).nodes) {
-        if (node.kind === "frame") continue;
-        const box = get(effectiveNodeLayouts)[node.id];
-        if (!box) continue;
-        const domEl = nodeElements.get(node.id);
-        if (node.kind === "shape") {
-          ctx.save();
-          ctx.translate(box.x, box.y);
-          const shapePathD = buildShapeSvgPath(node.shape, box.width, box.height);
-          const p = new Path2D(shapePathD);
-          ctx.save();
-          ctx.shadowColor = "rgba(0, 0, 0, 0.18)";
-          ctx.shadowBlur = 5;
-          ctx.shadowOffsetY = 2;
-          ctx.fillStyle = widgetBg;
-          ctx.fill(p);
-          ctx.restore();
-          ctx.strokeStyle = nodeBorder;
-          ctx.lineWidth = 1.75;
-          ctx.lineJoin = "round";
-          ctx.stroke(p);
-          ctx.fillStyle = editorFg;
-          ctx.font = `600 13px ${fontFamily}`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(node.name || "", box.width / 2, box.height / 2);
-          ctx.restore();
-          continue;
-        }
-        if (node.kind === "note") {
-          ctx.save();
-          ctx.translate(box.x, box.y);
-          ctx.save();
-          ctx.shadowColor = "rgba(0, 0, 0, 0.16)";
-          ctx.shadowBlur = 6;
-          ctx.shadowOffsetY = 2;
-          drawRoundRectPath(0, 0, box.width, box.height, 5);
-          ctx.fillStyle = noteBg;
-          ctx.fill();
-          ctx.restore();
-          drawRoundRectPath(0, 0, box.width, box.height, 5);
-          ctx.strokeStyle = nodeBorder;
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([5, 4]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.save();
-          drawRoundRectPath(0, 0, box.width, box.height, 5);
-          ctx.clip();
-          const domHeader2 = domEl?.querySelector(".vz-uml-node-header");
-          const headerH2 = domHeader2 ? domHeader2.offsetHeight : 30;
-          ctx.fillStyle = editorFg;
-          ctx.font = `600 13px ${fontFamily}`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "top";
-          ctx.fillText(node.name || "", box.width / 2, (headerH2 - 16) / 2);
-          ctx.strokeStyle = panelBorder;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(0, headerH2);
-          ctx.lineTo(box.width, headerH2);
-          ctx.stroke();
-          const noteContent = node.text || "";
-          ctx.fillStyle = editorFg;
-          ctx.font = `12px ${fontFamily}`;
-          ctx.textAlign = "left";
-          ctx.textBaseline = "top";
-          const padX = 10;
-          const padY = headerH2 + 8;
-          const maxW = box.width - padX * 2;
-          const lineH = 16.8;
-          const lines = noteContent.split("\n");
-          let curY2 = padY;
-          for (const line of lines) {
-            if (curY2 + lineH > box.height) break;
-            if (!line) {
-              curY2 += lineH;
-              continue;
-            }
-            const words = line.split(" ");
-            let currentLine = "";
-            for (let i = 0; i < words.length; i++) {
-              const testLine = currentLine ? currentLine + " " + words[i] : words[i];
-              if (ctx.measureText(testLine).width > maxW && currentLine) {
-                ctx.fillText(currentLine, padX, curY2);
-                curY2 += lineH;
-                if (curY2 + lineH > box.height) break;
-                currentLine = words[i];
-              } else {
-                currentLine = testLine;
-              }
-            }
-            if (currentLine && curY2 + lineH <= box.height + 4) {
-              ctx.fillText(currentLine, padX, curY2);
-              curY2 += lineH;
-            }
-          }
-          ctx.restore();
-          ctx.restore();
-          continue;
-        }
-        ctx.save();
-        ctx.translate(box.x, box.y);
-        ctx.save();
-        ctx.shadowColor = "rgba(0, 0, 0, 0.16)";
-        ctx.shadowBlur = 6;
-        ctx.shadowOffsetY = 2;
-        drawRoundRectPath(0, 0, box.width, box.height, 5);
-        ctx.fillStyle = widgetBg;
-        ctx.fill();
-        ctx.restore();
-        drawRoundRectPath(0, 0, box.width, box.height, 5);
-        ctx.strokeStyle = nodeBorder;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.save();
-        drawRoundRectPath(0, 0, box.width, box.height, 5);
-        ctx.clip();
-        const kindDesc = getUmlNodeKind(node.kind);
-        const stereotypeText = node.stereotype || kindDesc?.defaultStereotype || (!kindDesc ? `unsupported: ${node.kind}` : "");
-        const hasStereotype = !!stereotypeText;
-        const domHeader = domEl?.querySelector(".vz-uml-node-header");
-        const headerH = domHeader ? domHeader.offsetHeight : hasStereotype ? 42 : 30;
-        let titleY;
-        if (hasStereotype) {
-          ctx.fillStyle = descFg;
-          ctx.font = `11px ${fontFamily}`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "top";
-          ctx.fillText(`\xAB${stereotypeText}\xBB`, box.width / 2, 7);
-          titleY = 22;
-        } else {
-          titleY = (headerH - 16) / 2;
-        }
-        ctx.fillStyle = editorFg;
-        ctx.font = `600 13px ${fontFamily}`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "top";
-        ctx.fillText(node.name || "", box.width / 2, titleY);
-        ctx.strokeStyle = panelBorder;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(0, headerH);
-        ctx.lineTo(box.width, headerH);
-        ctx.stroke();
-        let curY = headerH;
-        const attrsVisible = node.showAttributes !== false;
-        const attrs = node.attributes ?? [];
-        if (attrsVisible && attrs.length > 0) {
-          const compPadY = 5;
-          const compPadX = 8;
-          const memberLineH = 16.7;
-          const domComp0 = domEl?.querySelectorAll(".vz-uml-compartment")[0];
-          const comp0H = domComp0 ? domComp0.offsetHeight : compPadY * 2 + attrs.length * memberLineH;
-          let lineY = curY + compPadY;
-          for (const attr2 of attrs) {
-            const visSign = formatVisibilitySign(attr2.visibility);
-            ctx.font = `bold 11.5px ${monoFamily}`;
-            ctx.fillStyle = editorFg;
-            ctx.textAlign = "left";
-            ctx.textBaseline = "top";
-            ctx.fillText(visSign, compPadX, lineY);
-            const nameX = compPadX + 16;
-            ctx.font = `11.5px ${monoFamily}`;
-            ctx.fillText(attr2.name || "", nameX, lineY);
-            if (attr2.type) {
-              const nameW = ctx.measureText(attr2.name || "").width;
-              ctx.fillStyle = descFg;
-              ctx.fillText(`: ${attr2.type}`, nameX + nameW, lineY);
-            }
-            lineY += memberLineH;
-          }
-          curY += comp0H;
-          ctx.strokeStyle = panelBorder;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(0, curY);
-          ctx.lineTo(box.width, curY);
-          ctx.stroke();
-        }
-        const opsVisible = node.showOperations !== false;
-        const ops = node.operations ?? [];
-        if (opsVisible && ops.length > 0) {
-          const compPadY = 5;
-          const compPadX = 8;
-          const memberLineH = 16.7;
-          let lineY = curY + compPadY;
-          for (const op of ops) {
-            const visSign = formatVisibilitySign(op.visibility);
-            ctx.font = `bold 11.5px ${monoFamily}`;
-            ctx.fillStyle = editorFg;
-            ctx.textAlign = "left";
-            ctx.textBaseline = "top";
-            ctx.fillText(visSign, compPadX, lineY);
-            const nameX = compPadX + 16;
-            ctx.font = `11.5px ${monoFamily}`;
-            const params = extractOperationParameters(op);
-            const paramsStr = params.map((p) => p.name + (p.type ? `: ${p.type}` : "")).join(", ");
-            const sigText = `${op.name || ""}(${paramsStr})`;
-            ctx.fillText(sigText, nameX, lineY);
-            if (op.returnType) {
-              const sigW = ctx.measureText(sigText).width;
-              ctx.fillStyle = descFg;
-              ctx.fillText(`: ${op.returnType}`, nameX + sigW, lineY);
-            }
-            lineY += memberLineH;
-          }
-        }
-        ctx.restore();
-        ctx.restore();
-      }
-      return { canvas, width, height };
+    function renderCurrentDiagram() {
+      if (!get(doc)) return null;
+      return renderDiagramToCanvas({
+        doc: get(doc),
+        layouts: get(effectiveNodeLayouts),
+        parallelOffsets: get(edgeParallelOffsets),
+        defaultRouting: get(doc).defaultRouting,
+        viewportElement: get(viewportEl)
+      });
     }
     async function exportToClipboard() {
       try {
-        const render = renderDiagramToCanvas();
+        const render = renderCurrentDiagram();
         if (!render) {
           store().setStatusMessage("No diagram content to export.");
           return;
         }
         const { canvas } = render;
-        const blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+        const blob = await canvasToPngBlob(canvas);
         if (!blob) throw new Error("Canvas snapshot generation failed");
-        const dataUrl = canvas.toDataURL("image/png");
-        const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+        const base64 = canvasToPngBase64(canvas);
         let copied = false;
         if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
           try {
@@ -11770,14 +12177,13 @@ ${component_stack}
     }
     async function exportAsPng() {
       try {
-        const render = renderDiagramToCanvas();
+        const render = renderCurrentDiagram();
         if (!render) {
           store().setStatusMessage("No diagram content to export.");
           return;
         }
         const { canvas } = render;
-        const dataUrl = canvas.toDataURL("image/png");
-        const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+        const base64 = canvasToPngBase64(canvas);
         postToHost({
           type: "webview.exportFile",
           format: "png",
@@ -11788,1103 +12194,518 @@ ${component_stack}
         store().setStatusMessage("Failed to export as PNG.");
       }
     }
-    var div = root_422();
+    var div = root_10();
     event("pointermove", $window, handleWindowPointerMove);
     event("pointerup", $window, handleWindowPointerUp);
     event("pointercancel", $window, cancelGesture);
     event("keydown", $window, handleKeyDown);
     event("keyup", $window, handleKeyUp);
-    var div_1 = child(div);
-    var div_2 = child(div_1);
     let classes;
-    var div_3 = child(div_2);
-    var button = child(div_3);
+    var div_1 = child(div);
+    var button = child(div_1);
     var button_1 = sibling(button, 2);
-    var text_1 = only_child(button_1);
+    var text2 = only_child(button_1);
     var button_2 = sibling(button_1, 2);
-    reset(div_3);
-    var node_2 = sibling(div_3, 2);
+    reset(div_1);
+    var node_2 = sibling(div_1, 2);
     {
-      var consequent_49 = ($$anchor2) => {
-        var fragment_1 = root_41();
-        var div_4 = first_child(fragment_1);
-        each(div_4, 21, () => get(doc).nodes.filter((n) => n.kind === "frame"), (node) => node.id, ($$anchor3, node) => {
+      var consequent_13 = ($$anchor2) => {
+        var fragment_1 = root_9();
+        var div_2 = first_child(fragment_1);
+        each(div_2, 21, () => get(doc).nodes.filter((n) => n.kind === "frame"), (node) => node.id, ($$anchor3, node) => {
           const box = user_derived(() => get(effectiveNodeLayouts)[get(node).id]);
-          const isSelected = user_derived(() => store().selectedIds.includes(get(node).id));
-          const isInlineEditing = user_derived(() => get(inlineEditingNodeId) === get(node).id);
           var fragment_2 = comment();
           var node_3 = first_child(fragment_2);
           {
-            var consequent_3 = ($$anchor4) => {
-              var div_5 = root_45();
-              let classes_1;
-              var node_4 = child(div_5);
+            var consequent_1 = ($$anchor4) => {
               {
-                var consequent_1 = ($$anchor5) => {
-                  var fragment_3 = root_211();
-                  var div_6 = first_child(fragment_3);
-                  var div_7 = sibling(div_6, 2);
-                  var div_8 = sibling(div_7, 2);
-                  var div_9 = sibling(div_8, 2);
-                  delegated("pointerdown", div_6, (e) => handleResizeHandlePointerDown(e, get(node), "n"));
-                  delegated("pointerdown", div_7, (e) => handleResizeHandlePointerDown(e, get(node), "s"));
-                  delegated("pointerdown", div_8, (e) => handleResizeHandlePointerDown(e, get(node), "w"));
-                  delegated("pointerdown", div_9, (e) => handleResizeHandlePointerDown(e, get(node), "e"));
-                  append($$anchor5, fragment_3);
-                };
-                if_block(node_4, ($$render) => {
-                  if (!store().isReadOnly) $$render(consequent_1);
+                let $0 = user_derived(() => store().selectedIds.includes(get(node).id));
+                FrameNode($$anchor4, {
+                  get store() {
+                    return store();
+                  },
+                  get node() {
+                    return get(node);
+                  },
+                  get box() {
+                    return get(box);
+                  },
+                  get selected() {
+                    return get($0);
+                  },
+                  onpointerdown: handleNodePointerDown,
+                  oncontextmenu: handleNodeContextMenu,
+                  ondblclick: (e, n) => {
+                    e.stopPropagation();
+                    if (store().isReadOnly || e.shiftKey || e.ctrlKey || e.metaKey) return;
+                    startInlineNodeEdit(n);
+                  },
+                  onresizestart: handleResizeHandlePointerDown
                 });
               }
-              var node_5 = sibling(node_4, 2);
-              {
-                var consequent_2 = ($$anchor5) => {
-                  var div_10 = root_37();
-                  delegated("pointerdown", div_10, (e) => handleResizeHandlePointerDown(e, get(node), "se"));
-                  append($$anchor5, div_10);
-                };
-                if_block(node_5, ($$render) => {
-                  if (get(isSelected) && !store().isReadOnly) $$render(consequent_2);
-                });
-              }
-              reset(div_5);
-              action(div_5, ($$node, $$action_arg) => registerNodeElement?.($$node, $$action_arg), () => get(node).id);
-              template_effect(() => {
-                classes_1 = set_class(div_5, 1, "vz-uml-node kind-frame", null, classes_1, {
-                  selected: get(isSelected),
-                  "inline-editing": get(isInlineEditing),
-                  dashed: get(node).line === "dashed"
-                });
-                set_style(div_5, `left: ${get(box).x ?? ""}px; top: ${get(box).y ?? ""}px; width: ${get(box).width ?? ""}px; height: ${get(box).height ?? ""}px;`);
-                set_attribute2(div_5, "aria-label", `UML frame ${get(node).name ?? ""}`);
-              });
-              delegated("pointerdown", div_5, (e) => handleNodePointerDown(e, get(node)));
-              delegated("contextmenu", div_5, (e) => handleNodeContextMenu(e, get(node)));
-              delegated("dblclick", div_5, (e) => {
-                e.stopPropagation();
-                if (store().isReadOnly || e.shiftKey || e.ctrlKey || e.metaKey) return;
-                startInlineNodeEdit(get(node));
-              });
-              append($$anchor4, div_5);
             };
             if_block(node_3, ($$render) => {
-              if (get(box)) $$render(consequent_3);
+              if (get(box)) $$render(consequent_1);
             });
           }
           append($$anchor3, fragment_2);
         });
-        reset(div_4);
-        var svg_2 = sibling(div_4, 2);
-        var g_1 = child(svg_2);
-        var node_6 = child(g_1);
-        each(node_6, 17, () => get(doc).edges, (edge) => edge.id, ($$anchor3, edge) => {
+        reset(div_2);
+        var svg_2 = sibling(div_2, 2);
+        var g = child(svg_2);
+        each(g, 21, () => get(doc).edges, (edge) => edge.id, ($$anchor3, edge) => {
           const srcBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).source.nodeId]);
           const tgtBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).target.nodeId]);
           const srcNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(edge).source.nodeId));
           const tgtNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(edge).target.nodeId));
           var fragment_4 = comment();
-          var node_7 = first_child(fragment_4);
+          var node_4 = first_child(fragment_4);
           {
-            var consequent_9 = ($$anchor4) => {
-              const touchesNote = user_derived(() => get(srcNode)?.kind === "note" || get(tgtNode)?.kind === "note");
-              const isDashed = user_derived(() => (get(edge).visual?.line ?? (get(touchesNote) ? "dashed" : "solid")) === "dashed");
-              const startDec = user_derived(() => get(edge).visual?.start ?? { shape: "none", size: 10 });
-              const endDec = user_derived(() => get(edge).visual?.end ?? { shape: "none", size: 10 });
-              const geom = user_derived(() => computeUmlEdgeGeometry(get(srcBox), get(tgtBox), getEdgeRouting(get(edge)), get(startDec), get(endDec), get(edgeParallelOffsets)[get(edge).id] ?? 0, void 0, void 0, get(srcNode)?.kind === "shape" ? get(srcNode).shape : void 0, get(tgtNode)?.kind === "shape" ? get(tgtNode).shape : void 0, get(edge).label));
-              const startMarker = user_derived(() => renderEndpointPath(get(startDec)));
-              const endMarker = user_derived(() => renderEndpointPath(get(endDec)));
-              const startCenter = user_derived(() => getEndpointVisualCenter(get(geom).startTip, get(geom).startAngleDeg, get(startDec)));
-              const endCenter = user_derived(() => getEndpointVisualCenter(get(geom).endTip, get(geom).endAngleDeg, get(endDec)));
-              const startMultPt = user_derived(() => getMultiplicityLabelPoint(get(geom).startTip, get(geom).startAngleDeg, get(edge).source.multiplicity));
-              const endMultPt = user_derived(() => getMultiplicityLabelPoint(get(geom).endTip, get(geom).endAngleDeg, get(edge).target.multiplicity));
+            var consequent_2 = ($$anchor4) => {
+              const edgeData = user_derived(() => computeEdgeRenderData(get(edge), get(srcBox), get(tgtBox), get(srcNode), get(tgtNode), get(doc).defaultRouting, get(edgeParallelOffsets)[get(edge).id] ?? 0));
               const isEdgeSelected = user_derived(() => store().selectedIds.includes(get(edge).id) || store().selectedIds.includes(get(edge).source.nodeId) && store().selectedIds.includes(get(edge).target.nodeId));
-              var g_2 = root_83();
-              let classes_2;
-              var path = child(g_2);
-              var path_1 = sibling(path);
-              var node_8 = sibling(path_1);
-              {
-                var consequent_4 = ($$anchor5) => {
-                  var path_2 = root_54();
-                  template_effect(() => {
-                    set_attribute2(path_2, "d", get(startMarker).d);
-                    set_attribute2(path_2, "fill", get(startMarker).fill);
-                    set_attribute2(path_2, "transform", `translate(${get(geom).startTip.x ?? ""}, ${get(geom).startTip.y ?? ""}) rotate(${get(geom).startAngleDeg ?? ""})`);
-                  });
-                  append($$anchor5, path_2);
-                };
-                if_block(node_8, ($$render) => {
-                  if (get(startMarker).d) $$render(consequent_4);
-                });
-              }
-              var node_9 = sibling(node_8);
-              {
-                var consequent_5 = ($$anchor5) => {
-                  var path_3 = root_54();
-                  template_effect(() => {
-                    set_attribute2(path_3, "d", get(endMarker).d);
-                    set_attribute2(path_3, "fill", get(endMarker).fill);
-                    set_attribute2(path_3, "transform", `translate(${get(geom).endTip.x ?? ""}, ${get(geom).endTip.y ?? ""}) rotate(${get(geom).endAngleDeg ?? ""})`);
-                  });
-                  append($$anchor5, path_3);
-                };
-                if_block(node_9, ($$render) => {
-                  if (get(endMarker).d) $$render(consequent_5);
-                });
-              }
-              var node_10 = sibling(node_9);
-              {
-                var consequent_6 = ($$anchor5) => {
-                  var g_3 = root_64();
-                  var rect_1 = child(g_3);
-                  var text_2 = sibling(rect_1);
-                  var text_3 = only_child(text_2, true);
-                  reset(g_3);
-                  template_effect(() => {
-                    set_attribute2(g_3, "transform", `translate(${get(startMultPt).x ?? ""}, ${get(startMultPt).y ?? ""})`);
-                    set_attribute2(rect_1, "x", -(get(edge).source.multiplicity.length * 3.8 + 6));
-                    set_attribute2(rect_1, "width", get(edge).source.multiplicity.length * 7.6 + 12);
-                    set_text(text_3, get(edge).source.multiplicity);
-                  });
-                  delegated("click", g_3, (e) => {
-                    e.stopPropagation();
-                    if (get(inlineEditingNodeId)) commitInlineNodeEdit();
-                    store().selectSingle(get(edge).id, false);
-                  });
-                  delegated("dblclick", g_3, (e) => {
-                    e.stopPropagation();
-                    if (store().isReadOnly || e.shiftKey || e.ctrlKey || e.metaKey) return;
-                    startInlineMultiplicityEdit(get(edge), "start");
-                  });
-                  append($$anchor5, g_3);
-                };
-                if_block(node_10, ($$render) => {
-                  if (get(edge).source.multiplicity) $$render(consequent_6);
-                });
-              }
-              var node_11 = sibling(node_10);
-              {
-                var consequent_7 = ($$anchor5) => {
-                  var g_4 = root_64();
-                  var rect_2 = child(g_4);
-                  var text_4 = sibling(rect_2);
-                  var text_5 = only_child(text_4, true);
-                  reset(g_4);
-                  template_effect(() => {
-                    set_attribute2(g_4, "transform", `translate(${get(endMultPt).x ?? ""}, ${get(endMultPt).y ?? ""})`);
-                    set_attribute2(rect_2, "x", -(get(edge).target.multiplicity.length * 3.8 + 6));
-                    set_attribute2(rect_2, "width", get(edge).target.multiplicity.length * 7.6 + 12);
-                    set_text(text_5, get(edge).target.multiplicity);
-                  });
-                  delegated("click", g_4, (e) => {
-                    e.stopPropagation();
-                    if (get(inlineEditingNodeId)) commitInlineNodeEdit();
-                    store().selectSingle(get(edge).id, false);
-                  });
-                  delegated("dblclick", g_4, (e) => {
-                    e.stopPropagation();
-                    if (store().isReadOnly || e.shiftKey || e.ctrlKey || e.metaKey) return;
-                    startInlineMultiplicityEdit(get(edge), "end");
-                  });
-                  append($$anchor5, g_4);
-                };
-                if_block(node_11, ($$render) => {
-                  if (get(edge).target.multiplicity) $$render(consequent_7);
-                });
-              }
-              var node_12 = sibling(node_11);
-              {
-                var consequent_8 = ($$anchor5) => {
-                  var g_5 = root_74();
-                  var rect_3 = child(g_5);
-                  var text_6 = sibling(rect_3);
-                  var text_7 = only_child(text_6, true);
-                  reset(g_5);
-                  template_effect(() => {
-                    set_attribute2(g_5, "transform", `translate(${get(geom).labelPoint.x ?? ""}, ${get(geom).labelPoint.y ?? ""})`);
-                    set_attribute2(rect_3, "x", -(get(edge).label.length * 3.8 + 8));
-                    set_attribute2(rect_3, "width", get(edge).label.length * 7.6 + 16);
-                    set_text(text_7, get(edge).label);
-                  });
-                  delegated("click", g_5, (e) => {
-                    e.stopPropagation();
-                    if (get(inlineEditingNodeId)) commitInlineNodeEdit();
-                    store().selectSingle(get(edge).id, e.shiftKey || e.metaKey || e.ctrlKey);
-                  });
-                  delegated("dblclick", g_5, (e) => {
-                    e.stopPropagation();
-                    if (store().isReadOnly || e.shiftKey || e.ctrlKey || e.metaKey) return;
-                    startInlineEdgeLabelEdit(get(edge));
-                  });
-                  append($$anchor5, g_5);
-                };
-                if_block(node_12, ($$render) => {
-                  if (get(edge).label && get(inlineEditingEdgeId) !== get(edge).id) $$render(consequent_8);
-                });
-              }
-              reset(g_2);
-              template_effect(() => {
-                classes_2 = set_class(g_2, 0, "vz-edge-group", null, classes_2, { selected: get(isEdgeSelected) });
-                set_attribute2(path, "d", get(geom).hitPathD);
-                set_attribute2(path_1, "d", get(geom).pathD);
-                set_attribute2(path_1, "stroke-dasharray", get(isDashed) ? "6 4" : void 0);
+              UmlEdgeRenderer($$anchor4, {
+                get data() {
+                  return get(edgeData);
+                },
+                get selected() {
+                  return get(isEdgeSelected);
+                },
+                onselect: (e) => {
+                  e.stopPropagation();
+                  store().selectSingle(get(edge).id, e.shiftKey || e.metaKey || e.ctrlKey);
+                },
+                oncontextmenu: (e) => handleEdgeContextMenu(e, get(edge)),
+                ondblclick: (e) => {
+                  e.stopPropagation();
+                  if (store().isReadOnly) return;
+                  startInlineEdgeLabelEdit(get(edge));
+                }
               });
-              delegated("contextmenu", g_2, (e) => handleEdgeContextMenu(e, get(edge)));
-              delegated("click", path, (e) => {
-                e.stopPropagation();
-                if (get(inlineEditingNodeId)) commitInlineNodeEdit();
-                store().selectSingle(get(edge).id, e.shiftKey || e.metaKey || e.ctrlKey);
-              });
-              delegated("dblclick", path, (e) => {
-                e.stopPropagation();
-                if (store().isReadOnly || e.shiftKey || e.ctrlKey || e.metaKey) return;
-                startInlineEdgeLabelEdit(get(edge));
-              });
-              append($$anchor4, g_2);
             };
-            if_block(node_7, ($$render) => {
-              if (get(srcBox) && get(tgtBox)) $$render(consequent_9);
+            if_block(node_4, ($$render) => {
+              if (get(srcBox) && get(tgtBox)) $$render(consequent_2);
             });
           }
           append($$anchor3, fragment_4);
         });
-        var node_13 = sibling(node_6);
-        each(node_13, 17, () => get(doc).nodes.filter((n) => n.kind === "frame"), (frame) => frame.id, ($$anchor3, frame) => {
-          const fbox = user_derived(() => get(effectiveNodeLayouts)[get(frame).id]);
-          var fragment_5 = comment();
-          var node_14 = first_child(fragment_5);
+        reset(g);
+        reset(svg_2);
+        var div_3 = sibling(svg_2, 2);
+        each(div_3, 21, () => get(doc).nodes.filter((n) => n.kind !== "frame"), (node) => node.id, ($$anchor3, node) => {
+          const box = user_derived(() => get(effectiveNodeLayouts)[get(node).id]);
+          var fragment_6 = comment();
+          var node_5 = first_child(fragment_6);
           {
-            var consequent_11 = ($$anchor4) => {
-              const labelText = user_derived(() => get(frame).name || "Frame");
-              const labelW = user_derived(() => get(labelText).length * 7.6 + 16);
-              var fragment_6 = comment();
-              var node_15 = first_child(fragment_6);
+            var consequent_5 = ($$anchor4) => {
+              var fragment_7 = comment();
+              var node_6 = first_child(fragment_7);
               {
-                var consequent_10 = ($$anchor5) => {
-                  var g_6 = root_93();
-                  var rect_4 = child(g_6);
-                  var text_8 = sibling(rect_4);
-                  var text_9 = only_child(text_8, true);
-                  reset(g_6);
-                  template_effect(() => {
-                    set_attribute2(g_6, "transform", `translate(${get(fbox).x + 16}, ${get(fbox).y ?? ""})`);
-                    set_attribute2(g_6, "aria-label", `Edit frame label ${get(labelText) ?? ""}`);
-                    set_attribute2(rect_4, "width", get(labelW));
-                    set_attribute2(text_8, "x", get(labelW) / 2);
-                    set_text(text_9, get(labelText));
-                  });
-                  delegated("pointerdown", g_6, (e) => {
-                    handleNodePointerDown(e, get(frame));
-                  });
-                  delegated("dblclick", g_6, (e) => {
-                    e.stopPropagation();
-                    if (!store().isReadOnly) startInlineNodeEdit(get(frame));
-                  });
-                  append($$anchor5, g_6);
+                var consequent_3 = ($$anchor5) => {
+                  {
+                    let $0 = user_derived(() => store().selectedIds.includes(get(node).id));
+                    NoteNode($$anchor5, {
+                      get store() {
+                        return store();
+                      },
+                      get node() {
+                        return get(node);
+                      },
+                      get box() {
+                        return get(box);
+                      },
+                      get selected() {
+                        return get($0);
+                      },
+                      onpointerdown: handleNodePointerDown,
+                      oncontextmenu: handleNodeContextMenu,
+                      ondblclick: (e, n) => {
+                        e.stopPropagation();
+                        if (store().isReadOnly || e.shiftKey || e.ctrlKey || e.metaKey) return;
+                        startInlineNodeEdit(n);
+                      },
+                      onresizestart: handleResizeHandlePointerDown,
+                      onconnectstart: handleConnectPortPointerDown
+                    });
+                  }
                 };
-                if_block(node_15, ($$render) => {
-                  if (get(inlineEditingNodeId) !== get(frame).id) $$render(consequent_10);
+                var consequent_4 = ($$anchor5) => {
+                  {
+                    let $0 = user_derived(() => store().selectedIds.includes(get(node).id));
+                    ShapeNode($$anchor5, {
+                      get store() {
+                        return store();
+                      },
+                      get node() {
+                        return get(node);
+                      },
+                      get box() {
+                        return get(box);
+                      },
+                      get selected() {
+                        return get($0);
+                      },
+                      onpointerdown: handleNodePointerDown,
+                      oncontextmenu: handleNodeContextMenu,
+                      ondblclick: (e, n) => {
+                        e.stopPropagation();
+                        if (store().isReadOnly || e.shiftKey || e.ctrlKey || e.metaKey) return;
+                        startInlineNodeEdit(n);
+                      },
+                      onresizestart: handleResizeHandlePointerDown,
+                      onconnectstart: handleConnectPortPointerDown,
+                      oneditlabel: startInlineNodeEdit
+                    });
+                  }
+                };
+                var alternate_1 = ($$anchor5) => {
+                  {
+                    let $0 = user_derived(() => store().selectedIds.includes(get(node).id));
+                    ClassNode($$anchor5, {
+                      get store() {
+                        return store();
+                      },
+                      get node() {
+                        return get(node);
+                      },
+                      get box() {
+                        return get(box);
+                      },
+                      get selected() {
+                        return get($0);
+                      },
+                      onpointerdown: handleNodePointerDown,
+                      oncontextmenu: handleNodeContextMenu,
+                      ondblclick: (e, n) => {
+                        e.stopPropagation();
+                        if (store().isReadOnly || e.shiftKey || e.ctrlKey || e.metaKey) return;
+                        startInlineNodeEdit(n);
+                      },
+                      onresizestart: handleResizeHandlePointerDown,
+                      onconnectstart: handleConnectPortPointerDown
+                    });
+                  }
+                };
+                if_block(node_6, ($$render) => {
+                  if (get(node).kind === "note") $$render(consequent_3);
+                  else if (get(node).kind === "shape") $$render(consequent_4, 1);
+                  else $$render(alternate_1, -1);
                 });
               }
-              append($$anchor4, fragment_6);
+              append($$anchor4, fragment_7);
             };
-            if_block(node_14, ($$render) => {
-              if (get(fbox)) $$render(consequent_11);
+            if_block(node_5, ($$render) => {
+              if (get(box)) $$render(consequent_5);
             });
           }
-          append($$anchor3, fragment_5);
+          append($$anchor3, fragment_6);
+        });
+        reset(div_3);
+        var svg_3 = sibling(div_3, 2);
+        var g_1 = child(svg_3);
+        var node_7 = child(g_1);
+        {
+          var consequent_6 = ($$anchor3) => {
+            var line = root_28();
+            template_effect(() => {
+              set_attribute2(line, "x1", get(gesture).startPoint.x);
+              set_attribute2(line, "y1", get(gesture).startPoint.y);
+              set_attribute2(line, "x2", get(gesture).currentWorld.x);
+              set_attribute2(line, "y2", get(gesture).currentWorld.y);
+            });
+            append($$anchor3, line);
+          };
+          if_block(node_7, ($$render) => {
+            if (get(gesture).mode === "connecting") $$render(consequent_6);
+          });
+        }
+        var node_8 = sibling(node_7);
+        {
+          var consequent_7 = ($$anchor3) => {
+            var rect_1 = root_37();
+            template_effect(() => {
+              set_attribute2(rect_1, "x", get(marqueeRect).x);
+              set_attribute2(rect_1, "y", get(marqueeRect).y);
+              set_attribute2(rect_1, "width", get(marqueeRect).width);
+              set_attribute2(rect_1, "height", get(marqueeRect).height);
+            });
+            append($$anchor3, rect_1);
+          };
+          if_block(node_8, ($$render) => {
+            if (get(marqueeRect)) $$render(consequent_7);
+          });
+        }
+        var node_9 = sibling(node_8);
+        each(node_9, 17, () => get(doc).edges, (edge) => edge.id, ($$anchor3, edge) => {
+          const isEdgeSelected = user_derived(() => store().selectedIds.includes(get(edge).id) || store().selectedIds.includes(get(edge).source.nodeId) && store().selectedIds.includes(get(edge).target.nodeId));
+          const srcBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).source.nodeId]);
+          const tgtBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).target.nodeId]);
+          var fragment_11 = comment();
+          var node_10 = first_child(fragment_11);
+          {
+            var consequent_8 = ($$anchor4) => {
+              const handleData = user_derived(() => computeEdgeRenderData(get(edge), get(srcBox), get(tgtBox), get(doc).nodes.find((n) => n.id === get(edge).source.nodeId), get(doc).nodes.find((n) => n.id === get(edge).target.nodeId), get(doc).defaultRouting, get(edgeParallelOffsets)[get(edge).id] ?? 0));
+              var fragment_12 = root_46();
+              var circle = first_child(fragment_12);
+              var circle_1 = sibling(circle);
+              template_effect(() => {
+                set_attribute2(circle, "cx", get(handleData).startCenter.x);
+                set_attribute2(circle, "cy", get(handleData).startCenter.y);
+                set_attribute2(circle_1, "cx", get(handleData).endCenter.x);
+                set_attribute2(circle_1, "cy", get(handleData).endCenter.y);
+              });
+              delegated("pointerdown", circle, (event2) => event2.stopPropagation());
+              delegated("click", circle, (event2) => {
+                event2.stopPropagation();
+                openEndpointPickerPopup(event2.clientX, event2.clientY, get(edge), "start", get(handleData).startDecoration);
+              });
+              delegated("pointerdown", circle_1, (event2) => event2.stopPropagation());
+              delegated("click", circle_1, (event2) => {
+                event2.stopPropagation();
+                openEndpointPickerPopup(event2.clientX, event2.clientY, get(edge), "end", get(handleData).endDecoration);
+              });
+              append($$anchor4, fragment_12);
+            };
+            if_block(node_10, ($$render) => {
+              if (get(isEdgeSelected) && get(srcBox) && get(tgtBox) && !store().isReadOnly) $$render(consequent_8);
+            });
+          }
+          append($$anchor3, fragment_11);
         });
         reset(g_1);
-        reset(svg_2);
-        var div_11 = sibling(svg_2, 2);
-        each(div_11, 21, () => get(doc).nodes.filter((n) => n.kind !== "frame"), (node) => node.id, ($$anchor3, node) => {
-          const box = user_derived(() => get(effectiveNodeLayouts)[get(node).id]);
-          const isSelected = user_derived(() => store().selectedIds.includes(get(node).id));
-          const isInlineEditing = user_derived(() => get(inlineEditingNodeId) === get(node).id);
-          const kindDesc = user_derived(() => getUmlNodeKind(get(node).kind));
-          const attrsExplicitlyShown = user_derived(() => get(node).showAttributes !== false);
-          const opsExplicitlyShown = user_derived(() => get(node).showOperations !== false);
-          const hasAttrs = user_derived(() => (get(node).attributes ?? []).length > 0);
-          const hasOps = user_derived(() => (get(node).operations ?? []).length > 0);
-          const attrsVisible = user_derived(() => get(isInlineEditing) ? get(attrsExplicitlyShown) : get(attrsExplicitlyShown) && get(hasAttrs));
-          const opsVisible = user_derived(() => get(isInlineEditing) ? get(opsExplicitlyShown) : get(opsExplicitlyShown) && get(hasOps));
-          var fragment_7 = comment();
-          var node_16 = first_child(fragment_7);
+        reset(svg_3);
+        var div_4 = sibling(svg_3, 2);
+        var node_11 = child(div_4);
+        each(node_11, 17, () => get(doc).nodes.filter((n) => n.kind === "frame"), (frame) => frame.id, ($$anchor3, frame) => {
+          const frameBox = user_derived(() => get(effectiveNodeLayouts)[get(frame).id]);
+          var fragment_13 = comment();
+          var node_12 = first_child(fragment_13);
           {
-            var consequent_32 = ($$anchor4) => {
-              var div_12 = root_45();
-              let classes_3;
-              var node_17 = child(div_12);
+            var consequent_9 = ($$anchor4) => {
+              const frameEditing = user_derived(() => store().inlineEdit.state.mode === "node" && store().inlineEdit.state.nodeId === get(frame).id ? store().inlineEdit.state : null);
               {
-                var consequent_13 = ($$anchor5) => {
-                  var fragment_8 = root_124();
-                  var svg_3 = first_child(fragment_8);
-                  var path_4 = only_child(svg_3);
-                  var div_13 = sibling(svg_3, 2);
-                  var node_18 = child(div_13);
-                  {
-                    var consequent_12 = ($$anchor6) => {
-                      var input = root_103();
-                      remove_input_defaults(input);
-                      action(input, ($$node) => focusInput?.($$node));
-                      effect(() => bind_value(input, () => get(inlineNodeNameDraft), ($$value) => set(inlineNodeNameDraft, $$value)));
-                      event("blur", input, () => flushInlineNodeHeader(get(node)));
-                      delegated("change", input, () => flushInlineNodeHeader(get(node)));
-                      delegated("keydown", input, (ke) => {
-                        if (ke.key === "Enter") {
-                          commitInlineNodeEdit(get(node));
-                        } else if (ke.key === "Escape") {
-                          set(inlineEditingNodeId, null);
-                        }
-                      });
-                      append($$anchor6, input);
-                    };
-                    var alternate_1 = ($$anchor6) => {
-                      var div_14 = root_113();
-                      var text_10 = only_child(div_14, true);
-                      template_effect(() => set_text(text_10, get(node).name));
-                      append($$anchor6, div_14);
-                    };
-                    if_block(node_18, ($$render) => {
-                      if (get(isInlineEditing)) $$render(consequent_12);
-                      else $$render(alternate_1, -1);
-                    });
-                  }
-                  reset(div_13);
-                  template_effect(
-                    ($0) => {
-                      set_attribute2(svg_3, "width", get(box).width);
-                      set_attribute2(svg_3, "height", get(box).height);
-                      set_attribute2(svg_3, "viewBox", `0 0 ${get(box).width ?? ""} ${get(box).height ?? ""}`);
-                      set_attribute2(path_4, "d", $0);
-                    },
-                    [
-                      () => buildShapeSvgPath(get(node).shape, get(box).width, get(box).height)
-                    ]
-                  );
-                  append($$anchor5, fragment_8);
-                };
-                var alternate_8 = ($$anchor5) => {
-                  var fragment_9 = root_292();
-                  var div_15 = first_child(fragment_9);
-                  var node_19 = child(div_15);
-                  {
-                    var consequent_15 = ($$anchor6) => {
-                      var fragment_10 = comment();
-                      var node_20 = first_child(fragment_10);
-                      {
-                        var consequent_14 = ($$anchor7) => {
-                          var div_16 = root_134();
-                          var input_1 = sibling(child(div_16), 2);
-                          remove_input_defaults(input_1);
-                          reset(div_16);
-                          event("blur", input_1, () => flushInlineNodeHeader(get(node)));
-                          delegated("change", input_1, () => flushInlineNodeHeader(get(node)));
-                          delegated("keydown", input_1, (ke) => {
-                            if (ke.key === "Enter") {
-                              commitInlineNodeEdit(get(node));
-                            } else if (ke.key === "Escape") {
-                              set(inlineEditingNodeId, null);
-                            }
-                          });
-                          bind_value(input_1, () => get(inlineNodeNameDraft), ($$value) => set(inlineNodeNameDraft, $$value));
-                          append($$anchor7, div_16);
-                        };
-                        var alternate_2 = ($$anchor7) => {
-                          var div_17 = root_143();
-                          var div_18 = child(div_17);
-                          var input_2 = sibling(child(div_18), 2);
-                          remove_input_defaults(input_2);
-                          reset(div_18);
-                          var div_19 = sibling(div_18, 2);
-                          var input_3 = sibling(child(div_19), 2);
-                          remove_input_defaults(input_3);
-                          reset(div_19);
-                          reset(div_17);
-                          event("blur", input_2, () => flushInlineNodeHeader(get(node)));
-                          delegated("change", input_2, () => flushInlineNodeHeader(get(node)));
-                          delegated("keydown", input_2, (ke) => {
-                            if (ke.key === "Enter") {
-                              commitInlineNodeEdit(get(node));
-                            } else if (ke.key === "Escape") {
-                              set(inlineEditingNodeId, null);
-                            }
-                          });
-                          bind_value(input_2, () => get(inlineNodeNameDraft), ($$value) => set(inlineNodeNameDraft, $$value));
-                          event("blur", input_3, () => flushInlineNodeHeader(get(node)));
-                          delegated("change", input_3, () => flushInlineNodeHeader(get(node)));
-                          delegated("keydown", input_3, (ke) => {
-                            if (ke.key === "Enter") {
-                              commitInlineNodeEdit(get(node));
-                            } else if (ke.key === "Escape") {
-                              set(inlineEditingNodeId, null);
-                            }
-                          });
-                          bind_value(input_3, () => get(inlineNodeStereotypeDraft), ($$value) => set(inlineNodeStereotypeDraft, $$value));
-                          append($$anchor7, div_17);
-                        };
-                        if_block(node_20, ($$render) => {
-                          if (get(node).kind === "note") $$render(consequent_14);
-                          else $$render(alternate_2, -1);
-                        });
-                      }
-                      append($$anchor6, fragment_10);
-                    };
-                    var alternate_3 = ($$anchor6) => {
-                      var fragment_11 = root_163();
-                      var node_21 = first_child(fragment_11);
-                      {
-                        var consequent_16 = ($$anchor7) => {
-                          var div_20 = root_153();
-                          var text_11 = only_child(div_20);
-                          template_effect(() => set_text(text_11, `\xAB${(get(node).stereotype || get(kindDesc)?.defaultStereotype) ?? ""}\xBB`));
-                          append($$anchor7, div_20);
-                        };
-                        var consequent_17 = ($$anchor7) => {
-                          var div_21 = root_153();
-                          var text_12 = only_child(div_21);
-                          template_effect(() => set_text(text_12, `\xABunsupported: ${get(node).kind ?? ""}\xBB`));
-                          append($$anchor7, div_21);
-                        };
-                        if_block(node_21, ($$render) => {
-                          if (get(node).kind !== "note" && (get(node).stereotype || get(kindDesc)?.defaultStereotype)) $$render(consequent_16);
-                          else if (!get(kindDesc)) $$render(consequent_17, 1);
-                        });
-                      }
-                      var div_22 = sibling(node_21, 2);
-                      var text_13 = only_child(div_22, true);
-                      template_effect(() => set_text(text_13, get(node).name));
-                      append($$anchor6, fragment_11);
-                    };
-                    if_block(node_19, ($$render) => {
-                      if (get(isInlineEditing)) $$render(consequent_15);
-                      else $$render(alternate_3, -1);
-                    });
-                  }
-                  reset(div_15);
-                  var node_22 = sibling(div_15, 2);
-                  {
-                    var consequent_19 = ($$anchor6) => {
-                      var fragment_12 = comment();
-                      var node_23 = first_child(fragment_12);
-                      {
-                        var consequent_18 = ($$anchor7) => {
-                          var div_23 = root_173();
-                          var textarea = sibling(child(div_23), 2);
-                          remove_textarea_child(textarea);
-                          reset(div_23);
-                          event("blur", textarea, () => flushInlineNodeText(get(node)));
-                          delegated("change", textarea, () => flushInlineNodeText(get(node)));
-                          delegated("keydown", textarea, (ke) => {
-                            if (ke.key === "Escape") set(inlineEditingNodeId, null);
-                          });
-                          bind_value(textarea, () => get(inlineNodeTextDraft), ($$value) => set(inlineNodeTextDraft, $$value));
-                          append($$anchor7, div_23);
-                        };
-                        var alternate_4 = ($$anchor7) => {
-                          var div_24 = root_183();
-                          var text_14 = only_child(div_24, true);
-                          template_effect(() => set_text(text_14, get(node).text || get(node).name));
-                          append($$anchor7, div_24);
-                        };
-                        if_block(node_23, ($$render) => {
-                          if (get(isInlineEditing)) $$render(consequent_18);
-                          else $$render(alternate_4, -1);
-                        });
-                      }
-                      append($$anchor6, fragment_12);
-                    };
-                    var alternate_7 = ($$anchor6) => {
-                      var fragment_13 = root_282();
-                      var node_24 = first_child(fragment_13);
-                      {
-                        var consequent_23 = ($$anchor7) => {
-                          var div_25 = root_233();
-                          var node_25 = child(div_25);
-                          {
-                            var consequent_21 = ($$anchor8) => {
-                              var fragment_14 = root_202();
-                              var div_26 = first_child(fragment_14);
-                              var button_3 = sibling(child(div_26), 2);
-                              let classes_4;
-                              var node_26 = child(button_3);
-                              eyeIcon2(node_26, () => get(attrsVisible));
-                              reset(button_3);
-                              reset(div_26);
-                              var node_27 = sibling(div_26, 2);
-                              {
-                                var consequent_20 = ($$anchor9) => {
-                                  var textarea_1 = root_192();
-                                  remove_textarea_child(textarea_1);
-                                  template_effect(($0) => set_attribute2(textarea_1, "rows", $0), [() => Math.max(3, (get(node).attributes ?? []).length + 1)]);
-                                  event("blur", textarea_1, () => flushInlineNodeMembers(get(node)));
-                                  delegated("change", textarea_1, () => flushInlineNodeMembers(get(node)));
-                                  delegated("keydown", textarea_1, (ke) => {
-                                    if (ke.key === "Escape") set(inlineEditingNodeId, null);
-                                  });
-                                  bind_value(textarea_1, () => get(inlineNodeAttributesDraft), ($$value) => set(inlineNodeAttributesDraft, $$value));
-                                  append($$anchor9, textarea_1);
-                                };
-                                if_block(node_27, ($$render) => {
-                                  if (get(attrsVisible)) $$render(consequent_20);
-                                });
-                              }
-                              template_effect(() => {
-                                classes_4 = set_class(button_3, 1, "vz-eye-toggle-btn", null, classes_4, { off: !get(attrsVisible) });
-                                set_attribute2(button_3, "title", get(attrsVisible) ? "Hide Attributes" : "Show Attributes");
-                              });
-                              delegated("click", button_3, (e) => {
-                                e.stopPropagation();
-                                store().dispatchOperation({
-                                  type: "uml.updateNode",
-                                  nodeId: get(node).id,
-                                  showAttributes: !get(attrsVisible)
-                                });
-                              });
-                              append($$anchor8, fragment_14);
-                            };
-                            var alternate_5 = ($$anchor8) => {
-                              var fragment_15 = comment();
-                              var node_28 = first_child(fragment_15);
-                              each(node_28, 17, () => get(node).attributes ?? [], (attr2) => attr2.id, ($$anchor9, attr2) => {
-                                var div_27 = root_223();
-                                var span = child(div_27);
-                                var text_15 = only_child(span, true);
-                                var span_1 = sibling(span, 2);
-                                var text_16 = only_child(span_1, true);
-                                var node_29 = sibling(span_1, 2);
-                                {
-                                  var consequent_22 = ($$anchor10) => {
-                                    var span_2 = root_212();
-                                    var text_17 = only_child(span_2);
-                                    template_effect(() => set_text(text_17, `: ${get(attr2).type ?? ""}`));
-                                    append($$anchor10, span_2);
-                                  };
-                                  if_block(node_29, ($$render) => {
-                                    if (get(attr2).type) $$render(consequent_22);
-                                  });
-                                }
-                                reset(div_27);
-                                template_effect(
-                                  ($0) => {
-                                    set_text(text_15, $0);
-                                    set_text(text_16, get(attr2).name);
-                                  },
-                                  [() => formatVisibilitySign(get(attr2).visibility)]
-                                );
-                                append($$anchor9, div_27);
-                              });
-                              append($$anchor8, fragment_15);
-                            };
-                            if_block(node_25, ($$render) => {
-                              if (get(isInlineEditing)) $$render(consequent_21);
-                              else $$render(alternate_5, -1);
-                            });
-                          }
-                          reset(div_25);
-                          append($$anchor7, div_25);
-                        };
-                        if_block(node_24, ($$render) => {
-                          if (get(attrsVisible) || get(isInlineEditing)) $$render(consequent_23);
-                        });
-                      }
-                      var node_30 = sibling(node_24, 2);
-                      {
-                        var consequent_29 = ($$anchor7) => {
-                          var div_28 = root_233();
-                          var node_31 = child(div_28);
-                          {
-                            var consequent_25 = ($$anchor8) => {
-                              var fragment_16 = root_252();
-                              var div_29 = first_child(fragment_16);
-                              var button_4 = sibling(child(div_29), 2);
-                              let classes_5;
-                              var node_32 = child(button_4);
-                              eyeIcon2(node_32, () => get(opsVisible));
-                              reset(button_4);
-                              reset(div_29);
-                              var node_33 = sibling(div_29, 2);
-                              {
-                                var consequent_24 = ($$anchor9) => {
-                                  var textarea_2 = root_242();
-                                  remove_textarea_child(textarea_2);
-                                  template_effect(($0) => set_attribute2(textarea_2, "rows", $0), [() => Math.max(3, (get(node).operations ?? []).length + 1)]);
-                                  event("blur", textarea_2, () => flushInlineNodeMembers(get(node)));
-                                  delegated("change", textarea_2, () => flushInlineNodeMembers(get(node)));
-                                  delegated("keydown", textarea_2, (ke) => {
-                                    if (ke.key === "Escape") set(inlineEditingNodeId, null);
-                                  });
-                                  bind_value(textarea_2, () => get(inlineNodeOperationsDraft), ($$value) => set(inlineNodeOperationsDraft, $$value));
-                                  append($$anchor9, textarea_2);
-                                };
-                                if_block(node_33, ($$render) => {
-                                  if (get(opsVisible)) $$render(consequent_24);
-                                });
-                              }
-                              template_effect(() => {
-                                classes_5 = set_class(button_4, 1, "vz-eye-toggle-btn", null, classes_5, { off: !get(opsVisible) });
-                                set_attribute2(button_4, "title", get(opsVisible) ? "Hide Operations" : "Show Operations");
-                              });
-                              delegated("click", button_4, (e) => {
-                                e.stopPropagation();
-                                store().dispatchOperation({
-                                  type: "uml.updateNode",
-                                  nodeId: get(node).id,
-                                  showOperations: !get(opsVisible)
-                                });
-                              });
-                              append($$anchor8, fragment_16);
-                            };
-                            var alternate_6 = ($$anchor8) => {
-                              var fragment_17 = comment();
-                              var node_34 = first_child(fragment_17);
-                              each(node_34, 17, () => get(node).operations ?? [], (op) => op.id, ($$anchor9, op) => {
-                                const params = user_derived(() => extractOperationParameters(get(op)));
-                                var div_30 = root_272();
-                                var span_3 = child(div_30);
-                                var text_18 = only_child(span_3, true);
-                                var span_4 = sibling(span_3, 2);
-                                var text_19 = only_child(span_4);
-                                var node_35 = sibling(span_4);
-                                each(node_35, 19, () => get(params), (param, pIdx) => param.id ?? pIdx, ($$anchor10, param, pIdx) => {
-                                  var fragment_18 = root_262();
-                                  var node_36 = first_child(fragment_18);
-                                  {
-                                    var consequent_26 = ($$anchor11) => {
-                                      var text_20 = text(",");
-                                      append($$anchor11, text_20);
-                                    };
-                                    if_block(node_36, ($$render) => {
-                                      if (get(pIdx) > 0) $$render(consequent_26);
-                                    });
-                                  }
-                                  var span_5 = sibling(node_36);
-                                  var text_21 = only_child(span_5, true);
-                                  var node_37 = sibling(span_5);
-                                  {
-                                    var consequent_27 = ($$anchor11) => {
-                                      var span_6 = root_212();
-                                      var text_22 = only_child(span_6);
-                                      template_effect(() => set_text(text_22, `: ${get(param).type ?? ""}`));
-                                      append($$anchor11, span_6);
-                                    };
-                                    if_block(node_37, ($$render) => {
-                                      if (get(param).type) $$render(consequent_27);
-                                    });
-                                  }
-                                  template_effect(() => set_text(text_21, get(param).name));
-                                  append($$anchor10, fragment_18);
-                                });
-                                var node_38 = sibling(node_35, 3);
-                                {
-                                  var consequent_28 = ($$anchor10) => {
-                                    var span_7 = root_212();
-                                    var text_23 = only_child(span_7);
-                                    template_effect(() => set_text(text_23, `: ${get(op).returnType ?? ""}`));
-                                    append($$anchor10, span_7);
-                                  };
-                                  if_block(node_38, ($$render) => {
-                                    if (get(op).returnType) $$render(consequent_28);
-                                  });
-                                }
-                                reset(div_30);
-                                template_effect(
-                                  ($0) => {
-                                    set_text(text_18, $0);
-                                    set_text(text_19, `${get(op).name ?? ""}(`);
-                                  },
-                                  [() => formatVisibilitySign(get(op).visibility)]
-                                );
-                                append($$anchor9, div_30);
-                              });
-                              append($$anchor8, fragment_17);
-                            };
-                            if_block(node_31, ($$render) => {
-                              if (get(isInlineEditing)) $$render(consequent_25);
-                              else $$render(alternate_6, -1);
-                            });
-                          }
-                          reset(div_28);
-                          append($$anchor7, div_28);
-                        };
-                        if_block(node_30, ($$render) => {
-                          if (get(opsVisible) || get(isInlineEditing)) $$render(consequent_29);
-                        });
-                      }
-                      append($$anchor6, fragment_13);
-                    };
-                    if_block(node_22, ($$render) => {
-                      if (get(node).kind === "note") $$render(consequent_19);
-                      else $$render(alternate_7, -1);
-                    });
-                  }
-                  append($$anchor5, fragment_9);
-                };
-                if_block(node_17, ($$render) => {
-                  if (get(node).kind === "shape") $$render(consequent_13);
-                  else $$render(alternate_8, -1);
+                let $0 = user_derived(() => ({ x: get(frameBox).x + 16, y: get(frameBox).y + 1.5 }));
+                let $1 = user_derived(() => get(frame).name || "Frame");
+                let $2 = user_derived(() => store().selectedIds.includes(get(frame).id));
+                let $3 = user_derived(() => Boolean(get(frameEditing)));
+                let $4 = user_derived(() => get(frameEditing)?.name ?? "");
+                EdgeLabel($$anchor4, {
+                  get point() {
+                    return get($0);
+                  },
+                  get label() {
+                    return get($1);
+                  },
+                  get selected() {
+                    return get($2);
+                  },
+                  get editing() {
+                    return get($3);
+                  },
+                  get draft() {
+                    return get($4);
+                  },
+                  align: "above-left",
+                  frameLabel: true,
+                  onselect: () => {
+                    if (store().isReadOnly) return;
+                    if (store().selectedIds.includes(get(frame).id)) startInlineNodeEdit(get(frame));
+                    else store().selectSingle(get(frame).id, false);
+                  },
+                  ondblclick: (event2) => {
+                    event2.stopPropagation();
+                    if (!store().isReadOnly) startInlineNodeEdit(get(frame));
+                  },
+                  onDraftChange: (value) => {
+                    if (get(frameEditing)) store().inlineEdit.updateNodeDraft({ name: value });
+                  },
+                  onCommit: () => store().inlineEdit.commitNode(get(frame)),
+                  onCancel: () => store().inlineEdit.cancelAll()
                 });
               }
-              var node_39 = sibling(node_17, 2);
-              {
-                var consequent_31 = ($$anchor5) => {
-                  var fragment_19 = root_312();
-                  var div_31 = first_child(fragment_19);
-                  var node_40 = sibling(div_31, 2);
-                  {
-                    var consequent_30 = ($$anchor6) => {
-                      var div_32 = root_302();
-                      delegated("pointerdown", div_32, (e) => handleResizeHandlePointerDown(e, get(node)));
-                      append($$anchor6, div_32);
-                    };
-                    if_block(node_40, ($$render) => {
-                      if (get(isSelected)) $$render(consequent_30);
-                    });
-                  }
-                  delegated("pointerdown", div_31, (e) => handleConnectPortPointerDown(e, get(node)));
-                  append($$anchor5, fragment_19);
-                };
-                if_block(node_39, ($$render) => {
-                  if (!store().isReadOnly && get(kindDesc)) $$render(consequent_31);
-                });
-              }
-              reset(div_12);
-              action(div_12, ($$node, $$action_arg) => registerNodeElement?.($$node, $$action_arg), () => get(node).id);
-              template_effect(() => {
-                classes_3 = set_class(div_12, 1, `vz-uml-node kind-${get(node).kind ?? ""}`, null, classes_3, {
-                  selected: get(isSelected),
-                  "inline-editing": get(isInlineEditing),
-                  unsupported: !get(kindDesc)
-                });
-                set_style(div_12, `left: ${get(box).x ?? ""}px; top: ${get(box).y ?? ""}px; width: ${get(box).width ?? ""}px; height: ${get(box).height ?? ""}px; min-height: ${get(box).height ?? ""}px;`);
-                set_attribute2(div_12, "aria-label", `UML ${get(node).kind ?? ""} ${get(node).name ?? ""}`);
-              });
-              delegated("pointerdown", div_12, (e) => handleNodePointerDown(e, get(node)));
-              delegated("contextmenu", div_12, (e) => handleNodeContextMenu(e, get(node)));
-              delegated("dblclick", div_12, (e) => {
-                e.stopPropagation();
-                if (store().isReadOnly || !get(kindDesc) || e.shiftKey || e.ctrlKey || e.metaKey) return;
-                startInlineNodeEdit(get(node));
-              });
-              append($$anchor4, div_12);
             };
-            if_block(node_16, ($$render) => {
-              if (get(box)) $$render(consequent_32);
+            if_block(node_12, ($$render) => {
+              if (get(frameBox)) $$render(consequent_9);
             });
           }
-          append($$anchor3, fragment_7);
+          append($$anchor3, fragment_13);
         });
-        reset(div_11);
-        var svg_4 = sibling(div_11, 2);
-        var g_7 = child(svg_4);
-        var node_41 = child(g_7);
-        {
-          var consequent_35 = ($$anchor3) => {
-            var fragment_20 = comment();
-            var node_42 = first_child(fragment_20);
-            each(node_42, 17, () => get(doc).edges, (edge) => edge.id, ($$anchor4, edge) => {
+        var node_13 = sibling(node_11, 2);
+        each(node_13, 17, () => get(doc).edges, (edge) => edge.id, ($$anchor3, edge) => {
+          const srcBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).source.nodeId]);
+          const tgtBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).target.nodeId]);
+          var fragment_15 = comment();
+          var node_14 = first_child(fragment_15);
+          {
+            var consequent_10 = ($$anchor4) => {
+              const srcNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(edge).source.nodeId));
+              const tgtNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(edge).target.nodeId));
               const isEdgeSelected = user_derived(() => store().selectedIds.includes(get(edge).id) || store().selectedIds.includes(get(edge).source.nodeId) && store().selectedIds.includes(get(edge).target.nodeId));
-              var fragment_21 = comment();
-              var node_43 = first_child(fragment_21);
+              const labelData = user_derived(() => computeEdgeRenderData(get(edge), get(srcBox), get(tgtBox), get(srcNode), get(tgtNode), get(doc).defaultRouting, get(edgeParallelOffsets)[get(edge).id] ?? 0));
+              var fragment_16 = root_54();
+              var node_15 = first_child(fragment_16);
               {
-                var consequent_34 = ($$anchor5) => {
-                  const srcBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).source.nodeId]);
-                  const tgtBox = user_derived(() => get(effectiveNodeLayouts)[get(edge).target.nodeId]);
-                  var fragment_22 = comment();
-                  var node_44 = first_child(fragment_22);
-                  {
-                    var consequent_33 = ($$anchor6) => {
-                      const startDec = user_derived(() => get(edge).visual?.start ?? { shape: "none", size: 10 });
-                      const endDec = user_derived(() => get(edge).visual?.end ?? { shape: "none", size: 10 });
-                      const srcNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(edge).source.nodeId));
-                      const tgtNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(edge).target.nodeId));
-                      const geom = user_derived(() => computeUmlEdgeGeometry(get(srcBox), get(tgtBox), getEdgeRouting(get(edge)), get(startDec), get(endDec), get(edgeParallelOffsets)[get(edge).id] ?? 0, void 0, void 0, get(srcNode)?.kind === "shape" ? get(srcNode).shape : void 0, get(tgtNode)?.kind === "shape" ? get(tgtNode).shape : void 0, get(edge).label));
-                      const startCenter = user_derived(() => getEndpointVisualCenter(get(geom).startTip, get(geom).startAngleDeg, get(startDec)));
-                      const endCenter = user_derived(() => getEndpointVisualCenter(get(geom).endTip, get(geom).endAngleDeg, get(endDec)));
-                      var fragment_23 = root_323();
-                      var circle = first_child(fragment_23);
-                      var circle_1 = sibling(circle);
-                      template_effect(
-                        ($0, $1) => {
-                          set_attribute2(circle, "cx", get(startCenter).x);
-                          set_attribute2(circle, "cy", get(startCenter).y);
-                          set_attribute2(circle, "r", $0);
-                          set_attribute2(circle_1, "cx", get(endCenter).x);
-                          set_attribute2(circle_1, "cy", get(endCenter).y);
-                          set_attribute2(circle_1, "r", $1);
-                        },
-                        [
-                          () => Math.max(9, 10 / store().viewport.zoom),
-                          () => Math.max(9, 10 / store().viewport.zoom)
-                        ]
-                      );
-                      delegated("click", circle, (e) => {
-                        e.stopPropagation();
-                        openEndpointPickerPopup(e.clientX, e.clientY, get(edge), "start", get(startDec));
-                      });
-                      delegated("click", circle_1, (e) => {
-                        e.stopPropagation();
-                        openEndpointPickerPopup(e.clientX, e.clientY, get(edge), "end", get(endDec));
-                      });
-                      append($$anchor6, fragment_23);
-                    };
-                    if_block(node_44, ($$render) => {
-                      if (get(srcBox) && get(tgtBox)) $$render(consequent_33);
-                    });
-                  }
-                  append($$anchor5, fragment_22);
-                };
-                if_block(node_43, ($$render) => {
-                  if (get(isEdgeSelected)) $$render(consequent_34);
+                let $0 = user_derived(() => get(inlineEditingEdgeId) === get(edge).id);
+                EdgeLabel(node_15, {
+                  get point() {
+                    return get(labelData).geometry.labelPoint;
+                  },
+                  get label() {
+                    return get(edge).label;
+                  },
+                  get selected() {
+                    return get(isEdgeSelected);
+                  },
+                  get editing() {
+                    return get($0);
+                  },
+                  get draft() {
+                    return get(inlineEdgeLabelDraft);
+                  },
+                  onselect: (event2) => {
+                    if (store().isReadOnly) return;
+                    if (get(isEdgeSelected)) startInlineEdgeLabelEdit(get(edge));
+                    else store().selectSingle(get(edge).id, event2.shiftKey || event2.metaKey || event2.ctrlKey);
+                  },
+                  ondblclick: (event2) => {
+                    event2.stopPropagation();
+                    if (!store().isReadOnly) startInlineEdgeLabelEdit(get(edge));
+                  },
+                  onDraftChange: (value) => set(inlineEdgeLabelDraft, value, true),
+                  onCommit: () => commitInlineEdgeLabel(get(edge)),
+                  onCancel: () => set(inlineEditingEdgeId, null)
                 });
               }
-              append($$anchor4, fragment_21);
+              var node_16 = sibling(node_15, 2);
+              {
+                let $0 = user_derived(() => get(inlineEditingMultiplicity)?.edgeId === get(edge).id && get(inlineEditingMultiplicity).end === "start");
+                let $1 = user_derived(() => get(inlineEditingMultiplicity)?.draft ?? "");
+                MultiplicityTag(node_16, {
+                  get point() {
+                    return get(labelData).startMultiplicityPoint;
+                  },
+                  get text() {
+                    return get(edge).source.multiplicity;
+                  },
+                  get selected() {
+                    return get(isEdgeSelected);
+                  },
+                  get editing() {
+                    return get($0);
+                  },
+                  get draft() {
+                    return get($1);
+                  },
+                  onclick: (event2) => {
+                    event2.stopPropagation();
+                    if (store().isReadOnly) return;
+                    if (get(isEdgeSelected)) startInlineMultiplicityEdit(get(edge), "start");
+                    else store().selectSingle(get(edge).id, event2.shiftKey || event2.metaKey || event2.ctrlKey);
+                  },
+                  ondblclick: (event2) => {
+                    event2.stopPropagation();
+                    if (!store().isReadOnly) startInlineMultiplicityEdit(get(edge), "start");
+                  },
+                  onDraftChange: (value) => {
+                    if (get(inlineEditingMultiplicity)) get(inlineEditingMultiplicity).draft = value;
+                  },
+                  onCommit: () => commitInlineMultiplicity(get(edge)),
+                  onCancel: () => set(inlineEditingMultiplicity, null)
+                });
+              }
+              var node_17 = sibling(node_16, 2);
+              {
+                let $0 = user_derived(() => get(inlineEditingMultiplicity)?.edgeId === get(edge).id && get(inlineEditingMultiplicity).end === "end");
+                let $1 = user_derived(() => get(inlineEditingMultiplicity)?.draft ?? "");
+                MultiplicityTag(node_17, {
+                  get point() {
+                    return get(labelData).endMultiplicityPoint;
+                  },
+                  get text() {
+                    return get(edge).target.multiplicity;
+                  },
+                  get selected() {
+                    return get(isEdgeSelected);
+                  },
+                  get editing() {
+                    return get($0);
+                  },
+                  get draft() {
+                    return get($1);
+                  },
+                  onclick: (event2) => {
+                    event2.stopPropagation();
+                    if (store().isReadOnly) return;
+                    if (get(isEdgeSelected)) startInlineMultiplicityEdit(get(edge), "end");
+                    else store().selectSingle(get(edge).id, event2.shiftKey || event2.metaKey || event2.ctrlKey);
+                  },
+                  ondblclick: (event2) => {
+                    event2.stopPropagation();
+                    if (!store().isReadOnly) startInlineMultiplicityEdit(get(edge), "end");
+                  },
+                  onDraftChange: (value) => {
+                    if (get(inlineEditingMultiplicity)) get(inlineEditingMultiplicity).draft = value;
+                  },
+                  onCommit: () => commitInlineMultiplicity(get(edge)),
+                  onCancel: () => set(inlineEditingMultiplicity, null)
+                });
+              }
+              append($$anchor4, fragment_16);
+            };
+            if_block(node_14, ($$render) => {
+              if (get(srcBox) && get(tgtBox)) $$render(consequent_10);
             });
-            append($$anchor3, fragment_20);
-          };
-          if_block(node_41, ($$render) => {
-            if (!store().isReadOnly) $$render(consequent_35);
-          });
-        }
-        var node_45 = sibling(node_41);
+          }
+          append($$anchor3, fragment_15);
+        });
+        reset(div_4);
+        var node_18 = sibling(div_4, 2);
         {
-          var consequent_36 = ($$anchor3) => {
-            var line_1 = root_333();
-            template_effect(() => {
-              set_attribute2(line_1, "x1", get(gesture).startPoint.x);
-              set_attribute2(line_1, "y1", get(gesture).startPoint.y);
-              set_attribute2(line_1, "x2", get(gesture).currentWorld.x);
-              set_attribute2(line_1, "y2", get(gesture).currentWorld.y);
-            });
-            append($$anchor3, line_1);
-          };
-          if_block(node_45, ($$render) => {
-            if (get(gesture).mode === "connecting") $$render(consequent_36);
-          });
-        }
-        var node_46 = sibling(node_45);
-        {
-          var consequent_37 = ($$anchor3) => {
-            var rect_5 = root_342();
-            template_effect(() => {
-              set_attribute2(rect_5, "x", get(marqueeRect).x);
-              set_attribute2(rect_5, "y", get(marqueeRect).y);
-              set_attribute2(rect_5, "width", get(marqueeRect).width);
-              set_attribute2(rect_5, "height", get(marqueeRect).height);
-            });
-            append($$anchor3, rect_5);
-          };
-          if_block(node_46, ($$render) => {
-            if (get(marqueeRect)) $$render(consequent_37);
-          });
-        }
-        reset(g_7);
-        reset(svg_4);
-        var node_47 = sibling(svg_4, 2);
-        {
-          var consequent_40 = ($$anchor3) => {
-            const editingEdge = user_derived(() => get(inlineEditingEdgeId) ? get(doc).edges.find((e) => e.id === get(inlineEditingEdgeId)) : void 0);
-            var fragment_24 = comment();
-            var node_48 = first_child(fragment_24);
-            {
-              var consequent_39 = ($$anchor4) => {
-                const srcB = user_derived(() => get(effectiveNodeLayouts)[get(editingEdge).source.nodeId]);
-                const tgtB = user_derived(() => get(effectiveNodeLayouts)[get(editingEdge).target.nodeId]);
-                var fragment_25 = comment();
-                var node_49 = first_child(fragment_25);
-                {
-                  var consequent_38 = ($$anchor5) => {
-                    const srcNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(editingEdge).source.nodeId));
-                    const tgtNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(editingEdge).target.nodeId));
-                    const g = user_derived(() => computeUmlEdgeGeometry(get(srcB), get(tgtB), getEdgeRouting(get(editingEdge)), get(editingEdge).visual?.start, get(editingEdge).visual?.end, get(edgeParallelOffsets)[get(editingEdge).id] ?? 0, void 0, void 0, get(srcNode)?.kind === "shape" ? get(srcNode).shape : void 0, get(tgtNode)?.kind === "shape" ? get(tgtNode).shape : void 0, get(inlineEdgeLabelDraft) || get(editingEdge).label));
-                    var div_33 = root_352();
-                    var input_4 = child(div_33);
-                    remove_input_defaults(input_4);
-                    action(input_4, ($$node) => focusInput?.($$node));
-                    effect(() => bind_value(input_4, () => get(inlineEdgeLabelDraft), ($$value) => set(inlineEdgeLabelDraft, $$value)));
-                    reset(div_33);
-                    template_effect(($0) => set_style(div_33, `left: ${get(g).labelPoint.x * store().viewport.zoom + store().viewport.panX}px; top: ${get(g).labelPoint.y * store().viewport.zoom + store().viewport.panY}px; width: ${$0 ?? ""}px; transform: translate(-50%, -50%) scale(${store().viewport.zoom ?? ""}); transform-origin: center center;`), [
-                      () => Math.max(64, get(inlineEdgeLabelDraft).length * 7.6 + 20)
-                    ]);
-                    delegated("pointerdown", div_33, (e) => e.stopPropagation());
-                    event("blur", input_4, () => commitInlineEdgeLabel(get(editingEdge)));
-                    delegated("keydown", input_4, (ke) => {
-                      if (ke.key === "Enter") commitInlineEdgeLabel(get(editingEdge));
-                      if (ke.key === "Escape") set(inlineEditingEdgeId, null);
-                    });
-                    append($$anchor5, div_33);
-                  };
-                  if_block(node_49, ($$render) => {
-                    if (get(srcB) && get(tgtB)) $$render(consequent_38);
-                  });
-                }
-                append($$anchor4, fragment_25);
-              };
-              if_block(node_48, ($$render) => {
-                if (get(editingEdge)) $$render(consequent_39);
-              });
-            }
-            append($$anchor3, fragment_24);
-          };
-          if_block(node_47, ($$render) => {
-            if (get(inlineEditingEdgeId)) $$render(consequent_40);
-          });
-        }
-        var node_50 = sibling(node_47, 2);
-        {
-          var consequent_43 = ($$anchor3) => {
-            const editingFrame = user_derived(() => get(doc).nodes.find((n) => n.id === get(inlineEditingNodeId) && n.kind === "frame"));
-            var fragment_26 = comment();
-            var node_51 = first_child(fragment_26);
-            {
-              var consequent_42 = ($$anchor4) => {
-                const fbox = user_derived(() => get(effectiveNodeLayouts)[get(editingFrame).id]);
-                var fragment_27 = comment();
-                var node_52 = first_child(fragment_27);
-                {
-                  var consequent_41 = ($$anchor5) => {
-                    const labelDraft = user_derived(() => get(inlineNodeNameDraft) !== void 0 ? get(inlineNodeNameDraft) : get(editingFrame).name || "Frame");
-                    const labelW = user_derived(() => Math.max(64, get(labelDraft).length * 7.6 + 20));
-                    var div_34 = root_362();
-                    var input_5 = child(div_34);
-                    remove_input_defaults(input_5);
-                    action(input_5, ($$node) => focusInput?.($$node));
-                    effect(() => bind_value(input_5, () => get(inlineNodeNameDraft), ($$value) => set(inlineNodeNameDraft, $$value)));
-                    reset(div_34);
-                    template_effect(() => set_style(div_34, `left: ${(get(fbox).x + 16) * store().viewport.zoom + store().viewport.panX}px; top: ${get(fbox).y * store().viewport.zoom + store().viewport.panY}px; width: ${get(labelW) ?? ""}px; transform: translateY(-50%) scale(${store().viewport.zoom ?? ""}); transform-origin: left center;`));
-                    delegated("pointerdown", div_34, (e) => e.stopPropagation());
-                    event("blur", input_5, () => commitInlineNodeEdit(get(editingFrame)));
-                    delegated("keydown", input_5, (ke) => {
-                      if (ke.key === "Enter") commitInlineNodeEdit(get(editingFrame));
-                      if (ke.key === "Escape") set(inlineEditingNodeId, null);
-                    });
-                    append($$anchor5, div_34);
-                  };
-                  if_block(node_52, ($$render) => {
-                    if (get(fbox)) $$render(consequent_41);
-                  });
-                }
-                append($$anchor4, fragment_27);
-              };
-              if_block(node_51, ($$render) => {
-                if (get(editingFrame)) $$render(consequent_42);
-              });
-            }
-            append($$anchor3, fragment_26);
-          };
-          if_block(node_50, ($$render) => {
-            if (get(inlineEditingNodeId)) $$render(consequent_43);
-          });
-        }
-        var node_53 = sibling(node_50, 2);
-        {
-          var consequent_46 = ($$anchor3) => {
-            const multEdit = user_derived(() => get(inlineEditingMultiplicity));
-            const editingEdge = user_derived(() => get(multEdit) ? get(doc).edges.find((e) => e.id === get(multEdit).edgeId) : void 0);
-            var fragment_28 = comment();
-            var node_54 = first_child(fragment_28);
-            {
-              var consequent_45 = ($$anchor4) => {
-                const srcB = user_derived(() => get(effectiveNodeLayouts)[get(editingEdge).source.nodeId]);
-                const tgtB = user_derived(() => get(effectiveNodeLayouts)[get(editingEdge).target.nodeId]);
-                var fragment_29 = comment();
-                var node_55 = first_child(fragment_29);
-                {
-                  var consequent_44 = ($$anchor5) => {
-                    const srcNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(editingEdge).source.nodeId));
-                    const tgtNode = user_derived(() => get(doc).nodes.find((n) => n.id === get(editingEdge).target.nodeId));
-                    const g = user_derived(() => computeUmlEdgeGeometry(get(srcB), get(tgtB), getEdgeRouting(get(editingEdge)), get(editingEdge).visual?.start, get(editingEdge).visual?.end, get(edgeParallelOffsets)[get(editingEdge).id] ?? 0, void 0, void 0, get(srcNode)?.kind === "shape" ? get(srcNode).shape : void 0, get(tgtNode)?.kind === "shape" ? get(tgtNode).shape : void 0, get(editingEdge).label));
-                    const pt = user_derived(() => get(multEdit) && get(multEdit).end === "start" ? getMultiplicityLabelPoint(get(g).startTip, get(g).startAngleDeg, get(multEdit).draft || get(editingEdge).source.multiplicity) : get(multEdit) ? getMultiplicityLabelPoint(get(g).endTip, get(g).endAngleDeg, get(multEdit).draft || get(editingEdge).target.multiplicity) : { x: 0, y: 0 });
-                    var div_35 = root_372();
-                    var input_6 = child(div_35);
-                    remove_input_defaults(input_6);
-                    action(input_6, ($$node) => focusInput?.($$node));
-                    reset(div_35);
-                    template_effect(
-                      ($0) => {
-                        set_style(div_35, `left: ${get(pt).x * store().viewport.zoom + store().viewport.panX}px; top: ${get(pt).y * store().viewport.zoom + store().viewport.panY}px; width: ${$0 ?? ""}px; transform: translate(-50%, -50%) scale(${store().viewport.zoom ?? ""}); transform-origin: center center;`);
-                        set_value(input_6, get(multEdit)?.draft ?? "");
-                      },
-                      [
-                        () => Math.max(38, (get(multEdit)?.draft?.length ?? 0) * 8 + 14)
-                      ]
-                    );
-                    delegated("pointerdown", div_35, (e) => e.stopPropagation());
-                    delegated("input", input_6, (e) => {
-                      if (get(inlineEditingMultiplicity)) {
-                        get(inlineEditingMultiplicity).draft = e.currentTarget.value;
-                      }
-                    });
-                    event("blur", input_6, () => commitInlineMultiplicity(get(editingEdge)));
-                    delegated("keydown", input_6, (ke) => {
-                      if (ke.key === "Enter") commitInlineMultiplicity(get(editingEdge));
-                      if (ke.key === "Escape") set(inlineEditingMultiplicity, null);
-                    });
-                    append($$anchor5, div_35);
-                  };
-                  if_block(node_55, ($$render) => {
-                    if (get(srcB) && get(tgtB)) $$render(consequent_44);
-                  });
-                }
-                append($$anchor4, fragment_29);
-              };
-              if_block(node_54, ($$render) => {
-                if (get(multEdit) && get(editingEdge)) $$render(consequent_45);
-              });
-            }
-            append($$anchor3, fragment_28);
-          };
-          if_block(node_53, ($$render) => {
-            if (get(inlineEditingMultiplicity)) $$render(consequent_46);
-          });
-        }
-        var node_56 = sibling(node_53, 2);
-        {
-          var consequent_48 = ($$anchor3) => {
+          var consequent_12 = ($$anchor3) => {
             const popup = user_derived(() => get(endpointPickerPopup));
-            var div_36 = root_40();
-            var div_37 = child(div_36);
-            var input_7 = sibling(child(div_37), 2);
-            remove_input_defaults(input_7);
-            reset(div_37);
-            var div_38 = sibling(div_37, 2);
-            each(div_38, 21, () => endpointIconChoices, index, ($$anchor4, choice) => {
-              const preview = user_derived(() => renderEndpointPath(get(choice).decoration));
+            var div_5 = root_8();
+            var div_6 = child(div_5);
+            var input = sibling(child(div_6), 2);
+            remove_input_defaults(input);
+            reset(div_6);
+            var div_7 = sibling(div_6, 2);
+            each(div_7, 21, () => endpointIconChoices, index, ($$anchor4, choice) => {
+              const preview = user_derived(() => renderEndpointPath2(get(choice).decoration));
               const isActive = user_derived(() => isSameEndpointChoice(get(popup).current, get(choice).decoration));
-              var button_5 = root_39();
-              let classes_6;
-              var svg_5 = child(button_5);
-              var line_2 = child(svg_5);
-              var node_57 = sibling(line_2);
+              var button_3 = root_73();
+              let classes_1;
+              var svg_4 = child(button_3);
+              var line_1 = child(svg_4);
+              var node_19 = sibling(line_1);
               {
-                var consequent_47 = ($$anchor5) => {
-                  var path_5 = root_38();
+                var consequent_11 = ($$anchor5) => {
+                  var path = root_63();
                   template_effect(() => {
-                    set_attribute2(path_5, "d", get(preview).d);
-                    set_attribute2(path_5, "fill", get(choice).decoration.fill === "filled" ? "currentColor" : "var(--vscode-editor-background)");
+                    set_attribute2(path, "d", get(preview).d);
+                    set_attribute2(path, "fill", get(choice).decoration.fill === "filled" ? "currentColor" : "var(--vscode-editor-background)");
                   });
-                  append($$anchor5, path_5);
+                  append($$anchor5, path);
                 };
-                if_block(node_57, ($$render) => {
-                  if (get(preview).d) $$render(consequent_47);
+                if_block(node_19, ($$render) => {
+                  if (get(preview).d) $$render(consequent_11);
                 });
               }
-              reset(svg_5);
-              var span_8 = sibling(svg_5, 2);
-              var text_24 = only_child(span_8, true);
-              reset(button_5);
+              reset(svg_4);
+              var span = sibling(svg_4, 2);
+              var text_1 = only_child(span, true);
+              reset(button_3);
               template_effect(
                 ($0) => {
-                  classes_6 = set_class(button_5, 1, "vz-endpoint-icon-btn", null, classes_6, { active: get(isActive) });
-                  set_attribute2(button_5, "title", get(choice).label);
-                  set_attribute2(line_2, "x2", $0);
-                  set_text(text_24, get(choice).label);
+                  classes_1 = set_class(button_3, 1, "vz-endpoint-icon-btn", null, classes_1, { active: get(isActive) });
+                  set_attribute2(button_3, "title", get(choice).label);
+                  set_attribute2(line_1, "x2", $0);
+                  set_text(text_1, get(choice).label);
                 },
                 [
                   () => get(choice).decoration.shape === "none" || get(choice).decoration.shape === "open-arrow" ? "0" : String(-(get(choice).decoration.size ?? 11))
                 ]
               );
-              delegated("click", button_5, () => {
+              delegated("click", button_3, () => {
                 commitEndpointMultiplicity();
                 store().dispatchOperation({
                   type: "uml.updateEndpoint",
@@ -12894,78 +12715,70 @@ ${component_stack}
                 });
                 set(endpointPickerPopup, null);
               });
-              append($$anchor4, button_5);
+              append($$anchor4, button_3);
             });
-            reset(div_38);
-            reset(div_36);
+            reset(div_7);
+            reset(div_5);
             template_effect(() => {
-              set_style(div_36, `left: ${get(popup).x ?? ""}px; top: ${get(popup).y ?? ""}px;`);
-              set_value(input_7, get(popup).multiplicityDraft);
+              set_style(div_5, `left: ${get(popup).x ?? ""}px; top: ${get(popup).y ?? ""}px;`);
+              set_value(input, get(popup).multiplicityDraft);
             });
-            delegated("pointerdown", div_36, (e) => e.stopPropagation());
-            delegated("input", input_7, (ev) => {
+            delegated("pointerdown", div_5, (e) => e.stopPropagation());
+            delegated("input", input, (ev) => {
               if (get(endpointPickerPopup)) {
                 get(endpointPickerPopup).multiplicityDraft = ev.currentTarget.value;
               }
             });
-            delegated("change", input_7, () => {
+            delegated("change", input, () => {
               commitEndpointMultiplicity();
             });
-            delegated("keydown", input_7, (ke) => {
+            delegated("keydown", input, (ke) => {
               if (ke.key === "Enter") {
                 closeEndpointPickerPopup();
               } else if (ke.key === "Escape") {
                 set(endpointPickerPopup, null);
               }
             });
-            append($$anchor3, div_36);
+            append($$anchor3, div_5);
           };
-          if_block(node_56, ($$render) => {
-            if (get(endpointPickerPopup)) $$render(consequent_48);
+          if_block(node_18, ($$render) => {
+            if (get(endpointPickerPopup)) $$render(consequent_12);
           });
         }
         template_effect(() => {
-          set_style(div_4, `transform: translate(${store().viewport.panX ?? ""}px, ${store().viewport.panY ?? ""}px) scale(${store().viewport.zoom ?? ""});`);
+          set_style(div_2, `transform: translate(${store().viewport.panX ?? ""}px, ${store().viewport.panY ?? ""}px) scale(${store().viewport.zoom ?? ""});`);
+          set_attribute2(g, "transform", `translate(${store().viewport.panX ?? ""}, ${store().viewport.panY ?? ""}) scale(${store().viewport.zoom ?? ""})`);
+          set_style(div_3, `transform: translate(${store().viewport.panX ?? ""}px, ${store().viewport.panY ?? ""}px) scale(${store().viewport.zoom ?? ""});`);
           set_attribute2(g_1, "transform", `translate(${store().viewport.panX ?? ""}, ${store().viewport.panY ?? ""}) scale(${store().viewport.zoom ?? ""})`);
-          set_style(div_11, `transform: translate(${store().viewport.panX ?? ""}px, ${store().viewport.panY ?? ""}px) scale(${store().viewport.zoom ?? ""});`);
-          set_attribute2(g_7, "transform", `translate(${store().viewport.panX ?? ""}, ${store().viewport.panY ?? ""}) scale(${store().viewport.zoom ?? ""})`);
+          set_style(div_4, `transform: translate(${store().viewport.panX ?? ""}px, ${store().viewport.panY ?? ""}px) scale(${store().viewport.zoom ?? ""});`);
         });
         append($$anchor2, fragment_1);
       };
       if_block(node_2, ($$render) => {
-        if (get(doc)) $$render(consequent_49);
+        if (get(doc)) $$render(consequent_13);
       });
     }
-    reset(div_2);
-    bind_this(div_2, ($$value) => set(viewportEl, $$value), () => get(viewportEl));
-    var node_58 = sibling(div_2, 2);
-    UmlInspector(node_58, {
-      get store() {
-        return store();
-      },
-      onDeleteSelected: deleteSelected,
-      onDuplicateSelected: duplicateSelected
-    });
-    reset(div_1);
     reset(div);
+    bind_this(div, ($$value) => set(viewportEl, $$value), () => get(viewportEl));
     template_effect(
       ($0) => {
-        classes = set_class(div_2, 1, "vz-viewport vz-canvas-bg", null, classes, {
+        classes = set_class(div, 1, "vz-viewport vz-canvas-bg", null, classes, {
           "space-grab": get(spacePressed),
-          "space-grabbing": get(gesture).mode === "panning"
+          "space-grabbing": get(gesture).mode === "panning" || get(gesture).mode === "moving",
+          "is-resizing": get(gesture).mode === "resizing"
         });
-        set_style(div_2, `background-size: ${get(gridSpacing) ?? ""}px ${get(gridSpacing) ?? ""}px; background-position: ${get(gridPosX) ?? ""}px ${get(gridPosY) ?? ""}px; background-image: radial-gradient(rgba(128, 128, 128, ${get(gridOpacity) ?? ""}) ${get(gridDotRadius) ?? ""}px, transparent ${get(gridDotRadius) ?? ""}px);`);
-        set_text(text_1, `${$0 ?? ""}%`);
+        set_style(div, `background-size: ${get(gridSpacing) ?? ""}px ${get(gridSpacing) ?? ""}px; background-position: ${get(gridPosX) ?? ""}px ${get(gridPosY) ?? ""}px; background-image: radial-gradient(rgba(128, 128, 128, ${get(gridOpacity) ?? ""}) ${get(gridDotRadius) ?? ""}px, transparent ${get(gridDotRadius) ?? ""}px); --vz-resize-cursor: ${get(resizeCursor) ?? "default" ?? ""};`);
+        set_text(text2, `${$0 ?? ""}%`);
       },
       [() => Math.round(store().viewport.zoom * 100)]
     );
-    event("wheel", div_2, handleWheel);
-    delegated("pointermove", div_2, (e) => {
+    event("wheel", div, handleWheel);
+    delegated("pointermove", div, (e) => {
       set(lastPointerWorldPos, getRelativeWorldPoint(e), true);
     });
-    delegated("pointerdown", div_2, handleCanvasPointerDown);
-    delegated("contextmenu", div_2, handleCanvasContextMenu);
-    event("wheel", div_3, handleZoomPillWheel);
+    delegated("pointerdown", div, handleCanvasPointerDown);
+    delegated("contextmenu", div, handleCanvasContextMenu);
+    event("wheel", div_1, handleZoomPillWheel);
     delegated("click", button, () => store().setViewport({
       ...store().viewport,
       zoom: (Math.round(store().viewport.zoom * 100) - 10) / 100
@@ -12984,50 +12797,1708 @@ ${component_stack}
     "pointerdown",
     "contextmenu",
     "click",
-    "dblclick",
+    "input",
     "change",
-    "keydown",
-    "input"
+    "keydown"
   ]);
 
+  // src/webview/ui/layout/Splitter.svelte
+  var root17 = from_html(`<div role="separator" tabindex="0"></div>`);
+  function Splitter($$anchor, $$props) {
+    push($$props, true);
+    let orientation = prop($$props, "orientation", 3, "vertical"), label = prop($$props, "label", 3, "Resize panel");
+    let dragging = state(false);
+    let lastPosition = 0;
+    function handlePointerDown(event2) {
+      event2.preventDefault();
+      event2.stopPropagation();
+      set(dragging, true);
+      lastPosition = orientation() === "vertical" ? event2.clientX : event2.clientY;
+      event2.currentTarget.setPointerCapture?.(event2.pointerId);
+    }
+    function handlePointerMove(event2) {
+      if (!get(dragging)) return;
+      const current = orientation() === "vertical" ? event2.clientX : event2.clientY;
+      const delta = current - lastPosition;
+      if (delta === 0) return;
+      lastPosition = current;
+      $$props.onresize?.(delta);
+    }
+    function handlePointerUp() {
+      set(dragging, false);
+    }
+    function handleKeyDown(event2) {
+      const step = event2.shiftKey ? 40 : 10;
+      if (orientation() === "vertical") {
+        if (event2.key === "ArrowLeft") {
+          event2.preventDefault();
+          $$props.onresize?.(-step);
+        } else if (event2.key === "ArrowRight") {
+          event2.preventDefault();
+          $$props.onresize?.(step);
+        }
+      } else if (event2.key === "ArrowUp") {
+        event2.preventDefault();
+        $$props.onresize?.(-step);
+      } else if (event2.key === "ArrowDown") {
+        event2.preventDefault();
+        $$props.onresize?.(step);
+      }
+    }
+    var div = root17();
+    let classes;
+    template_effect(() => {
+      classes = set_class(div, 1, `vz-ui-splitter ${orientation() ?? ""}`, "svelte-1ongngy", classes, { dragging: get(dragging) });
+      set_attribute2(div, "aria-orientation", orientation() === "vertical" ? "vertical" : "horizontal");
+      set_attribute2(div, "aria-label", label());
+    });
+    delegated("pointerdown", div, handlePointerDown);
+    delegated("pointermove", div, handlePointerMove);
+    delegated("pointerup", div, handlePointerUp);
+    event("pointercancel", div, handlePointerUp);
+    delegated("keydown", div, handleKeyDown);
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["pointerdown", "pointermove", "pointerup", "keydown"]);
+
+  // src/webview/sidebar/outline/ElementsOutline.svelte
+  var itemIcon = ($$anchor, item = noop) => {
+    var svg = root_20();
+    var node_1 = child(svg);
+    {
+      var consequent_10 = ($$anchor2) => {
+        const v = user_derived(() => item().edgeVisual);
+        const hasLeftShape = user_derived(() => get(v).startShape === "diamond" || get(v).startShape === "circle" || get(v).startShape === "square" || get(v).startShape === "triangle");
+        const hasRightShape = user_derived(() => get(v).endShape === "diamond" || get(v).endShape === "circle" || get(v).endShape === "square" || get(v).endShape === "triangle");
+        const startX = user_derived(() => get(hasLeftShape) ? 6 : 1.5);
+        const endX = user_derived(() => get(hasRightShape) ? 10 : 14.5);
+        var fragment = root_102();
+        var line_1 = first_child(fragment);
+        var node_2 = sibling(line_1);
+        {
+          var consequent = ($$anchor3) => {
+            var polygon = root18();
+            template_effect(() => set_attribute2(polygon, "fill", get(v).startFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
+            append($$anchor3, polygon);
+          };
+          var consequent_1 = ($$anchor3) => {
+            var circle = root_113();
+            template_effect(() => set_attribute2(circle, "fill", get(v).startFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
+            append($$anchor3, circle);
+          };
+          var consequent_2 = ($$anchor3) => {
+            var rect_1 = root_29();
+            template_effect(() => set_attribute2(rect_1, "fill", get(v).startFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
+            append($$anchor3, rect_1);
+          };
+          var consequent_3 = ($$anchor3) => {
+            var polygon_1 = root_38();
+            template_effect(() => set_attribute2(polygon_1, "fill", get(v).startFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
+            append($$anchor3, polygon_1);
+          };
+          var consequent_4 = ($$anchor3) => {
+            var path = root_47();
+            append($$anchor3, path);
+          };
+          if_block(node_2, ($$render) => {
+            if (get(v).startShape === "diamond") $$render(consequent);
+            else if (get(v).startShape === "circle") $$render(consequent_1, 1);
+            else if (get(v).startShape === "square") $$render(consequent_2, 2);
+            else if (get(v).startShape === "triangle") $$render(consequent_3, 3);
+            else if (get(v).startShape === "open-arrow") $$render(consequent_4, 4);
+          });
+        }
+        var node_3 = sibling(node_2);
+        {
+          var consequent_5 = ($$anchor3) => {
+            var polygon_2 = root_55();
+            template_effect(() => set_attribute2(polygon_2, "fill", get(v).endFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
+            append($$anchor3, polygon_2);
+          };
+          var consequent_6 = ($$anchor3) => {
+            var circle_1 = root_64();
+            template_effect(() => set_attribute2(circle_1, "fill", get(v).endFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
+            append($$anchor3, circle_1);
+          };
+          var consequent_7 = ($$anchor3) => {
+            var rect_2 = root_74();
+            template_effect(() => set_attribute2(rect_2, "fill", get(v).endFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
+            append($$anchor3, rect_2);
+          };
+          var consequent_8 = ($$anchor3) => {
+            var polygon_3 = root_82();
+            template_effect(() => set_attribute2(polygon_3, "fill", get(v).endFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
+            append($$anchor3, polygon_3);
+          };
+          var consequent_9 = ($$anchor3) => {
+            var path_1 = root_92();
+            append($$anchor3, path_1);
+          };
+          if_block(node_3, ($$render) => {
+            if (get(v).endShape === "diamond") $$render(consequent_5);
+            else if (get(v).endShape === "circle") $$render(consequent_6, 1);
+            else if (get(v).endShape === "square") $$render(consequent_7, 2);
+            else if (get(v).endShape === "triangle") $$render(consequent_8, 3);
+            else if (get(v).endShape === "open-arrow") $$render(consequent_9, 4);
+          });
+        }
+        template_effect(() => {
+          set_attribute2(line_1, "x1", get(startX));
+          set_attribute2(line_1, "x2", get(endX));
+          set_attribute2(line_1, "stroke-dasharray", get(v).line === "dashed" ? "2 1.5" : void 0);
+        });
+        append($$anchor2, fragment);
+      };
+      var consequent_11 = ($$anchor2) => {
+        var fragment_1 = root_11();
+        next(2);
+        append($$anchor2, fragment_1);
+      };
+      var consequent_12 = ($$anchor2) => {
+        var fragment_2 = root_122();
+        next();
+        append($$anchor2, fragment_2);
+      };
+      var consequent_13 = ($$anchor2) => {
+        var fragment_3 = root_132();
+        next(3);
+        append($$anchor2, fragment_3);
+      };
+      var consequent_14 = ($$anchor2) => {
+        var rect_3 = root_142();
+        append($$anchor2, rect_3);
+      };
+      var consequent_15 = ($$anchor2) => {
+        var ellipse = root_152();
+        append($$anchor2, ellipse);
+      };
+      var consequent_16 = ($$anchor2) => {
+        var polygon_4 = root_162();
+        append($$anchor2, polygon_4);
+      };
+      var consequent_17 = ($$anchor2) => {
+        var polygon_5 = root_172();
+        append($$anchor2, polygon_5);
+      };
+      var consequent_18 = ($$anchor2) => {
+        var polygon_6 = root_182();
+        append($$anchor2, polygon_6);
+      };
+      var alternate = ($$anchor2) => {
+        var rect_4 = root_192();
+        append($$anchor2, rect_4);
+      };
+      if_block(node_1, ($$render) => {
+        if (item().isEdge && item().edgeVisual) $$render(consequent_10);
+        else if (item().iconKey === "class") $$render(consequent_11, 1);
+        else if (item().iconKey === "frame") $$render(consequent_12, 2);
+        else if (item().iconKey === "note") $$render(consequent_13, 3);
+        else if (item().iconKey === "rectangle") $$render(consequent_14, 4);
+        else if (item().iconKey === "ellipse") $$render(consequent_15, 5);
+        else if (item().iconKey === "rhombus") $$render(consequent_16, 6);
+        else if (item().iconKey === "trapezoid") $$render(consequent_17, 7);
+        else if (item().iconKey === "parallelogram") $$render(consequent_18, 8);
+        else $$render(alternate, -1);
+      });
+    }
+    reset(svg);
+    append($$anchor, svg);
+  };
+  var root18 = from_svg(`<polygon points="1,8 3.5,5.5 6,8 3.5,10.5" stroke-width="1.2"></polygon>`);
+  var root_113 = from_svg(`<circle cx="3.5" cy="8" r="2.5" stroke-width="1.2"></circle>`);
+  var root_29 = from_svg(`<rect x="1" y="5.5" width="5" height="5" stroke-width="1.2"></rect>`);
+  var root_38 = from_svg(`<polygon points="6,5 1,8 6,11" stroke-width="1.2"></polygon>`);
+  var root_47 = from_svg(`<path d="M5 5.5 L1.5 8 L5 10.5" stroke-width="1.3"></path>`);
+  var root_55 = from_svg(`<polygon points="10,8 12.5,5.5 15,8 12.5,10.5" stroke-width="1.2"></polygon>`);
+  var root_64 = from_svg(`<circle cx="12.5" cy="8" r="2.5" stroke-width="1.2"></circle>`);
+  var root_74 = from_svg(`<rect x="10" y="5.5" width="5" height="5" stroke-width="1.2"></rect>`);
+  var root_82 = from_svg(`<polygon points="10,5 15,8 10,11" stroke-width="1.2"></polygon>`);
+  var root_92 = from_svg(`<path d="M11 5.5 L14.5 8 L11 10.5" stroke-width="1.3"></path>`);
+  var root_102 = from_svg(`<line y1="8" y2="8" stroke-width="1.3"></line><!><!>`, 1);
+  var root_11 = from_svg(`<rect x="2" y="2" width="12" height="12" rx="1.5" stroke-width="1.3"></rect><line x1="2" y1="6" x2="14" y2="6" stroke-width="1.1"></line><line x1="2" y1="10" x2="14" y2="10" stroke-width="1.1"></line>`, 1);
+  var root_122 = from_svg(`<rect x="2" y="2" width="12" height="12" rx="1.5" stroke-width="1.3"></rect><path d="M2 6 h5 v-4" stroke-width="1.1"></path>`, 1);
+  var root_132 = from_svg(`<path d="M3 2 h7 l3 3 v8 a1 1 0 0 1 -1 1 h-9 a1 1 0 0 1 -1 -1 v-10 a1 1 0 0 1 1 -1 z" stroke-width="1.3"></path><path d="M10 2 v3 h3" stroke-width="1.1"></path><line x1="5" y1="8" x2="11" y2="8" stroke-width="1"></line><line x1="5" y1="11" x2="9" y2="11" stroke-width="1"></line>`, 1);
+  var root_142 = from_svg(`<rect x="2" y="3.5" width="12" height="9" rx="1" stroke-width="1.3"></rect>`);
+  var root_152 = from_svg(`<ellipse cx="8" cy="8" rx="6" ry="4.5" stroke-width="1.3"></ellipse>`);
+  var root_162 = from_svg(`<polygon points="8,2 14,8 8,14 2,8" stroke-width="1.3"></polygon>`);
+  var root_172 = from_svg(`<polygon points="4.5,4 11.5,4 13.5,12 2.5,12" stroke-width="1.3"></polygon>`);
+  var root_182 = from_svg(`<polygon points="4.5,4 13.5,4 11.5,12 2.5,12" stroke-width="1.3"></polygon>`);
+  var root_192 = from_svg(`<rect x="2" y="2" width="12" height="12" rx="2" stroke-width="1.3"></rect>`);
+  var root_20 = from_svg(`<svg class="vz-outline-icon-svg" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><!></svg>`);
+  var root_21 = from_html(`<span></span> <span class="vz-outline-edge-label"> </span> <span></span>`, 1);
+  var root_222 = from_html(`<span></span>`);
+  var root_232 = from_html(`<div class="vz-outline-edge-row"><span class="vz-outline-endpoint"> </span> <span class="vz-outline-connector" aria-hidden="true"><!></span> <span class="vz-outline-endpoint"> </span></div>`);
+  var root_242 = from_html(`<span class="vz-outline-stereotype"> </span>`);
+  var root_252 = from_html(`<span class="vz-outline-label"> </span> <!>`, 1);
+  var root_262 = from_html(`<button type="button"><span class="vz-outline-icon" aria-hidden="true"><!></span> <!></button>`);
+  var root_272 = from_html(`<button type="button" class="vz-add-dropdown-item" role="menuitem"><span> </span> <kbd class="vz-kbd"> </kbd></button>`);
+  var root_282 = from_html(`<button type="button" class="vz-add-dropdown-item" role="menuitem"><span> </span></button>`);
+  var root_292 = from_html(`<div class="vz-add-dropdown" role="menu"><!> <div class="vz-context-divider"></div> <div class="vz-dropdown-section-label">Shapes</div> <!></div>`);
+  var root_30 = from_html(`<div class="vz-add-dropdown-wrap"><button type="button" class="vz-plus-btn" title="Add New UML Element" aria-label="Add New UML Element">\uFF0B</button> <!></div>`);
+  var root_31 = from_html(`No elements yet. Click <strong>\uFF0B</strong> or right-click here to add one.`, 1);
+  var root_322 = from_html(`<div class="vz-empty-hint"><!></div>`);
+  var root_332 = from_html(`<li role="option"><!></li>`);
+  var root_342 = from_html(`<ul class="vz-outline-list" role="listbox" aria-label="Diagram elements"></ul>`);
+  var root_352 = from_html(`<section class="vz-outline-section" aria-label="Elements List"><div class="vz-outline-header"><span class="vz-sidebar-title"> </span> <!></div> <div class="vz-outline-search-row"><input type="search" class="vz-input" placeholder="Search" aria-label="Search elements"/></div> <!></section>  <div class="vz-section-splitter" role="separator" aria-orientation="horizontal" aria-label="Resize Elements and Inspector sections" tabindex="0"></div>`, 1);
+  function ElementsOutline($$anchor, $$props) {
+    push($$props, true);
+    const outlineItemButton = ($$anchor2, item = noop) => {
+      const isSelected = user_derived(() => store().selectedIds.includes(item().id));
+      var button = root_262();
+      let classes;
+      var span = child(button);
+      var node_4 = child(span);
+      itemIcon(node_4, item);
+      reset(span);
+      var node_5 = sibling(span, 2);
+      {
+        var consequent_20 = ($$anchor3) => {
+          var div = root_232();
+          var span_1 = child(div);
+          var text2 = only_child(span_1, true);
+          var span_2 = sibling(span_1, 2);
+          var node_6 = child(span_2);
+          {
+            var consequent_19 = ($$anchor4) => {
+              var fragment_4 = root_21();
+              var span_3 = first_child(fragment_4);
+              let classes_1;
+              var span_4 = sibling(span_3, 2);
+              var text_1 = only_child(span_4, true);
+              var span_5 = sibling(span_4, 2);
+              let classes_2;
+              template_effect(() => {
+                classes_1 = set_class(span_3, 1, "vz-outline-connector-line", null, classes_1, { dashed: item().isDashed });
+                set_attribute2(span_4, "title", item().edgeLabel);
+                set_text(text_1, item().edgeLabel);
+                classes_2 = set_class(span_5, 1, "vz-outline-connector-line", null, classes_2, { dashed: item().isDashed });
+              });
+              append($$anchor4, fragment_4);
+            };
+            var alternate_1 = ($$anchor4) => {
+              var span_6 = root_222();
+              let classes_3;
+              template_effect(() => classes_3 = set_class(span_6, 1, "vz-outline-connector-line", null, classes_3, { dashed: item().isDashed }));
+              append($$anchor4, span_6);
+            };
+            if_block(node_6, ($$render) => {
+              if (item().edgeLabel) $$render(consequent_19);
+              else $$render(alternate_1, -1);
+            });
+          }
+          reset(span_2);
+          var span_7 = sibling(span_2, 2);
+          var text_2 = only_child(span_7, true);
+          reset(div);
+          template_effect(() => {
+            set_attribute2(span_1, "title", item().sourceName);
+            set_text(text2, item().sourceName);
+            set_attribute2(span_7, "title", item().targetName);
+            set_text(text_2, item().targetName);
+          });
+          append($$anchor3, div);
+        };
+        var alternate_2 = ($$anchor3) => {
+          var fragment_5 = root_252();
+          var span_8 = first_child(fragment_5);
+          var text_3 = only_child(span_8, true);
+          var node_7 = sibling(span_8, 2);
+          {
+            var consequent_21 = ($$anchor4) => {
+              var span_9 = root_242();
+              var text_4 = only_child(span_9);
+              template_effect(() => set_text(text_4, `\xAB${item().stereotype ?? ""}\xBB`));
+              append($$anchor4, span_9);
+            };
+            if_block(node_7, ($$render) => {
+              if (item().stereotype) $$render(consequent_21);
+            });
+          }
+          template_effect(() => set_text(text_3, item().label));
+          append($$anchor3, fragment_5);
+        };
+        if_block(node_5, ($$render) => {
+          if (item().isEdge) $$render(consequent_20);
+          else $$render(alternate_2, -1);
+        });
+      }
+      reset(button);
+      template_effect(() => {
+        classes = set_class(button, 1, "vz-outline-item", null, classes, { selected: get(isSelected) });
+        set_attribute2(button, "title", item().tooltip);
+        set_attribute2(span, "title", item().iconTitle);
+      });
+      delegated("click", button, (e) => store().selectSingle(item().id, e.shiftKey || e.metaKey || e.ctrlKey));
+      delegated("contextmenu", button, (e) => openItemContextMenu(e, item().id, item().contextLabel));
+      append($$anchor2, button);
+    };
+    let store = prop($$props, "store", 7);
+    let outlineSectionEl = state(void 0);
+    let showAddMenu = state(false);
+    let addDropdownWrapEl = state(void 0);
+    let resizingVertical = state(null);
+    function handleWindowPointerDown(e) {
+      if (!get(showAddMenu)) return;
+      if (get(addDropdownWrapEl) && !get(addDropdownWrapEl).contains(e.target)) {
+        set(showAddMenu, false);
+      }
+    }
+    function handleWindowKeyDown(e) {
+      if (e.key === "Escape" && get(showAddMenu)) {
+        set(showAddMenu, false);
+      }
+    }
+    function keepDropdownInView(node) {
+      const rect = node.getBoundingClientRect();
+      if (rect.left < 8) {
+        node.style.left = "8px";
+        node.style.right = "auto";
+      }
+      if (rect.bottom > window.innerHeight - 8) {
+        const overflowY = rect.bottom - (window.innerHeight - 8);
+        node.style.top = `${26 - overflowY}px`;
+      }
+    }
+    const umlCreationOptions = [
+      { kind: "class", label: "Class", shortcut: "Alt+C" },
+      { kind: "note", label: "Note", shortcut: "Alt+N" },
+      { kind: "frame", label: "Frame", shortcut: "Alt+F" }
+    ];
+    const allItems = user_derived(() => {
+      if (store().umlDoc) {
+        const nodeMap = new Map(store().umlDoc.nodes.map((n) => [n.id, n]));
+        const nodeItems = store().umlDoc.nodes.map((n) => {
+          const desc = getUmlNodeKind(n.kind);
+          const stereotype = n.kind === "note" ? "" : n.stereotype || desc?.defaultStereotype || "";
+          const iconKey = n.kind === "shape" && n.shape ? n.shape : n.kind;
+          const label = n.name || n.id;
+          return {
+            id: n.id,
+            isEdge: false,
+            label,
+            stereotype,
+            iconKey,
+            iconTitle: n.kind === "shape" ? `Shape: ${n.shape}` : `Node: ${n.kind}`,
+            tooltip: stereotype ? `${label} \xAB${stereotype}\xBB` : label,
+            contextLabel: label
+          };
+        });
+        const edgeItems = store().umlDoc.edges.map((e) => {
+          const sourceNode = nodeMap.get(e.source.nodeId);
+          const targetNode = nodeMap.get(e.target.nodeId);
+          const sourceName = sourceNode?.name || e.source.nodeId;
+          const targetName = targetNode?.name || e.target.nodeId;
+          const edgeLabel = e.label?.trim() || "";
+          const preset = getUmlRelationPreset(e.kind);
+          const touchesNote = sourceNode?.kind === "note" || targetNode?.kind === "note";
+          const defaultLine = touchesNote ? "dashed" : preset?.line ?? "solid";
+          const line = e.visual?.line ?? defaultLine;
+          const isDashed = line === "dashed";
+          const startShape = e.visual?.start?.shape ?? preset?.start?.shape ?? "none";
+          const startFill = e.visual?.start?.fill ?? preset?.start?.fill ?? "hollow";
+          const endShape = e.visual?.end?.shape ?? preset?.end?.shape ?? "none";
+          const endFill = e.visual?.end?.fill ?? preset?.end?.fill ?? "hollow";
+          const repr = edgeLabel ? `${sourceName} \u2500\u2500 ${edgeLabel} \u2500\u2500 ${targetName}` : `${sourceName} \u2500\u2500 ${targetName}`;
+          return {
+            id: e.id,
+            isEdge: true,
+            sourceName,
+            targetName,
+            sourceNodeId: e.source.nodeId,
+            targetNodeId: e.target.nodeId,
+            edgeLabel,
+            edgeKind: e.kind,
+            isDashed,
+            edgeVisual: { line, isDashed, startShape, startFill, endShape, endFill },
+            label: repr,
+            stereotype: "",
+            iconKey: e.kind,
+            iconTitle: `Relation: ${e.kind} (${line})`,
+            tooltip: repr,
+            contextLabel: repr
+          };
+        });
+        return [...nodeItems, ...edgeItems];
+      }
+      return [];
+    });
+    function matchesItemQuery(item, q) {
+      if (!q) return true;
+      if (item.isEdge) {
+        return (item.sourceName || "").toLowerCase().includes(q) || (item.targetName || "").toLowerCase().includes(q) || (item.edgeLabel || "").toLowerCase().includes(q) || (item.edgeKind || "").toLowerCase().includes(q) || item.id.toLowerCase().includes(q);
+      }
+      return (item.label || "").toLowerCase().includes(q) || (item.stereotype || "").toLowerCase().includes(q) || `\xAB${(item.stereotype || "").toLowerCase()}\xBB`.includes(q) || (item.iconKey || "").toLowerCase().includes(q) || item.id.toLowerCase().includes(q);
+    }
+    const filteredItems = user_derived(() => {
+      const q = store().outlineSearchQuery.trim().toLowerCase();
+      if (!q) return get(allItems);
+      return get(allItems).filter((item) => matchesItemQuery(item, q));
+    });
+    function handleExplorerContextMenu(e) {
+      const target2 = e.target;
+      if (target2?.closest('input, textarea, select, [contenteditable="true"]')) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    function openItemContextMenu(e, itemId, itemLabel) {
+      e.preventDefault();
+      e.stopPropagation();
+      store().selectSingle(itemId, false);
+      store().openContextMenu(
+        e.clientX,
+        e.clientY,
+        [
+          {
+            label: "Copy",
+            shortcut: "Ctrl+C",
+            action: () => store().copySelection()
+          },
+          {
+            label: "Duplicate",
+            shortcut: "Ctrl+D",
+            action: () => $$props.onDuplicateSelected()
+          },
+          {
+            label: "Paste as new",
+            shortcut: "Ctrl+Shift+V",
+            action: () => {
+              store().copySelection();
+              store().pasteClipboard(true);
+            }
+          },
+          {
+            label: "Delete",
+            shortcut: "Del",
+            danger: true,
+            dividerBefore: true,
+            action: () => $$props.onDeleteSelected()
+          }
+        ],
+        itemLabel
+      );
+    }
+    function handleSplitterPointerDown(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget?.setPointerCapture?.(e.pointerId);
+      const parentSidebar = get(outlineSectionEl)?.parentElement;
+      const sidebarHeight = Math.max(200, parentSidebar?.clientHeight ?? 600);
+      set(
+        resizingVertical,
+        {
+          startY: e.clientY,
+          initialRatio: store().elementsPaneRatio,
+          sidebarHeight
+        },
+        true
+      );
+    }
+    function handleWindowPointerMove(e) {
+      if (!get(resizingVertical)) return;
+      const dy = e.clientY - get(resizingVertical).startY;
+      const deltaRatio = dy / get(resizingVertical).sidebarHeight;
+      store().setElementsPaneRatio(get(resizingVertical).initialRatio + deltaRatio);
+    }
+    function handleWindowPointerUp() {
+      if (get(resizingVertical)) {
+        set(resizingVertical, null);
+      }
+    }
+    var fragment_6 = root_352();
+    event("pointerdown", $window, handleWindowPointerDown);
+    event("pointermove", $window, handleWindowPointerMove);
+    event("pointerup", $window, handleWindowPointerUp);
+    event("keydown", $window, handleWindowKeyDown);
+    var section = first_child(fragment_6);
+    var div_1 = child(section);
+    var span_10 = child(div_1);
+    var text_5 = only_child(span_10);
+    var node_8 = sibling(span_10, 2);
+    {
+      var consequent_23 = ($$anchor2) => {
+        var div_2 = root_30();
+        var button_1 = child(div_2);
+        var node_9 = sibling(button_1, 2);
+        {
+          var consequent_22 = ($$anchor3) => {
+            var div_3 = root_292();
+            var node_10 = child(div_3);
+            each(node_10, 17, () => umlCreationOptions, (opt) => opt.kind, ($$anchor4, opt) => {
+              var button_2 = root_272();
+              var span_11 = child(button_2);
+              var text_6 = only_child(span_11, true);
+              var kbd = sibling(span_11, 2);
+              var text_7 = only_child(kbd, true);
+              reset(button_2);
+              template_effect(() => {
+                set_text(text_6, get(opt).label);
+                set_text(text_7, get(opt).shortcut);
+              });
+              delegated("click", button_2, () => {
+                set(showAddMenu, false);
+                store().createQuickUmlNode(get(opt).kind);
+              });
+              append($$anchor4, button_2);
+            });
+            var node_11 = sibling(node_10, 6);
+            each(node_11, 17, () => UML_SHAPE_GEOMETRIES, (sh) => sh.kind, ($$anchor4, sh) => {
+              var button_3 = root_282();
+              var span_12 = child(button_3);
+              var text_8 = only_child(span_12, true);
+              reset(button_3);
+              template_effect(() => set_text(text_8, get(sh).label));
+              delegated("click", button_3, () => {
+                set(showAddMenu, false);
+                store().createQuickUmlNode("shape", void 0, void 0, get(sh).kind);
+              });
+              append($$anchor4, button_3);
+            });
+            reset(div_3);
+            action(div_3, ($$node) => keepDropdownInView?.($$node));
+            append($$anchor3, div_3);
+          };
+          if_block(node_9, ($$render) => {
+            if (get(showAddMenu)) $$render(consequent_22);
+          });
+        }
+        reset(div_2);
+        bind_this(div_2, ($$value) => set(addDropdownWrapEl, $$value), () => get(addDropdownWrapEl));
+        template_effect(() => set_attribute2(button_1, "aria-expanded", get(showAddMenu)));
+        delegated("click", button_1, () => {
+          set(showAddMenu, !get(showAddMenu));
+        });
+        append($$anchor2, div_2);
+      };
+      if_block(node_8, ($$render) => {
+        if (store().expectedKind === "uml" && !store().isReadOnly) $$render(consequent_23);
+      });
+    }
+    reset(div_1);
+    var div_4 = sibling(div_1, 2);
+    var input = child(div_4);
+    remove_input_defaults(input);
+    reset(div_4);
+    var node_12 = sibling(div_4, 2);
+    {
+      var consequent_25 = ($$anchor2) => {
+        var div_5 = root_322();
+        var node_13 = child(div_5);
+        {
+          var consequent_24 = ($$anchor3) => {
+            var text_9 = text();
+            template_effect(() => set_text(text_9, `No matching elements for "${store().outlineSearchQuery ?? ""}".`));
+            append($$anchor3, text_9);
+          };
+          var d = user_derived(() => store().outlineSearchQuery.trim());
+          var alternate_3 = ($$anchor3) => {
+            var fragment_8 = root_31();
+            next(2);
+            append($$anchor3, fragment_8);
+          };
+          if_block(node_13, ($$render) => {
+            if (get(d)) $$render(consequent_24);
+            else $$render(alternate_3, -1);
+          });
+        }
+        reset(div_5);
+        append($$anchor2, div_5);
+      };
+      var alternate_4 = ($$anchor2) => {
+        var ul = root_342();
+        each(ul, 21, () => get(filteredItems), (item) => item.id, ($$anchor3, item) => {
+          var li = root_332();
+          var node_14 = child(li);
+          outlineItemButton(node_14, () => get(item));
+          reset(li);
+          template_effect(($0) => set_attribute2(li, "aria-selected", $0), [() => store().selectedIds.includes(get(item).id)]);
+          append($$anchor3, li);
+        });
+        reset(ul);
+        append($$anchor2, ul);
+      };
+      if_block(node_12, ($$render) => {
+        if (get(filteredItems).length === 0) $$render(consequent_25);
+        else $$render(alternate_4, -1);
+      });
+    }
+    reset(section);
+    bind_this(section, ($$value) => set(outlineSectionEl, $$value), () => get(outlineSectionEl));
+    var div_6 = sibling(section, 2);
+    template_effect(() => {
+      set_style(section, `height: ${store().elementsPaneRatio * 100}%;`);
+      set_text(text_5, `Elements (${get(filteredItems).length ?? ""})`);
+    });
+    delegated("contextmenu", section, handleExplorerContextMenu);
+    bind_value(input, () => store().outlineSearchQuery, ($$value) => store().outlineSearchQuery = $$value);
+    delegated("pointerdown", div_6, handleSplitterPointerDown);
+    append($$anchor, fragment_6);
+    pop();
+  }
+  delegate(["click", "contextmenu", "pointerdown"]);
+
+  // src/webview/ui/input/Select.svelte
+  var root19 = from_html(`<span class="vz-ui-select-check svelte-1ajz7f5" aria-hidden="true">\u2713</span>`);
+  var root_114 = from_html(`<button type="button" role="option"><span> </span> <!></button>`);
+  var root_210 = from_html(`<div class="vz-ui-select-backdrop svelte-1ajz7f5"></div> <div class="vz-ui-select-menu svelte-1ajz7f5" role="listbox"></div>`, 1);
+  var root_39 = from_html(`<div class="vz-ui-select svelte-1ajz7f5" data-vz-select=""><button type="button" aria-haspopup="listbox"><span> </span> <span class="vz-ui-select-chevron svelte-1ajz7f5" aria-hidden="true">\u25BE</span></button> <!></div>`);
+  function Select($$anchor, $$props) {
+    push($$props, true);
+    let placeholder = prop($$props, "placeholder", 3, "Select\u2026"), disabled = prop($$props, "disabled", 3, false);
+    let open = state(false);
+    let activeIndex = state(-1);
+    let triggerEl = state(void 0);
+    let menuEl = state(void 0);
+    let menuStyle = state("");
+    const selectedIndex = user_derived(() => $$props.options.findIndex((option) => option.value === $$props.value));
+    const selectedOption = user_derived(() => get(selectedIndex) >= 0 ? $$props.options[get(selectedIndex)] : void 0);
+    function updateMenuPosition() {
+      if (!get(open) || !get(triggerEl)) return;
+      const rect = get(triggerEl).getBoundingClientRect();
+      const width = Math.max(rect.width, 140);
+      const height = get(menuEl)?.offsetHeight ?? 0;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openAbove = height > 0 && spaceBelow < height + 8 && rect.top > spaceBelow;
+      const top = openAbove ? rect.top - height - 3 : rect.bottom + 3;
+      const left = Math.min(rect.left, window.innerWidth - width - 8);
+      set(menuStyle, `left: ${Math.max(8, left)}px; top: ${Math.max(8, top)}px; width: ${width}px;`);
+    }
+    user_effect(() => {
+      if (!get(open)) return;
+      updateMenuPosition();
+      const frame = requestAnimationFrame(updateMenuPosition);
+      const handleViewportChange = () => updateMenuPosition();
+      window.addEventListener("resize", handleViewportChange);
+      window.addEventListener("scroll", handleViewportChange, true);
+      return () => {
+        cancelAnimationFrame(frame);
+        window.removeEventListener("resize", handleViewportChange);
+        window.removeEventListener("scroll", handleViewportChange, true);
+      };
+    });
+    function firstEnabledIndex() {
+      const index2 = $$props.options.findIndex((option) => !option.disabled);
+      return index2 >= 0 ? index2 : 0;
+    }
+    function openMenu() {
+      if (disabled() || $$props.options.length === 0) return;
+      set(open, true);
+      set(activeIndex, get(selectedIndex) >= 0 ? get(selectedIndex) : firstEnabledIndex(), true);
+    }
+    function closeMenu() {
+      set(open, false);
+    }
+    function moveActive(delta) {
+      if ($$props.options.length === 0) return;
+      let next2 = get(activeIndex);
+      for (let step = 0; step < $$props.options.length; step += 1) {
+        next2 = (next2 + delta + $$props.options.length) % $$props.options.length;
+        if (!$$props.options[next2].disabled) {
+          set(activeIndex, next2, true);
+          return;
+        }
+      }
+    }
+    function selectOption(option) {
+      if (!option || option.disabled) return;
+      closeMenu();
+      if (option.value !== $$props.value) $$props.onchange?.(option.value);
+      requestAnimationFrame(() => get(triggerEl)?.focus());
+    }
+    function handleTriggerKeydown(event2) {
+      if (disabled()) return;
+      if (!get(open)) {
+        if (event2.key === "ArrowDown" || event2.key === "ArrowUp" || event2.key === "Enter" || event2.key === " ") {
+          event2.preventDefault();
+          openMenu();
+        }
+        return;
+      }
+      switch (event2.key) {
+        case "ArrowDown":
+          event2.preventDefault();
+          moveActive(1);
+          break;
+        case "ArrowUp":
+          event2.preventDefault();
+          moveActive(-1);
+          break;
+        case "Home":
+          event2.preventDefault();
+          set(activeIndex, firstEnabledIndex(), true);
+          break;
+        case "End":
+          event2.preventDefault();
+          set(activeIndex, $$props.options.length - 1);
+          break;
+        case "Enter":
+        case " ":
+          event2.preventDefault();
+          selectOption($$props.options[get(activeIndex)]);
+          break;
+        case "Escape":
+          event2.preventDefault();
+          closeMenu();
+          break;
+        case "Tab":
+          closeMenu();
+          break;
+      }
+    }
+    var div = root_39();
+    var button = child(div);
+    let classes;
+    var span = child(button);
+    let classes_1;
+    var text2 = only_child(span, true);
+    next(2);
+    reset(button);
+    bind_this(button, ($$value) => set(triggerEl, $$value), () => get(triggerEl));
+    var node = sibling(button, 2);
+    {
+      var consequent_1 = ($$anchor2) => {
+        var fragment = root_210();
+        var div_1 = first_child(fragment);
+        var div_2 = sibling(div_1, 2);
+        each(div_2, 23, () => $$props.options, (option) => option.value, ($$anchor3, option, index2) => {
+          var button_1 = root_114();
+          let classes_2;
+          var span_1 = child(button_1);
+          var text_1 = only_child(span_1, true);
+          var node_1 = sibling(span_1, 2);
+          {
+            var consequent = ($$anchor4) => {
+              var span_2 = root19();
+              append($$anchor4, span_2);
+            };
+            if_block(node_1, ($$render) => {
+              if (get(option).value === $$props.value) $$render(consequent);
+            });
+          }
+          reset(button_1);
+          template_effect(() => {
+            classes_2 = set_class(button_1, 1, "vz-ui-select-option svelte-1ajz7f5", null, classes_2, {
+              highlighted: get(index2) === get(activeIndex),
+              active: get(option).value === $$props.value
+            });
+            set_attribute2(button_1, "aria-selected", get(option).value === $$props.value);
+            button_1.disabled = get(option).disabled;
+            set_text(text_1, get(option).label);
+          });
+          event("pointerenter", button_1, () => set(activeIndex, get(index2), true));
+          delegated("click", button_1, () => selectOption(get(option)));
+          append($$anchor3, button_1);
+        });
+        reset(div_2);
+        bind_this(div_2, ($$value) => set(menuEl, $$value), () => get(menuEl));
+        template_effect(() => {
+          set_style(div_2, get(menuStyle));
+          set_attribute2(div_2, "aria-label", $$props.ariaLabel ?? placeholder());
+        });
+        delegated("pointerdown", div_1, (event2) => {
+          event2.preventDefault();
+          closeMenu();
+          get(triggerEl)?.focus();
+        });
+        append($$anchor2, fragment);
+      };
+      if_block(node, ($$render) => {
+        if (get(open)) $$render(consequent_1);
+      });
+    }
+    reset(div);
+    template_effect(() => {
+      classes = set_class(button, 1, "vz-ui-select-trigger svelte-1ajz7f5", null, classes, { open: get(open) });
+      set_attribute2(button, "aria-expanded", get(open));
+      set_attribute2(button, "aria-label", $$props.ariaLabel ?? placeholder());
+      button.disabled = disabled();
+      classes_1 = set_class(span, 1, "svelte-1ajz7f5", null, classes_1, { placeholder: !get(selectedOption) });
+      set_text(text2, get(selectedOption)?.label ?? placeholder());
+    });
+    delegated("click", button, () => get(open) ? closeMenu() : openMenu());
+    delegated("keydown", button, handleTriggerKeydown);
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["click", "keydown", "pointerdown"]);
+
+  // src/webview/sidebar/inspector/DocumentInspector.svelte
+  var root20 = from_html(`<div class="vz-migration-banner vz-compatibility-banner"><div class="vz-migration-header"><span class="vz-migration-title">Compatibility Warning</span></div> <p class="vz-migration-text"> </p> <button type="button" class="vz-btn vz-btn-primary vz-migration-btn">Update</button></div>`);
+  var root_115 = from_html(`<div class="vz-migration-banner"><div class="vz-migration-header"><span class="vz-migration-title">Update Available</span></div> <p class="vz-migration-text"> </p> <button type="button" class="vz-btn vz-btn-primary vz-migration-btn">Migrate Document</button></div>`);
+  var root_211 = from_html(`<label class="vz-field"><span class="vz-field-label">Title</span> <input type="text" class="vz-input"/></label> <label class="vz-field"><span class="vz-field-label">Description</span> <textarea class="vz-textarea" rows="4" placeholder="Describe the purpose of this architecture model\u2026"></textarea></label> <div class="vz-field"><span class="vz-field-label">Default Routing</span> <!></div>`, 1);
+  var root_310 = from_html(`<div class="vz-sidebar-header"><span class="vz-sidebar-title">UML Document</span></div> <div class="vz-inspector-body"><!> <!></div>`, 1);
+  function DocumentInspector($$anchor, $$props) {
+    push($$props, true);
+    const doc = user_derived(() => $$props.store.umlDoc);
+    var fragment = root_310();
+    var div = sibling(first_child(fragment), 2);
+    var node = child(div);
+    {
+      var consequent = ($$anchor2) => {
+        var div_1 = root20();
+        var p = sibling(child(div_1), 2);
+        var text2 = only_child(p);
+        var button = sibling(p, 2);
+        reset(div_1);
+        template_effect(() => set_text(text2, `This document was created with a newer version of Vizion (${get(doc).version ?? "future" ?? ""}). Please update the extension to ensure full compatibility.`));
+        delegated("click", button, () => $$props.store.checkForExtensionUpdate());
+        append($$anchor2, div_1);
+      };
+      var d = user_derived(() => get(doc) && isNewerVersionDocument(get(doc)));
+      var consequent_1 = ($$anchor2) => {
+        var div_2 = root_115();
+        var p_1 = sibling(child(div_2), 2);
+        var text_1 = only_child(p_1);
+        var button_1 = sibling(p_1, 2);
+        reset(div_2);
+        template_effect(() => {
+          set_text(text_1, `Document version (${get(doc).version ?? "legacy" ?? ""}) does not match the latest rules (${EXTENSION_VERSION ?? ""}).`);
+          button_1.disabled = $$props.store.isReadOnly;
+        });
+        delegated("click", button_1, () => $$props.store.dispatchOperation({ type: "uml.migrateDocument" }));
+        append($$anchor2, div_2);
+      };
+      var d_1 = user_derived(() => get(doc) && isMigrationNeeded(get(doc)));
+      if_block(node, ($$render) => {
+        if (get(d)) $$render(consequent);
+        else if (get(d_1)) $$render(consequent_1, 1);
+      });
+    }
+    var node_1 = sibling(node, 2);
+    {
+      var consequent_2 = ($$anchor2) => {
+        var fragment_1 = root_211();
+        var label = first_child(fragment_1);
+        var input = sibling(child(label), 2);
+        remove_input_defaults(input);
+        reset(label);
+        var label_1 = sibling(label, 2);
+        var textarea = sibling(child(label_1), 2);
+        remove_textarea_child(textarea);
+        reset(label_1);
+        var div_3 = sibling(label_1, 2);
+        var node_2 = sibling(child(div_3), 2);
+        {
+          let $0 = user_derived(() => get(doc).defaultRouting ?? "orthogonal");
+          Select(node_2, {
+            ariaLabel: "Default Routing",
+            get value() {
+              return get($0);
+            },
+            options: [
+              { value: "orthogonal", label: "Orthogonal" },
+              { value: "straight", label: "Straight" },
+              { value: "bezier", label: "Smooth" }
+            ],
+            get disabled() {
+              return $$props.store.isReadOnly;
+            },
+            onchange: (value) => $$props.store.dispatchOperation({ type: "uml.updateMetadata", defaultRouting: value })
+          });
+        }
+        reset(div_3);
+        template_effect(() => {
+          set_value(input, get(doc).title);
+          input.disabled = $$props.store.isReadOnly;
+          set_value(textarea, get(doc).description ?? get(doc).ai?.purpose ?? "");
+          textarea.disabled = $$props.store.isReadOnly;
+        });
+        delegated("change", input, (event2) => $$props.store.dispatchOperation({ type: "uml.updateMetadata", title: event2.currentTarget.value }));
+        delegated("change", textarea, (event2) => $$props.store.dispatchOperation({
+          type: "uml.updateMetadata",
+          description: event2.currentTarget.value
+        }));
+        append($$anchor2, fragment_1);
+      };
+      if_block(node_1, ($$render) => {
+        if (get(doc)) $$render(consequent_2);
+      });
+    }
+    reset(div);
+    append($$anchor, fragment);
+    pop();
+  }
+  delegate(["click", "change"]);
+
+  // src/webview/sidebar/inspector/EdgeInspector.svelte
+  var root21 = from_html(`<div class="vz-field"><span class="vz-field-label">Fill</span> <!></div>`);
+  var root_116 = from_html(`<div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label"> </span></div> <label class="vz-field"><span class="vz-field-label">Multiplicity (optional)</span> <input type="text" class="vz-input" placeholder="e.g. 1, *, 1..5, 2..*"/></label> <div class="vz-field-grid"><div class="vz-field"><span class="vz-field-label">Shape</span> <!></div> <!></div></div>`);
+  var root_212 = from_html(`<div class="vz-sidebar-header"><span class="vz-sidebar-title"> </span></div> <div class="vz-inspector-body"><div class="vz-field"><span class="vz-field-label">Semantic Relation</span> <!></div> <label class="vz-field"><span class="vz-field-label">Label</span> <input type="text" class="vz-input" placeholder="e.g. belongs to, uses"/></label> <button type="button" class="vz-btn">\u21C4 Switch Direction</button> <div class="vz-field-grid"><div class="vz-field"><span class="vz-field-label">Line Style</span> <!></div> <div class="vz-field"><span class="vz-field-label">Routing</span> <!></div></div> <!></div>`, 1);
+  function EdgeInspector($$anchor, $$props) {
+    push($$props, true);
+    let touchesNote = prop($$props, "touchesNote", 3, false);
+    const relationPresets = listUmlRelationPresets();
+    const endpointShapes = listEndpointShapes();
+    const relationOptions = relationPresets.map((preset) => ({ value: preset.kind, label: preset.label }));
+    const endpointShapeOptions = endpointShapes.map((shape) => ({ value: shape.kind, label: shape.label }));
+    const lineOptions = [
+      { value: "solid", label: "Solid" },
+      { value: "dashed", label: "Dashed" }
+    ];
+    const routingOptions = [
+      { value: "default", label: "Default" },
+      { value: "orthogonal", label: "Orthogonal" },
+      { value: "straight", label: "Straight" },
+      { value: "bezier", label: "Smooth" }
+    ];
+    const fillOptions = [
+      { value: "hollow", label: "Hollow" },
+      { value: "filled", label: "Filled" }
+    ];
+    var fragment = root_212();
+    var div = first_child(fragment);
+    var span = child(div);
+    var text2 = only_child(span);
+    reset(div);
+    var div_1 = sibling(div, 2);
+    var div_2 = child(div_1);
+    var node = sibling(child(div_2), 2);
+    Select(node, {
+      ariaLabel: "Relation kind",
+      get value() {
+        return $$props.selectedEdge.kind;
+      },
+      get options() {
+        return relationOptions;
+      },
+      get disabled() {
+        return $$props.store.isReadOnly;
+      },
+      onchange: (value) => $$props.store.dispatchOperation({
+        type: "uml.updateEdge",
+        edgeId: $$props.selectedEdge.id,
+        kind: value
+      })
+    });
+    reset(div_2);
+    var label = sibling(div_2, 2);
+    var input = sibling(child(label), 2);
+    remove_input_defaults(input);
+    reset(label);
+    var button = sibling(label, 2);
+    var div_3 = sibling(button, 2);
+    var div_4 = child(div_3);
+    var node_1 = sibling(child(div_4), 2);
+    {
+      let $0 = user_derived(() => $$props.selectedEdge.visual?.line ?? (touchesNote() ? "dashed" : "solid"));
+      Select(node_1, {
+        get value() {
+          return get($0);
+        },
+        get options() {
+          return lineOptions;
+        },
+        get disabled() {
+          return $$props.store.isReadOnly;
+        },
+        onchange: (value) => $$props.store.dispatchOperation({
+          type: "uml.updateEdge",
+          edgeId: $$props.selectedEdge.id,
+          line: value
+        })
+      });
+    }
+    reset(div_4);
+    var div_5 = sibling(div_4, 2);
+    var node_2 = sibling(child(div_5), 2);
+    {
+      let $0 = user_derived(() => $$props.selectedEdge.visual?.routing ?? "default");
+      Select(node_2, {
+        get value() {
+          return get($0);
+        },
+        get options() {
+          return routingOptions;
+        },
+        get disabled() {
+          return $$props.store.isReadOnly;
+        },
+        onchange: (value) => $$props.store.dispatchOperation({
+          type: "uml.updateEdge",
+          edgeId: $$props.selectedEdge.id,
+          routing: value
+        })
+      });
+    }
+    reset(div_5);
+    reset(div_3);
+    var node_3 = sibling(div_3, 2);
+    each(node_3, 16, () => ["start", "end"], index, ($$anchor2, endKey) => {
+      const currentDecoration = user_derived(() => $$props.selectedEdge.visual?.[endKey] ?? { shape: "none" });
+      const shapeDescriptor = user_derived(() => endpointShapes.find((shape) => shape.kind === get(currentDecoration).shape));
+      const currentMultiplicity = user_derived(() => endKey === "start" ? $$props.selectedEdge.source.multiplicity ?? "" : $$props.selectedEdge.target.multiplicity ?? "");
+      var div_6 = root_116();
+      var div_7 = sibling(child(div_6), 2);
+      var span_1 = child(div_7);
+      var text_1 = only_child(span_1, true);
+      reset(div_7);
+      var label_1 = sibling(div_7, 2);
+      var input_1 = sibling(child(label_1), 2);
+      remove_input_defaults(input_1);
+      reset(label_1);
+      var div_8 = sibling(label_1, 2);
+      var div_9 = child(div_8);
+      var node_4 = sibling(child(div_9), 2);
+      Select(node_4, {
+        get ariaLabel() {
+          return `${endKey ?? ""} endpoint shape`;
+        },
+        get value() {
+          return get(currentDecoration).shape;
+        },
+        get options() {
+          return endpointShapeOptions;
+        },
+        get disabled() {
+          return $$props.store.isReadOnly;
+        },
+        onchange: (value) => $$props.store.dispatchOperation({
+          type: "uml.updateEndpoint",
+          edgeId: $$props.selectedEdge.id,
+          end: endKey,
+          decoration: { ...get(currentDecoration), shape: value }
+        })
+      });
+      reset(div_9);
+      var node_5 = sibling(div_9, 2);
+      {
+        var consequent = ($$anchor3) => {
+          var div_10 = root21();
+          var node_6 = sibling(child(div_10), 2);
+          {
+            let $0 = user_derived(() => get(currentDecoration).fill ?? get(shapeDescriptor).defaultFill ?? "hollow");
+            Select(node_6, {
+              get ariaLabel() {
+                return `${endKey ?? ""} endpoint fill`;
+              },
+              get value() {
+                return get($0);
+              },
+              get options() {
+                return fillOptions;
+              },
+              get disabled() {
+                return $$props.store.isReadOnly;
+              },
+              onchange: (value) => $$props.store.dispatchOperation({
+                type: "uml.updateEndpoint",
+                edgeId: $$props.selectedEdge.id,
+                end: endKey,
+                decoration: { ...get(currentDecoration), fill: value }
+              })
+            });
+          }
+          reset(div_10);
+          append($$anchor3, div_10);
+        };
+        if_block(node_5, ($$render) => {
+          if (get(shapeDescriptor)?.supportsFill) $$render(consequent);
+        });
+      }
+      reset(div_8);
+      reset(div_6);
+      template_effect(() => {
+        set_text(text_1, endKey === "start" ? `Start Side (${$$props.selectedEdge.source.nodeId})` : `End Side (${$$props.selectedEdge.target.nodeId})`);
+        set_value(input_1, get(currentMultiplicity));
+        input_1.disabled = $$props.store.isReadOnly;
+      });
+      delegated("change", input_1, (event2) => $$props.store.dispatchOperation({
+        type: "uml.updateEdge",
+        edgeId: $$props.selectedEdge.id,
+        ...endKey === "start" ? { sourceMultiplicity: event2.currentTarget.value.trim() } : { targetMultiplicity: event2.currentTarget.value.trim() }
+      }));
+      append($$anchor2, div_6);
+    });
+    reset(div_1);
+    template_effect(() => {
+      set_text(text2, `Relation: ${$$props.selectedEdge.id ?? ""}`);
+      set_value(input, $$props.selectedEdge.label ?? "");
+      input.disabled = $$props.store.isReadOnly;
+      button.disabled = $$props.store.isReadOnly;
+      set_attribute2(button, "title", `Switch Direction (${$$props.selectedEdge.target.nodeId} \u2192 ${$$props.selectedEdge.source.nodeId})`);
+    });
+    delegated("change", input, (event2) => $$props.store.dispatchOperation({
+      type: "uml.updateEdge",
+      edgeId: $$props.selectedEdge.id,
+      label: event2.currentTarget.value
+    }));
+    delegated("click", button, () => $$props.store.dispatchOperation({
+      type: "uml.updateEdge",
+      edgeId: $$props.selectedEdge.id,
+      reverseDirection: true
+    }));
+    append($$anchor, fragment);
+    pop();
+  }
+  delegate(["change", "click"]);
+
+  // src/webview/sidebar/inspector/NodeInspector.svelte
+  var eyeIcon = ($$anchor, visible = noop) => {
+    var fragment = comment();
+    var node = first_child(fragment);
+    {
+      var consequent = ($$anchor2) => {
+        var svg = root22();
+        append($$anchor2, svg);
+      };
+      var alternate = ($$anchor2) => {
+        var svg_1 = root_117();
+        append($$anchor2, svg_1);
+      };
+      if_block(node, ($$render) => {
+        if (visible()) $$render(consequent);
+        else $$render(alternate, -1);
+      });
+    }
+    append($$anchor, fragment);
+  };
+  var root22 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`);
+  var root_117 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`);
+  var root_213 = from_html(`<div class="vz-warning-box">Unsupported node kind <code> </code>. Shown in non-destructive read-only fallback mode.</div>`);
+  var root_311 = from_html(`<div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label">Note Text</span></div> <textarea class="vz-textarea" rows="6" placeholder="Write architecture notes, constraints, or implementation guidance\u2026"></textarea></div>`);
+  var root_48 = from_html(`<div class="vz-field"><span class="vz-field-label">Shape Geometry</span> <!></div>`);
+  var root_56 = from_html(`<div class="vz-field"><span class="vz-field-label">Frame Border</span> <!></div>`);
+  var root_65 = from_html(`<textarea class="vz-textarea vz-inspector-members-textarea" data-field="inspector-attributes" aria-label="Attributes" placeholder="+ name: type\\n- secret: number"></textarea>`);
+  var root_75 = from_html(`<textarea class="vz-textarea vz-inspector-members-textarea" data-field="inspector-operations" aria-label="Operations" placeholder="+ method(a: string): void\\n- helper(): boolean"></textarea>`);
+  var root_83 = from_html(`<label class="vz-field"><span class="vz-field-label">Stereotype</span> <input type="text" class="vz-input" placeholder="e.g. entity, service, aggregate"/></label> <div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label">Attributes</span> <button type="button"><!></button></div> <!></div> <div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label">Operations</span> <button type="button"><!></button></div> <!></div>`, 1);
+  var root_93 = from_html(`<label class="vz-field"><span class="vz-field-label">Name</span> <input type="text" class="vz-input"/></label> <!>`, 1);
+  var root_103 = from_html(`<div class="vz-sidebar-header"><span class="vz-sidebar-title"> </span></div> <div class="vz-inspector-body"><!></div>`, 1);
+  function NodeInspector($$anchor, $$props) {
+    push($$props, true);
+    const nodeDesc = user_derived(() => getUmlNodeKind($$props.selectedNode.kind));
+    const shapeOptions = UML_SHAPE_GEOMETRIES.map((shape) => ({ value: shape.kind, label: shape.label }));
+    const frameBorderOptions = [
+      { value: "solid", label: "Solid" },
+      { value: "dashed", label: "Dashed" }
+    ];
+    const attrsVisible = user_derived(() => $$props.selectedNode.showAttributes !== false);
+    const opsVisible = user_derived(() => $$props.selectedNode.showOperations !== false);
+    let inspectorAttributesDraft = state("");
+    let inspectorOperationsDraft = state("");
+    user_effect(() => {
+      const activeEl = typeof document !== "undefined" ? document.activeElement : null;
+      const isEditingAttrs = activeEl?.getAttribute("data-field") === "inspector-attributes";
+      const isEditingOps = activeEl?.getAttribute("data-field") === "inspector-operations";
+      if (!isEditingAttrs) set(inspectorAttributesDraft, formatAttributesToText($$props.selectedNode.attributes ?? []), true);
+      if (!isEditingOps) set(inspectorOperationsDraft, formatOperationsToText($$props.selectedNode.operations ?? []), true);
+    });
+    function flushInspectorAttributes() {
+      if ($$props.selectedNode.kind === "note" || $$props.selectedNode.kind === "shape" || $$props.selectedNode.kind === "frame") return;
+      const nextAttrs = parseAttributesFromText(get(inspectorAttributesDraft), $$props.selectedNode.id, $$props.selectedNode.attributes ?? []);
+      const currentAttrs = $$props.selectedNode.attributes ?? [];
+      const changed = nextAttrs.length !== currentAttrs.length || nextAttrs.some((attribute, index2) => {
+        const current = currentAttrs[index2];
+        return !current || attribute.name !== current.name || (attribute.type ?? "") !== (current.type ?? "") || (attribute.visibility ?? "+") !== (current.visibility ?? "+");
+      });
+      if (changed) {
+        $$props.store.dispatchOperation({
+          type: "uml.updateNode",
+          nodeId: $$props.selectedNode.id,
+          attributes: nextAttrs
+        });
+      }
+    }
+    function flushInspectorOperations() {
+      if ($$props.selectedNode.kind === "note" || $$props.selectedNode.kind === "shape" || $$props.selectedNode.kind === "frame") return;
+      const nextOps = parseOperationsFromText(get(inspectorOperationsDraft), $$props.selectedNode.id, $$props.selectedNode.operations ?? []);
+      const currentOps = $$props.selectedNode.operations ?? [];
+      const changed = nextOps.length !== currentOps.length || nextOps.some((operation, index2) => {
+        const current = currentOps[index2];
+        return !current || operation.name !== current.name || (operation.returnType ?? "") !== (current.returnType ?? "") || (operation.visibility ?? "+") !== (current.visibility ?? "+") || (operation.signature ?? "()") !== (current.signature ?? "()");
+      });
+      if (changed) {
+        $$props.store.dispatchOperation({
+          type: "uml.updateNode",
+          nodeId: $$props.selectedNode.id,
+          operations: nextOps
+        });
+      }
+    }
+    var fragment_1 = root_103();
+    var div = first_child(fragment_1);
+    var span = child(div);
+    var text2 = only_child(span);
+    reset(div);
+    var div_1 = sibling(div, 2);
+    var node_1 = child(div_1);
+    {
+      var consequent_1 = ($$anchor2) => {
+        var div_2 = root_213();
+        var code = sibling(child(div_2));
+        var text_1 = only_child(code, true);
+        next();
+        reset(div_2);
+        template_effect(() => set_text(text_1, $$props.selectedNode.kind));
+        append($$anchor2, div_2);
+      };
+      var alternate_2 = ($$anchor2) => {
+        var fragment_2 = root_93();
+        var label = first_child(fragment_2);
+        var input = sibling(child(label), 2);
+        remove_input_defaults(input);
+        reset(label);
+        var node_2 = sibling(label, 2);
+        {
+          var consequent_2 = ($$anchor3) => {
+            var div_3 = root_311();
+            var textarea = sibling(child(div_3), 4);
+            remove_textarea_child(textarea);
+            reset(div_3);
+            template_effect(() => {
+              set_value(textarea, $$props.selectedNode.text ?? "");
+              textarea.disabled = $$props.store.isReadOnly;
+            });
+            delegated("change", textarea, (event2) => $$props.store.dispatchOperation({
+              type: "uml.updateNode",
+              nodeId: $$props.selectedNode.id,
+              text: event2.currentTarget.value
+            }));
+            append($$anchor3, div_3);
+          };
+          var consequent_3 = ($$anchor3) => {
+            var div_4 = root_48();
+            var node_3 = sibling(child(div_4), 2);
+            {
+              let $0 = user_derived(() => $$props.selectedNode.shape ?? "rectangle");
+              Select(node_3, {
+                get value() {
+                  return get($0);
+                },
+                get options() {
+                  return shapeOptions;
+                },
+                get disabled() {
+                  return $$props.store.isReadOnly;
+                },
+                onchange: (value) => $$props.store.dispatchOperation({
+                  type: "uml.updateNode",
+                  nodeId: $$props.selectedNode.id,
+                  shape: value
+                })
+              });
+            }
+            reset(div_4);
+            append($$anchor3, div_4);
+          };
+          var consequent_4 = ($$anchor3) => {
+            var div_5 = root_56();
+            var node_4 = sibling(child(div_5), 2);
+            {
+              let $0 = user_derived(() => $$props.selectedNode.line ?? "solid");
+              Select(node_4, {
+                get value() {
+                  return get($0);
+                },
+                get options() {
+                  return frameBorderOptions;
+                },
+                get disabled() {
+                  return $$props.store.isReadOnly;
+                },
+                onchange: (value) => $$props.store.dispatchOperation({
+                  type: "uml.updateNode",
+                  nodeId: $$props.selectedNode.id,
+                  line: value
+                })
+              });
+            }
+            reset(div_5);
+            append($$anchor3, div_5);
+          };
+          var alternate_1 = ($$anchor3) => {
+            var fragment_3 = root_83();
+            var label_1 = first_child(fragment_3);
+            var input_1 = sibling(child(label_1), 2);
+            remove_input_defaults(input_1);
+            reset(label_1);
+            var div_6 = sibling(label_1, 2);
+            var div_7 = sibling(child(div_6), 2);
+            var button = sibling(child(div_7), 2);
+            let classes;
+            var node_5 = child(button);
+            eyeIcon(node_5, () => get(attrsVisible));
+            reset(button);
+            reset(div_7);
+            var node_6 = sibling(div_7, 2);
+            {
+              var consequent_5 = ($$anchor4) => {
+                var textarea_1 = root_65();
+                remove_textarea_child(textarea_1);
+                template_effect(
+                  ($0) => {
+                    set_attribute2(textarea_1, "rows", $0);
+                    textarea_1.disabled = $$props.store.isReadOnly;
+                  },
+                  [
+                    () => Math.max(4, get(inspectorAttributesDraft).split("\n").length || 1)
+                  ]
+                );
+                event("blur", textarea_1, flushInspectorAttributes);
+                delegated("change", textarea_1, flushInspectorAttributes);
+                bind_value(textarea_1, () => get(inspectorAttributesDraft), ($$value) => set(inspectorAttributesDraft, $$value));
+                append($$anchor4, textarea_1);
+              };
+              if_block(node_6, ($$render) => {
+                if (get(attrsVisible)) $$render(consequent_5);
+              });
+            }
+            reset(div_6);
+            var div_8 = sibling(div_6, 2);
+            var div_9 = sibling(child(div_8), 2);
+            var button_1 = sibling(child(div_9), 2);
+            let classes_1;
+            var node_7 = child(button_1);
+            eyeIcon(node_7, () => get(opsVisible));
+            reset(button_1);
+            reset(div_9);
+            var node_8 = sibling(div_9, 2);
+            {
+              var consequent_6 = ($$anchor4) => {
+                var textarea_2 = root_75();
+                remove_textarea_child(textarea_2);
+                template_effect(
+                  ($0) => {
+                    set_attribute2(textarea_2, "rows", $0);
+                    textarea_2.disabled = $$props.store.isReadOnly;
+                  },
+                  [
+                    () => Math.max(4, get(inspectorOperationsDraft).split("\n").length || 1)
+                  ]
+                );
+                event("blur", textarea_2, flushInspectorOperations);
+                delegated("change", textarea_2, flushInspectorOperations);
+                bind_value(textarea_2, () => get(inspectorOperationsDraft), ($$value) => set(inspectorOperationsDraft, $$value));
+                append($$anchor4, textarea_2);
+              };
+              if_block(node_8, ($$render) => {
+                if (get(opsVisible)) $$render(consequent_6);
+              });
+            }
+            reset(div_8);
+            template_effect(() => {
+              set_value(input_1, $$props.selectedNode.stereotype ?? "");
+              input_1.disabled = $$props.store.isReadOnly;
+              classes = set_class(button, 1, "vz-eye-toggle-btn compact", null, classes, { off: !get(attrsVisible) });
+              set_attribute2(button, "title", get(attrsVisible) ? "Hide Attributes section on node" : "Show Attributes section on node");
+              set_attribute2(button, "aria-label", get(attrsVisible) ? "Hide Attributes section" : "Show Attributes section");
+              button.disabled = $$props.store.isReadOnly;
+              classes_1 = set_class(button_1, 1, "vz-eye-toggle-btn compact", null, classes_1, { off: !get(opsVisible) });
+              set_attribute2(button_1, "title", get(opsVisible) ? "Hide Operations section on node" : "Show Operations section on node");
+              set_attribute2(button_1, "aria-label", get(opsVisible) ? "Hide Operations section" : "Show Operations section");
+              button_1.disabled = $$props.store.isReadOnly;
+            });
+            delegated("change", input_1, (event2) => $$props.store.dispatchOperation({
+              type: "uml.updateNode",
+              nodeId: $$props.selectedNode.id,
+              stereotype: event2.currentTarget.value
+            }));
+            delegated("click", button, () => $$props.store.dispatchOperation({
+              type: "uml.updateNode",
+              nodeId: $$props.selectedNode.id,
+              showAttributes: !get(attrsVisible)
+            }));
+            delegated("click", button_1, () => $$props.store.dispatchOperation({
+              type: "uml.updateNode",
+              nodeId: $$props.selectedNode.id,
+              showOperations: !get(opsVisible)
+            }));
+            append($$anchor3, fragment_3);
+          };
+          if_block(node_2, ($$render) => {
+            if ($$props.selectedNode.kind === "note") $$render(consequent_2);
+            else if ($$props.selectedNode.kind === "shape") $$render(consequent_3, 1);
+            else if ($$props.selectedNode.kind === "frame") $$render(consequent_4, 2);
+            else $$render(alternate_1, -1);
+          });
+        }
+        template_effect(() => {
+          set_value(input, $$props.selectedNode.name);
+          input.disabled = $$props.store.isReadOnly;
+        });
+        delegated("change", input, (event2) => $$props.store.dispatchOperation({
+          type: "uml.updateNode",
+          nodeId: $$props.selectedNode.id,
+          name: event2.currentTarget.value
+        }));
+        append($$anchor2, fragment_2);
+      };
+      if_block(node_1, ($$render) => {
+        if (!get(nodeDesc)) $$render(consequent_1);
+        else $$render(alternate_2, -1);
+      });
+    }
+    reset(div_1);
+    template_effect(() => set_text(text2, `${get(nodeDesc)?.label ?? $$props.selectedNode.kind ?? ""}: ${$$props.selectedNode.name ?? ""}`));
+    append($$anchor, fragment_1);
+    pop();
+  }
+  delegate(["change", "click"]);
+
+  // src/webview/sidebar/inspector/InspectorPane.svelte
+  var root23 = from_html(`<div class="vz-inspector-pane"><!></div>`);
+  function InspectorPane($$anchor, $$props) {
+    push($$props, true);
+    const selectedNode = user_derived(() => $$props.store.umlDoc?.nodes.find((node) => $$props.store.selectedIds.includes(node.id)));
+    const selectedEdge = user_derived(() => $$props.store.umlDoc?.edges.find((edge) => $$props.store.selectedIds.includes(edge.id)));
+    const selectedEdgeTouchesNote = user_derived(() => {
+      if (!get(selectedEdge) || !$$props.store.umlDoc) return false;
+      const source2 = $$props.store.umlDoc.nodes.find((node) => node.id === get(selectedEdge).source.nodeId);
+      const target2 = $$props.store.umlDoc.nodes.find((node) => node.id === get(selectedEdge).target.nodeId);
+      return source2?.kind === "note" || target2?.kind === "note";
+    });
+    var div = root23();
+    var node_1 = child(div);
+    {
+      var consequent = ($$anchor2) => {
+        NodeInspector($$anchor2, {
+          get store() {
+            return $$props.store;
+          },
+          get selectedNode() {
+            return get(selectedNode);
+          }
+        });
+      };
+      var consequent_1 = ($$anchor2) => {
+        EdgeInspector($$anchor2, {
+          get store() {
+            return $$props.store;
+          },
+          get selectedEdge() {
+            return get(selectedEdge);
+          },
+          get touchesNote() {
+            return get(selectedEdgeTouchesNote);
+          }
+        });
+      };
+      var alternate = ($$anchor2) => {
+        DocumentInspector($$anchor2, {
+          get store() {
+            return $$props.store;
+          }
+        });
+      };
+      if_block(node_1, ($$render) => {
+        if (get(selectedNode)) $$render(consequent);
+        else if (get(selectedEdge)) $$render(consequent_1, 1);
+        else $$render(alternate, -1);
+      });
+    }
+    reset(div);
+    delegated("contextmenu", div, (event2) => {
+      const target2 = event2.target;
+      if (target2?.closest('input, textarea, select, [contenteditable="true"], [data-vz-select]')) return;
+      event2.preventDefault();
+      event2.stopPropagation();
+    });
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["contextmenu"]);
+
+  // src/webview/sidebar/SidebarContainer.svelte
+  var root24 = from_html(`<!> <aside class="vz-sidebar vz-inspector" aria-label="UML Property Inspector"><!> <!></aside>`, 1);
+  function SidebarContainer($$anchor, $$props) {
+    push($$props, true);
+    var fragment = root24();
+    var node = first_child(fragment);
+    Splitter(node, {
+      orientation: "vertical",
+      label: "Resize sidebar width",
+      onresize: (delta) => $$props.store.setSidebarWidth($$props.store.sidebarWidth - delta)
+    });
+    var aside = sibling(node, 2);
+    var node_1 = child(aside);
+    ElementsOutline(node_1, {
+      get store() {
+        return $$props.store;
+      },
+      get onDeleteSelected() {
+        return $$props.onDeleteSelected;
+      },
+      get onDuplicateSelected() {
+        return $$props.onDuplicateSelected;
+      }
+    });
+    var node_2 = sibling(node_1, 2);
+    InspectorPane(node_2, {
+      get store() {
+        return $$props.store;
+      }
+    });
+    reset(aside);
+    template_effect(() => set_style(aside, `width: ${$$props.store.sidebarWidth ?? ""}px;`));
+    append($$anchor, fragment);
+    pop();
+  }
+
+  // src/webview/services/selection-actions.ts
+  function deleteSelection(store) {
+    if (store.isReadOnly || store.selectedIds.length === 0) return;
+    const doc = store.umlDoc;
+    if (!doc) return;
+    const nodeIds = doc.nodes.filter((node) => store.selectedIds.includes(node.id)).map((node) => node.id);
+    const edgeIds = doc.edges.filter((edge) => store.selectedIds.includes(edge.id)).map((edge) => edge.id);
+    if (nodeIds.length === 0 && edgeIds.length === 0) return;
+    store.dispatchOperation({ type: "uml.deleteEntities", nodeIds, edgeIds });
+    store.clearSelection();
+  }
+  function duplicateSelection(store) {
+    if (store.isReadOnly || store.selectedIds.length === 0) return;
+    const doc = store.umlDoc;
+    if (!doc) return;
+    const nodeIds = doc.nodes.filter((node) => store.selectedIds.includes(node.id)).map((node) => node.id);
+    const edgeIds = doc.edges.filter((edge) => store.selectedIds.includes(edge.id)).map((edge) => edge.id);
+    if (nodeIds.length === 0 && edgeIds.length === 0) return;
+    store.dispatchOperation({
+      type: "uml.duplicateSelection",
+      nodeIds,
+      edgeIds,
+      offsetX: 20,
+      offsetY: 20
+    });
+  }
+
+  // src/webview/ui/button/IconButton.svelte
+  var root25 = from_html(`<button type="button"><!></button>`);
+  function IconButton($$anchor, $$props) {
+    push($$props, true);
+    let disabled = prop($$props, "disabled", 3, false), active = prop($$props, "active", 3, false), danger = prop($$props, "danger", 3, false);
+    var button = root25();
+    let classes;
+    var node = child(button);
+    snippet(node, () => $$props.children ?? noop);
+    reset(button);
+    template_effect(() => {
+      classes = set_class(button, 1, "vz-ui-icon-button svelte-1tg8wim", null, classes, { active: active(), danger: danger() });
+      set_attribute2(button, "title", $$props.title);
+      set_attribute2(button, "aria-label", $$props.ariaLabel ?? $$props.title);
+      set_attribute2(button, "aria-pressed", active());
+      button.disabled = disabled();
+    });
+    delegated("click", button, (event2) => $$props.onclick?.(event2));
+    append($$anchor, button);
+    pop();
+  }
+  delegate(["click"]);
+
+  // src/webview/ui/layout/Banner.svelte
+  var root26 = from_html(`<div aria-live="polite"><span class="message svelte-ywv8i3"><!></span> <!></div>`);
+  function Banner($$anchor, $$props) {
+    push($$props, true);
+    let severity = prop($$props, "severity", 3, "info"), dismissible = prop($$props, "dismissible", 3, true);
+    var div = root26();
+    var span = child(div);
+    var node = child(span);
+    {
+      var consequent = ($$anchor2) => {
+        var fragment = comment();
+        var node_1 = first_child(fragment);
+        snippet(node_1, () => $$props.children);
+        append($$anchor2, fragment);
+      };
+      var alternate = ($$anchor2) => {
+        var text2 = text();
+        template_effect(() => set_text(text2, $$props.message));
+        append($$anchor2, text2);
+      };
+      if_block(node, ($$render) => {
+        if ($$props.children) $$render(consequent);
+        else $$render(alternate, -1);
+      });
+    }
+    reset(span);
+    var node_2 = sibling(span, 2);
+    {
+      var consequent_1 = ($$anchor2) => {
+        IconButton($$anchor2, {
+          title: "Dismiss notification",
+          onclick: () => $$props.ondismiss?.(),
+          children: ($$anchor3, $$slotProps) => {
+            next();
+            var text_1 = text("\xD7");
+            append($$anchor3, text_1);
+          },
+          $$slots: { default: true }
+        });
+      };
+      if_block(node_2, ($$render) => {
+        if (dismissible()) $$render(consequent_1);
+      });
+    }
+    reset(div);
+    template_effect(() => {
+      set_class(div, 1, `vz-ui-banner ${severity() ?? ""}`, "svelte-ywv8i3");
+      set_attribute2(div, "role", severity() === "error" ? "alert" : "status");
+    });
+    append($$anchor, div);
+    pop();
+  }
+
+  // src/webview/ui/layout/ReadonlyBar.svelte
+  var root27 = from_html(`<div class="vz-ui-readonly svelte-x7cjs" role="note"><span aria-hidden="true">\u{1F512}</span> <span> </span></div>`);
+  function ReadonlyBar($$anchor, $$props) {
+    let message = prop($$props, "message", 3, "Read-Only Mode (Non-file URI or untrusted document)");
+    var div = root27();
+    var span = sibling(child(div), 2);
+    var text2 = only_child(span, true);
+    reset(div);
+    template_effect(() => set_text(text2, message()));
+    append($$anchor, div);
+  }
+
   // src/webview/App.svelte
-  var root6 = from_html(`<div class="vz-status-banner" role="status" aria-live="polite"><span> </span> <button type="button" class="vz-banner-close" aria-label="Dismiss notification">\xD7</button></div>`);
-  var root_114 = from_html(`<div class="vz-readonly-bar" role="note">Read-Only Mode (Non-file URI or untrusted document)</div>`);
-  var root_213 = from_html(`<main class="vz-root" aria-label="Vizion Visual Architecture Editor"><!> <!> <!> <!></main>`);
+  var root28 = from_html(`<div class="vz-main-split"><!> <!></div>`);
+  var root_118 = from_html(`<main class="vz-root" aria-label="Vizion Visual Architecture Editor"><!> <!> <!> <!> <!></main>`);
   function App($$anchor, $$props) {
     push($$props, true);
     let initialKind2 = prop($$props, "initialKind", 3, "uml");
     const store = new VizionWebviewStore(initialKind2());
-    var main = root_213();
+    var main = root_118();
     var node = child(main);
     {
       var consequent = ($$anchor2) => {
-        var div = root6();
-        var span = child(div);
-        var text2 = only_child(span, true);
-        var button = sibling(span, 2);
-        reset(div);
-        template_effect(() => set_text(text2, store.statusMessage));
-        delegated("click", button, () => store.statusMessage = null);
-        append($$anchor2, div);
+        Banner($$anchor2, {
+          severity: "warning",
+          get message() {
+            return store.staleNotice;
+          },
+          ondismiss: () => store.setStaleNotice(null)
+        });
       };
       if_block(node, ($$render) => {
-        if (store.statusMessage) $$render(consequent);
+        if (store.staleNotice) $$render(consequent);
       });
     }
     var node_1 = sibling(node, 2);
     {
       var consequent_1 = ($$anchor2) => {
-        var div_1 = root_114();
-        append($$anchor2, div_1);
+        Banner($$anchor2, {
+          get message() {
+            return store.statusMessage;
+          },
+          ondismiss: () => store.setStatusMessage(null)
+        });
       };
       if_block(node_1, ($$render) => {
-        if (store.isReadOnly) $$render(consequent_1);
+        if (store.statusMessage) $$render(consequent_1);
       });
     }
     var node_2 = sibling(node_1, 2);
     {
       var consequent_2 = ($$anchor2) => {
+        ReadonlyBar($$anchor2, {});
+      };
+      if_block(node_2, ($$render) => {
+        if (store.isReadOnly) $$render(consequent_2);
+      });
+    }
+    var node_3 = sibling(node_2, 2);
+    {
+      var consequent_3 = ($$anchor2) => {
         ErrorView($$anchor2, {
           get store() {
             return store;
@@ -13035,19 +14506,31 @@ ${component_stack}
         });
       };
       var alternate = ($$anchor2) => {
-        UmlCanvas($$anchor2, {
+        var div = root28();
+        var node_4 = child(div);
+        CanvasViewport(node_4, {
           get store() {
             return store;
           }
         });
+        var node_5 = sibling(node_4, 2);
+        SidebarContainer(node_5, {
+          get store() {
+            return store;
+          },
+          onDeleteSelected: () => deleteSelection(store),
+          onDuplicateSelected: () => duplicateSelection(store)
+        });
+        reset(div);
+        append($$anchor2, div);
       };
-      if_block(node_2, ($$render) => {
-        if (!store.valid) $$render(consequent_2);
+      if_block(node_3, ($$render) => {
+        if (!store.valid) $$render(consequent_3);
         else $$render(alternate, -1);
       });
     }
-    var node_3 = sibling(node_2, 2);
-    ContextMenu(node_3, {
+    var node_6 = sibling(node_3, 2);
+    ContextMenu(node_6, {
       get store() {
         return store;
       }
@@ -13056,7 +14539,6 @@ ${component_stack}
     append($$anchor, main);
     pop();
   }
-  delegate(["click"]);
 
   // src/webview/main.ts
   var initialKind = "uml";

@@ -1,0 +1,318 @@
+/* Custom Context Menu & Submenus (Darker VS Code Theme Surface) */
+.vz-context-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.vz-context-menu,
+.vz-context-submenu {
+  min-width: 215px;
+  background-color: var(--vscode-editor-background);
+  background-color: color-mix(in srgb, var(--vscode-editor-background) 82%, #000000 18%);
+  color: var(--vscode-menu-foreground, var(--vscode-editor-foreground));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-focusBorder, rgba(128, 128, 128, 0.45)));
+  border-radius: 6px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.6);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.vz-context-menu {
+  position: fixed;
+}
+
+.vz-context-submenu-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.vz-context-submenu {
+  position: absolute;
+  left: 100%;
+  top: -4px;
+  margin-left: 2px;
+  z-index: 110;
+}
+
+.vz-submenu-arrow {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  margin-left: 8px;
+}
+
+.vz-context-menu-title {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground);
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.25));
+  margin-bottom: 2px;
+}
+
+.vz-context-divider {
+  height: 1px;
+  background-color: var(--vscode-menu-separatorBackground, rgba(128, 128, 128, 0.28));
+  margin: 3px 4px;
+}
+
+.vz-context-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vz-context-item:hover {
+  background-color: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground, var(--vscode-list-hoverBackground)));
+  color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground, inherit));
+}
+
+.vz-context-item.danger {
+  color: var(--vscode-errorForeground);
+}
+
+.vz-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.2));
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.vz-sidebar-mini-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.vz-icon-btn {
+  padding: 2px 6px;
+  font-size: 11px;
+  border-radius: 3px;
+  border: 1px solid var(--vscode-contrastBorder, transparent);
+  background-color: var(--vscode-button-secondaryBackground, rgba(128, 128, 128, 0.2));
+  color: var(--vscode-editor-foreground);
+  cursor: pointer;
+}
+
+.vz-danger-btn:hover {
+  background-color: var(--vscode-errorForeground);
+  color: var(--vscode-editor-background);
+}
+
+.vz-outline-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 8px 8px 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.vz-outline-twisty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  color: var(--vscode-icon-foreground, var(--vscode-descriptionForeground));
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 9px;
+}
+
+.vz-outline-twisty:hover {
+  color: var(--vscode-editor-foreground);
+}
+
+.vz-outline-twisty-spacer {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.vz-outline-sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  padding-left: 14px;
+  position: relative;
+}
+
+.vz-outline-sublist::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 0;
+  bottom: 4px;
+  width: 1px;
+  background-color: var(--vscode-tree-indentGuidesStroke, rgba(128, 128, 128, 0.2));
+}
+
+.vz-outline-item.nested {
+  padding-left: 4px;
+}
+
+.vz-outline-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.vz-outline-item:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.vz-outline-item.selected {
+  background-color: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+  border-color: var(--vscode-focusBorder);
+}
+
+.vz-outline-item.selected .vz-outline-icon {
+  color: inherit;
+}
+
+.vz-outline-item.selected .vz-outline-connector,
+.vz-outline-item.selected .vz-outline-edge-label,
+.vz-outline-item.selected .vz-outline-stereotype {
+  color: inherit;
+  opacity: 0.9;
+}
+
+.vz-outline-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--vscode-badge-background, #007acc);
+}
+
+.vz-outline-icon-svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.vz-outline-edge-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.vz-outline-endpoint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 20px;
+}
+
+.vz-outline-connector {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  color: var(--vscode-descriptionForeground);
+}
+
+.vz-outline-connector-line {
+  display: inline-block;
+  width: 12px;
+  height: 1px;
+  background-color: currentColor;
+  opacity: 0.65;
+  flex-shrink: 0;
+}
+
+.vz-outline-connector-line.dashed {
+  background: repeating-linear-gradient(to right, currentColor 0, currentColor 2px, transparent 2px, transparent 4px);
+}
+
+.vz-outline-edge-label {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: italic;
+  flex-shrink: 1;
+}
+
+.vz-outline-badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background-color: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  flex-shrink: 0;
+}
+
+.vz-outline-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vz-outline-stereotype {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.vz-dropdown-section-label {
+  padding: 4px 8px 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground);
+}
+
+.vz-shape-mini-tag {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.75;
+}
+
+.vz-empty-hint {
+  padding: 12px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  line-height: 1.4;
+}
+

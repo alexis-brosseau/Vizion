@@ -3,8 +3,8 @@
     getUmlNodeKind,
     getUmlRelationPreset,
     UML_SHAPE_GEOMETRIES
-  } from '../../shared/registry/uml-registry';
-  import type { VizionWebviewStore } from '../state.svelte';
+  } from '../../../shared/registry/uml-registry';
+  import type { VizionWebviewStore } from '../../state.svelte';
 
   let {
     store,

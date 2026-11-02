@@ -1,0 +1,158 @@
+/* Visibility Sign Popup Selector Menu */
+.vz-vis-picker-wrap {
+  position: relative;
+  display: inline-flex;
+  height: 100%;
+}
+
+.vz-vis-picker-btn {
+  width: 100%;
+  min-width: 34px;
+  height: 100%;
+  min-height: 26px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-symbolIcon-MethodForeground, var(--vscode-focusBorder));
+  border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.38));
+  border-radius: var(--vz-radius-md);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.vz-vis-picker-btn.compact {
+  min-width: 28px;
+  min-height: 22px;
+  height: 22px;
+  font-size: 12px;
+}
+
+.vz-vis-picker-btn:hover:not(:disabled) {
+  border-color: var(--vscode-focusBorder);
+  background-color: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.2));
+}
+
+.vz-vis-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+}
+
+.vz-vis-popup {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 3px);
+  min-width: 125px;
+  background-color: var(--vscode-editor-background);
+  background-color: color-mix(in srgb, var(--vscode-editor-background) 80%, #000000 20%);
+  color: var(--vscode-menu-foreground, var(--vscode-editor-foreground));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-focusBorder, rgba(128, 128, 128, 0.45)));
+  border-radius: 5px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.6);
+  padding: 3px;
+  z-index: 125;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.vz-vis-popup-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vz-vis-popup-item:hover,
+.vz-vis-popup-item.active {
+  background-color: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground, rgba(0, 122, 204, 0.28)));
+  color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground, inherit));
+}
+
+.vz-vis-popup-sym {
+  width: 14px;
+  text-align: center;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-weight: 700;
+  color: var(--vscode-symbolIcon-MethodForeground, var(--vscode-focusBorder));
+}
+
+/* Operation Parameters Subsection (Inspector & Inline Canvas) */
+.vz-operation-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 4px;
+  background-color: rgba(128, 128, 128, 0.06);
+  border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.2));
+}
+
+.vz-op-params-section,
+.vz-inline-params-wrap {
+  margin-left: 10px;
+  padding-left: 8px;
+  border-left: 2px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.3));
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vz-op-params-title {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 600;
+}
+
+.vz-param-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 26px;
+  gap: 3px;
+  align-items: stretch;
+}
+
+.vz-inline-op-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 5px;
+}
+
+.vz-inline-param-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 22px;
+  gap: 3px;
+  align-items: stretch;
+}
+
+.vz-param-add-btn {
+  font-size: 10.5px;
+  padding: 2px 5px;
+}
+
+.vz-gesture-line {
+  stroke: var(--vscode-focusBorder);
+  stroke-width: 2px;
+}
+
+.vz-marquee-box,
+.vz-selection-outline {
+  fill: rgba(0, 122, 204, 0.1);
+  stroke: var(--vscode-focusBorder);
+  stroke-width: 1.25px;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+

@@ -4,8 +4,15 @@ test/**
 scripts/**
 .vscode/**
 .vizion/**
+.agents/**
+.kilo/**
+.gitignore
+.git*/**
 *.map
+**/*.map
 *.vsix
 tsconfig.json
+vizion_makeover_implementation_plan.md
+AGENTS.md
 Vizion-VS-Code-UML-Sketch-Implementation-Plan.md
 

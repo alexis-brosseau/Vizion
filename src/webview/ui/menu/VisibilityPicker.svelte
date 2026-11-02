@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { UmlVisibility } from '../../shared/documents/types';
-  import { formatVisibilitySign } from '../../shared/operations';
+  import type { UmlVisibility } from '../../../shared/documents/types';
+  import { formatVisibilitySign } from '../../../shared/operations';
 
   let {
     value = '+',

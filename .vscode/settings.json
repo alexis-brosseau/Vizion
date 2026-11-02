@@ -1,6 +1,7 @@
 {
   "workbench.editorAssociations": {
     "*.viz": "vizion.uml"
-  }
+  },
+  "debug.javascript.enableNetworkView": false
 }
 

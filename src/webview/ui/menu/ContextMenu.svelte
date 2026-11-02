@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ContextMenuItem, VizionWebviewStore } from '../state.svelte';
+  import type { ContextMenuItem, VizionWebviewStore } from '../../state.svelte';
 
   let { store }: { store: VizionWebviewStore } = $props();
 

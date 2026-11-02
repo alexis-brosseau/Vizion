@@ -95,8 +95,9 @@ export type WebviewToHostMessage =
   | {
       type: 'webview.promptRenameEntity';
       expectedDocumentVersion: number;
-      targetKind: 'node' | 'edgeLabel' | 'documentTitle';
+      targetKind: 'node' | 'edgeLabel' | 'attribute' | 'operation' | 'documentTitle';
       targetId: string;
+      memberId?: string;
       currentValue: string;
     }
   | {
@@ -113,12 +114,19 @@ export type WebviewToHostMessage =
     }
   | {
       type: 'webview.exportFile';
-      format: 'png';
-      base64Data: string;
+      format: 'png' | 'svg';
+      base64Data?: string;
+      svgData?: string;
+      defaultFileName?: string;
     }
   | {
       type: 'webview.copyImageToClipboard';
       base64Data: string;
+    }
+  | {
+      type: 'webview.copyToClipboard';
+      format: 'svg' | 'json' | 'text';
+      content: string;
     }
   | {
       type: 'webview.checkForExtensionUpdate';

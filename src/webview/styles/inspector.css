@@ -1,0 +1,104 @@
+/* Inspector Fields */
+.vz-inspector-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vz-migration-banner {
+  background-color: var(--vscode-editorWarning-background, rgba(234, 179, 8, 0.12));
+  border: 1px solid var(--vscode-editorWarning-border, var(--vscode-editorWarning-foreground, #eab308));
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vz-migration-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vz-migration-icon {
+  font-size: 13px;
+}
+
+.vz-migration-title {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--vscode-editorWarning-foreground, var(--vscode-editor-foreground));
+}
+
+.vz-migration-text {
+  font-size: 11px;
+  color: var(--vscode-editor-foreground);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.vz-migration-btn {
+  margin-top: 4px;
+  align-self: flex-start;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.vz-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vz-field-label {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 500;
+}
+
+.vz-field-row {
+  display: flex;
+  gap: 4px;
+}
+
+.vz-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.vz-input,
+.vz-textarea,
+.vz-select,
+.vz-input-mini,
+.vz-select-mini,
+.vz-inline-input {
+  width: 100%;
+  padding: 4px 6px;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, var(--vscode-contrastBorder, rgba(128, 128, 128, 0.35)));
+  border-radius: var(--vz-radius-md);
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.vz-textarea {
+  resize: vertical;
+  min-height: 48px;
+}
+
+.vz-inspector-members-textarea {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  overflow-x: hidden;
+  tab-size: 2;
+  min-height: 80px;
+}
+

@@ -34,22 +34,964 @@ __export(activate_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(activate_exports);
-var vscode6 = __toESM(require("vscode"));
+var vscode13 = __toESM(require("vscode"));
 
 // src/extension/commands/index.ts
-var path = __toESM(require("path"));
+var vscode6 = __toESM(require("vscode"));
+
+// src/extension/commands/canvas-commands.ts
+var vscode4 = __toESM(require("vscode"));
+
+// src/extension/flows/node-flows.ts
 var vscode = __toESM(require("vscode"));
+
+// src/shared/registry/uml-registry.ts
+var UML_SHAPE_GEOMETRIES = [
+  { kind: "ellipse", label: "Ellipse" },
+  { kind: "rectangle", label: "Rectangle" },
+  { kind: "rhombus", label: "Rhombus" },
+  { kind: "trapezoid", label: "Trapezoid" },
+  { kind: "parallelogram", label: "Parallelogram" }
+];
+var endpointShapeRegistry = /* @__PURE__ */ new Map();
+var nodeKindRegistry = /* @__PURE__ */ new Map();
+var relationPresetRegistry = /* @__PURE__ */ new Map();
+function registerEndpointShape(descriptor) {
+  endpointShapeRegistry.set(descriptor.kind, descriptor);
+}
+function getEndpointShape(kind) {
+  return endpointShapeRegistry.get(kind);
+}
+function listEndpointShapes() {
+  return Array.from(endpointShapeRegistry.values());
+}
+function registerUmlNodeKind(descriptor) {
+  nodeKindRegistry.set(descriptor.kind, descriptor);
+}
+function getUmlNodeKind(kind) {
+  return nodeKindRegistry.get(kind);
+}
+function listUmlNodeKinds() {
+  return Array.from(nodeKindRegistry.values());
+}
+function registerUmlRelationPreset(preset) {
+  relationPresetRegistry.set(preset.kind, preset);
+}
+function getUmlRelationPreset(kind) {
+  if (kind === "none") {
+    return relationPresetRegistry.get("other");
+  }
+  return relationPresetRegistry.get(kind);
+}
+function listUmlRelationPresets() {
+  return Array.from(relationPresetRegistry.values());
+}
+function detectMatchingRelationPreset(line, start, end) {
+  const isDashed = line === "dashed";
+  const startShape = start?.shape ?? "none";
+  const startFill = start?.fill ?? "hollow";
+  const endShape = end?.shape ?? "none";
+  const endFill = end?.fill ?? "hollow";
+  if (isDashed && startShape === "none" && endShape === "open-arrow") {
+    return "dependency";
+  }
+  if (isDashed && startShape === "none" && endShape === "triangle" && endFill === "hollow") {
+    return "realization";
+  }
+  if (!isDashed && startShape === "none" && endShape === "triangle" && endFill === "hollow") {
+    return "generalization";
+  }
+  if (!isDashed && startShape === "diamond" && startFill === "hollow" && endShape === "none") {
+    return "aggregation";
+  }
+  if (!isDashed && startShape === "diamond" && startFill === "filled" && endShape === "none") {
+    return "composition";
+  }
+  const isStartAssoc = startShape === "none" || startShape === "open-arrow";
+  const isEndAssoc = endShape === "none" || endShape === "open-arrow";
+  if (!isDashed && isStartAssoc && isEndAssoc) {
+    return "association";
+  }
+  return null;
+}
+registerEndpointShape({
+  kind: "none",
+  label: "None",
+  description: "Plain line termination with no marker",
+  supportsFill: false,
+  defaultSize: 10,
+  trimMultiplier: 0,
+  buildLocalPath: () => ""
+});
+registerEndpointShape({
+  kind: "circle",
+  label: "Circle",
+  description: "Circular endpoint decoration (hollow or filled)",
+  supportsFill: true,
+  defaultFill: "hollow",
+  defaultSize: 10,
+  trimMultiplier: 1,
+  buildLocalPath: (size) => {
+    const r = size / 2;
+    return `M 0 0 A ${r} ${r} 0 1 0 -${size} 0 A ${r} ${r} 0 1 0 0 0 Z`;
+  }
+});
+registerEndpointShape({
+  kind: "diamond",
+  label: "Diamond",
+  description: "Diamond endpoint decoration (hollow for aggregation, filled for composition)",
+  supportsFill: true,
+  defaultFill: "hollow",
+  defaultSize: 13,
+  trimMultiplier: 1,
+  buildLocalPath: (size) => {
+    const halfLen = size / 2;
+    const halfWidth = size * 0.36;
+    return `M 0 0 L -${halfLen} -${halfWidth} L -${size} 0 L -${halfLen} ${halfWidth} Z`;
+  }
+});
+registerEndpointShape({
+  kind: "square",
+  label: "Square",
+  description: "Square port/endpoint decoration (hollow or filled)",
+  supportsFill: true,
+  defaultFill: "hollow",
+  defaultSize: 10,
+  trimMultiplier: 1,
+  buildLocalPath: (size) => {
+    const half = size / 2;
+    return `M 0 -${half} L -${size} -${half} L -${size} ${half} L 0 ${half} Z`;
+  }
+});
+registerEndpointShape({
+  kind: "triangle",
+  label: "Triangle",
+  description: "Closed triangular arrowhead (hollow for generalization/realization, or filled)",
+  supportsFill: true,
+  defaultFill: "hollow",
+  defaultSize: 12,
+  trimMultiplier: 1,
+  buildLocalPath: (size) => {
+    const halfWidth = size * 0.48;
+    return `M 0 0 L -${size} -${halfWidth} L -${size} ${halfWidth} Z`;
+  }
+});
+registerEndpointShape({
+  kind: "open-arrow",
+  label: "Open Arrow",
+  description: "Open V-shaped navigable arrowhead (stroke only)",
+  supportsFill: false,
+  defaultSize: 11,
+  trimMultiplier: 0.15,
+  buildLocalPath: (size) => {
+    const halfWidth = size * 0.45;
+    return `M -${size} -${halfWidth} L 0 0 L -${size} ${halfWidth}`;
+  }
+});
+registerUmlNodeKind({
+  kind: "class",
+  label: "Class",
+  description: "Standard UML class with attributes and operations compartments",
+  defaultWidth: 240,
+  defaultHeight: 140,
+  hasCompartments: true
+});
+registerUmlNodeKind({
+  kind: "note",
+  label: "Note",
+  description: "Free-text UML annotation note with folded corner",
+  defaultWidth: 185,
+  defaultHeight: 100,
+  hasCompartments: false
+});
+registerUmlNodeKind({
+  kind: "shape",
+  label: "Shape",
+  description: "Geometric shape node with centered label (ellipse, rectangle, rhombus, trapezoid, parallelogram)",
+  defaultWidth: 160,
+  defaultHeight: 90,
+  hasCompartments: false
+});
+registerUmlNodeKind({
+  kind: "frame",
+  label: "Frame",
+  description: "Container frame with label that automatically encloses contained elements",
+  defaultWidth: 260,
+  defaultHeight: 180,
+  hasCompartments: false
+});
+registerUmlRelationPreset({
+  kind: "association",
+  label: "Association",
+  description: "Structural link between classes (solid line, no endpoint markers by default)",
+  line: "solid",
+  routing: "default",
+  start: { shape: "none", size: 10 },
+  end: { shape: "none", size: 10 }
+});
+registerUmlRelationPreset({
+  kind: "dependency",
+  label: "Dependency",
+  description: "Uses/depends-on relationship (dashed line, open arrow at target)",
+  line: "dashed",
+  routing: "default",
+  start: { shape: "none", size: 10 },
+  end: { shape: "open-arrow", size: 11 }
+});
+registerUmlRelationPreset({
+  kind: "generalization",
+  label: "Generalization (Inheritance)",
+  description: "Subclasses a general classifier (solid line, hollow triangle at target)",
+  line: "solid",
+  routing: "default",
+  start: { shape: "none", size: 10 },
+  end: { shape: "triangle", fill: "hollow", size: 12 }
+});
+registerUmlRelationPreset({
+  kind: "realization",
+  label: "Realization (Implements)",
+  description: "Implements a specification contract (dashed line, hollow triangle at target)",
+  line: "dashed",
+  routing: "default",
+  start: { shape: "none", size: 10 },
+  end: { shape: "triangle", fill: "hollow", size: 12 }
+});
+registerUmlRelationPreset({
+  kind: "aggregation",
+  label: "Aggregation",
+  description: "Whole-part weak ownership (solid line, hollow diamond at source)",
+  line: "solid",
+  routing: "default",
+  start: { shape: "diamond", fill: "hollow", size: 13 },
+  end: { shape: "none", size: 10 }
+});
+registerUmlRelationPreset({
+  kind: "composition",
+  label: "Composition",
+  description: "Whole-part strong lifecycle ownership (solid line, filled diamond at source)",
+  line: "solid",
+  routing: "default",
+  start: { shape: "diamond", fill: "filled", size: 13 },
+  end: { shape: "none", size: 10 }
+});
+registerUmlRelationPreset({
+  kind: "other",
+  label: "Other",
+  description: "Generic relation without semantic UML decoration",
+  line: "dashed",
+  routing: "default",
+  start: { shape: "none", size: 10 },
+  end: { shape: "none", size: 10 }
+});
+
+// src/extension/flows/node-flows.ts
+async function promptAddUmlNodeFlow(ctx, params = {}) {
+  const { x = 120, y = 100, defaultKind } = params;
+  let chosenKind = defaultKind;
+  if (!chosenKind) {
+    const kindItems = listUmlNodeKinds().map((desc) => ({
+      label: desc.label,
+      description: desc.kind,
+      detail: desc.description,
+      kindValue: desc.kind
+    }));
+    const picked = await vscode.window.showQuickPick(kindItems, {
+      title: "Vizion UML: Choose Node Kind",
+      placeHolder: "Select class, note, shape, or frame"
+    });
+    if (!picked) {
+      ctx.restoreFocus(ctx.panel);
+      return;
+    }
+    chosenKind = picked.kindValue;
+  }
+  let chosenStereotype = params.stereotype;
+  if (chosenKind === "class" && chosenStereotype === void 0) {
+    const stereotypeItems = [
+      { label: "$(symbol-class) (None)", description: "Standard UML Class", value: "" },
+      { label: "$(symbol-interface) \xABinterface\xBB", description: "Interface specification", value: "interface" },
+      { label: "$(symbol-structure) \xABabstract\xBB", description: "Abstract base class", value: "abstract" },
+      { label: "$(symbol-misc) \xABservice\xBB", description: "Business or domain service", value: "service" },
+      { label: "$(database) \xABentity\xBB", description: "Persistent domain entity", value: "entity" },
+      { label: "$(edit) Custom Stereotype...", description: "Specify a custom stereotype label", value: "__CUSTOM__" }
+    ];
+    const pickedStereo = await vscode.window.showQuickPick(stereotypeItems, {
+      title: "Vizion UML: Class Stereotype",
+      placeHolder: "Select a standard stereotype or leave as standard class"
+    });
+    if (pickedStereo === void 0) {
+      ctx.restoreFocus(ctx.panel);
+      return;
+    }
+    if (pickedStereo.value === "__CUSTOM__") {
+      const customStereo = await vscode.window.showInputBox({
+        title: "Vizion UML: Custom Stereotype",
+        prompt: "Enter custom stereotype (without guillemets)",
+        placeHolder: "e.g. repository, controller, boundary",
+        validateInput: (v) => !v.trim() ? "Stereotype cannot be empty" : void 0
+      });
+      if (customStereo === void 0) {
+        ctx.restoreFocus(ctx.panel);
+        return;
+      }
+      chosenStereotype = customStereo.replace(/[«»]/g, "").trim();
+    } else {
+      chosenStereotype = pickedStereo.value;
+    }
+  }
+  let chosenShapeGeometry = params.shapeGeometry;
+  if (chosenKind === "shape" && !chosenShapeGeometry) {
+    const shapeItems = UML_SHAPE_GEOMETRIES.map((geo) => ({
+      label: geo.label,
+      description: `UML 2.5 ${geo.kind} geometry`,
+      geometry: geo.kind
+    }));
+    const pickedShape = await vscode.window.showQuickPick(shapeItems, {
+      title: "Vizion UML: Shape Geometry",
+      placeHolder: "Select geometric shape outline"
+    });
+    if (!pickedShape) {
+      ctx.restoreFocus(ctx.panel);
+      return;
+    }
+    chosenShapeGeometry = pickedShape.geometry;
+  }
+  const defaultName = params.name ?? (chosenKind === "note" ? "Architecture Note" : chosenKind === "shape" ? chosenShapeGeometry ? chosenShapeGeometry.charAt(0).toUpperCase() + chosenShapeGeometry.slice(1) : "Shape" : chosenKind === "frame" ? "Frame" : chosenStereotype === "interface" ? "IService" : "DomainEntity");
+  const enteredName = await vscode.window.showInputBox({
+    title: `Vizion UML: New ${chosenKind.toUpperCase()} Name`,
+    prompt: chosenKind === "note" ? "Enter note text or summary" : `Enter ${chosenKind} identifier`,
+    value: defaultName,
+    validateInput: (val) => {
+      const trimmed = val.trim();
+      if (trimmed.length === 0) return "Name cannot be empty";
+      if (chosenKind === "class" && !/^[a-zA-Z_$][\w$-]*$/.test(trimmed)) {
+        return "Class name should be a valid identifier (e.g. OrderService, User_Entity)";
+      }
+      return void 0;
+    }
+  });
+  ctx.restoreFocus(ctx.panel);
+  if (!enteredName || enteredName.trim().length === 0) return;
+  if (ctx.document.version !== ctx.expectedVersion) {
+    void vscode.window.showWarningMessage("Document changed while the picker was open. Please retry adding the node.");
+    return;
+  }
+  const baseSlug = enteredName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || chosenKind;
+  const uniqueId = `${baseSlug}-${Date.now().toString(36).slice(-4)}`;
+  await ctx.enqueueOperation(async () => {
+    await ctx.executeOperation(ctx.panel, `host-add-${uniqueId}`, ctx.expectedVersion, {
+      type: "uml.addNode",
+      id: uniqueId,
+      kind: chosenKind,
+      name: enteredName.trim(),
+      x,
+      y,
+      ...chosenShapeGeometry ? { shape: chosenShapeGeometry } : {},
+      text: chosenKind === "note" ? enteredName.trim() : void 0
+    });
+    if (chosenKind === "class" && chosenStereotype) {
+      await ctx.executeOperation(ctx.panel, `host-set-stereo-${uniqueId}`, ctx.document.version, {
+        type: "uml.updateNode",
+        nodeId: uniqueId,
+        stereotype: chosenStereotype
+      });
+    }
+  });
+}
+
+// src/extension/flows/relation-flows.ts
+var vscode2 = __toESM(require("vscode"));
+async function promptAddUmlEdgeFlow(ctx, params = {}) {
+  let { sourceNodeId, targetNodeId, defaultKind, label } = params;
+  if (!sourceNodeId || !targetNodeId) {
+    const docAst = ctx.getLastValidDocument?.();
+    const availableNodes = docAst?.nodes.filter((n) => n.kind !== "frame") ?? [];
+    if (availableNodes.length < 2) {
+      void vscode2.window.showWarningMessage(
+        "At least two non-frame nodes are required in the diagram to connect a relation."
+      );
+      ctx.restoreFocus(ctx.panel);
+      return;
+    }
+    if (!sourceNodeId) {
+      const sourceItems = availableNodes.map((n) => ({
+        label: n.name || n.id,
+        description: n.kind + (n.stereotype ? ` \xAB${n.stereotype}\xBB` : ""),
+        detail: `ID: ${n.id}`,
+        nodeId: n.id
+      }));
+      const pickedSource = await vscode2.window.showQuickPick(sourceItems, {
+        title: "Vizion UML: Select Source Node",
+        placeHolder: "Choose starting entity for relation"
+      });
+      if (!pickedSource) {
+        ctx.restoreFocus(ctx.panel);
+        return;
+      }
+      sourceNodeId = pickedSource.nodeId;
+    }
+    if (!targetNodeId) {
+      const targetItems = availableNodes.filter((n) => n.id !== sourceNodeId).map((n) => ({
+        label: n.name || n.id,
+        description: n.kind + (n.stereotype ? ` \xAB${n.stereotype}\xBB` : ""),
+        detail: `ID: ${n.id}`,
+        nodeId: n.id
+      }));
+      const pickedTarget = await vscode2.window.showQuickPick(targetItems, {
+        title: "Vizion UML: Select Target Node",
+        placeHolder: "Choose destination entity for relation"
+      });
+      if (!pickedTarget) {
+        ctx.restoreFocus(ctx.panel);
+        return;
+      }
+      targetNodeId = pickedTarget.nodeId;
+    }
+  }
+  const presetItems = listUmlRelationPresets().map((preset) => ({
+    label: preset.label,
+    description: preset.kind,
+    detail: preset.description,
+    picked: preset.kind === (defaultKind ?? "association"),
+    presetKind: preset.kind
+  }));
+  const picked = await vscode2.window.showQuickPick(presetItems, {
+    title: `Vizion UML: Relation Kind (${sourceNodeId} \u2192 ${targetNodeId})`,
+    placeHolder: "Choose semantic relationship kind"
+  });
+  ctx.restoreFocus(ctx.panel);
+  if (!picked) return;
+  if (ctx.document.version !== ctx.expectedVersion) {
+    void vscode2.window.showWarningMessage("Document changed while choosing relation kind. Connection cancelled.");
+    return;
+  }
+  const edgeId = `edge-${sourceNodeId}-${targetNodeId}-${Date.now().toString(36).slice(-4)}`;
+  await ctx.enqueueOperation(async () => {
+    await ctx.executeOperation(ctx.panel, `host-edge-${edgeId}`, ctx.expectedVersion, {
+      type: "uml.addEdge",
+      id: edgeId,
+      kind: picked.presetKind,
+      sourceNodeId,
+      targetNodeId,
+      ...label ? { label } : {}
+    });
+  });
+}
+async function promptEndpointDecorationFlow(ctx, params) {
+  const { edgeId, end, currentDecoration } = params;
+  const endLabel = end === "start" ? "START (Source)" : "END (Target)";
+  const shapeItems = listEndpointShapes().map((shape) => ({
+    label: shape.label,
+    description: currentDecoration?.shape === shape.kind ? `${shape.kind} (current)` : shape.kind,
+    detail: shape.description,
+    shapeDescriptor: shape
+  }));
+  const pickedShape = await vscode2.window.showQuickPick(shapeItems, {
+    title: `Vizion UML: Customize ${endLabel} Endpoint Shape`,
+    placeHolder: `Select decoration shape for ${endLabel} endpoint of relation "${edgeId}"`
+  });
+  if (!pickedShape) {
+    ctx.restoreFocus(ctx.panel);
+    return;
+  }
+  let chosenFill;
+  if (pickedShape.shapeDescriptor.supportsFill) {
+    const currentFill = currentDecoration?.fill ?? pickedShape.shapeDescriptor.defaultFill ?? "hollow";
+    const fillItems = [
+      {
+        label: "Hollow",
+        description: currentFill === "hollow" ? "hollow (current)" : "hollow",
+        detail: "Interior filled with theme canvas background; path trimmed cleanly at boundary",
+        fillValue: "hollow"
+      },
+      {
+        label: "Filled",
+        description: currentFill === "filled" ? "filled (current)" : "filled",
+        detail: "Solid foreground fill",
+        fillValue: "filled"
+      }
+    ];
+    const pickedFill = await vscode2.window.showQuickPick(fillItems, {
+      title: `Vizion UML: Choose ${endLabel} ${pickedShape.shapeDescriptor.label} Fill Mode`,
+      placeHolder: "Select Hollow or Filled appearance"
+    });
+    if (!pickedFill) {
+      ctx.restoreFocus(ctx.panel);
+      return;
+    }
+    chosenFill = pickedFill.fillValue;
+  }
+  ctx.restoreFocus(ctx.panel);
+  if (ctx.document.version !== ctx.expectedVersion) {
+    void vscode2.window.showWarningMessage("Document changed while endpoint picker was open. Endpoint update cancelled.");
+    return;
+  }
+  const decoration = {
+    shape: pickedShape.shapeDescriptor.kind,
+    size: currentDecoration?.size ?? pickedShape.shapeDescriptor.defaultSize,
+    ...chosenFill ? { fill: chosenFill } : {}
+  };
+  await ctx.enqueueOperation(async () => {
+    await ctx.executeOperation(ctx.panel, `host-endpoint-${edgeId}-${end}`, ctx.expectedVersion, {
+      type: "uml.updateEndpoint",
+      edgeId,
+      end,
+      decoration
+    });
+  });
+}
+async function promptChangeRelationKindFlow(ctx, params) {
+  const { edgeId, currentKind } = params;
+  const items = listUmlRelationPresets().map((preset) => ({
+    label: preset.label,
+    description: preset.kind === currentKind ? `${preset.kind} (current)` : preset.kind,
+    detail: preset.description,
+    presetKind: preset.kind
+  }));
+  const picked = await vscode2.window.showQuickPick(items, {
+    title: `Vizion UML: Change Relation Kind (${edgeId})`,
+    placeHolder: "Select relation semantic kind and reset notation preset"
+  });
+  ctx.restoreFocus(ctx.panel);
+  if (!picked) return;
+  if (ctx.document.version !== ctx.expectedVersion) {
+    void vscode2.window.showWarningMessage("Document changed while picker was open. Operation cancelled.");
+    return;
+  }
+  await ctx.enqueueOperation(async () => {
+    await ctx.executeOperation(ctx.panel, `host-relkind-${edgeId}`, ctx.expectedVersion, {
+      type: "uml.updateEdge",
+      edgeId,
+      kind: picked.presetKind
+    });
+  });
+}
+
+// src/extension/flows/metadata-flows.ts
+var vscode3 = __toESM(require("vscode"));
+
+// src/shared/operations/text-parsers.ts
+function parseAttributesFromText(text, nodeId, existingAttrs = []) {
+  const lines = text.split(/\r?\n/);
+  const result = [];
+  const ATTR_REGEX2 = /^\s*([+\-#~＋－])?\s*([a-zA-Z_$][\w$-]*)(?:\s*:\s*(.+?))?\s*$/;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const match = line.match(ATTR_REGEX2);
+    if (!match) continue;
+    let rawVis = match[1];
+    let vis = "+";
+    if (rawVis === "-" || rawVis === "\uFF0D") vis = "-";
+    else if (rawVis === "#") vis = "#";
+    else if (rawVis === "~") vis = "~";
+    else vis = "+";
+    const name = match[2].trim();
+    const type = match[3] ? match[3].trim() : void 0;
+    const existing = existingAttrs[result.length];
+    const id = existing?.id ?? `${nodeId}-attr-${Date.now().toString(36)}-${result.length + 1}`;
+    result.push({
+      id,
+      visibility: vis,
+      name,
+      ...type ? { type } : {}
+    });
+  }
+  return result;
+}
+function parseOperationsFromText(text, nodeId, existingOps = []) {
+  const lines = text.split(/\r?\n/);
+  const result = [];
+  const OP_REGEX2 = /^\s*([+\-#~＋－])?\s*([a-zA-Z_$][\w$-]*)\s*(?:\((.*?)\))?(?:\s*:\s*(.+?))?\s*$/;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const match = line.match(OP_REGEX2);
+    if (!match) continue;
+    let rawVis = match[1];
+    let vis = "+";
+    if (rawVis === "-" || rawVis === "\uFF0D") vis = "-";
+    else if (rawVis === "#") vis = "#";
+    else if (rawVis === "~") vis = "~";
+    else vis = "+";
+    const name = match[2].trim();
+    const rawParams = match[3];
+    const returnType = match[4] ? match[4].trim() : void 0;
+    const existing = existingOps[result.length];
+    const id = existing?.id ?? `${nodeId}-op-${Date.now().toString(36)}-${result.length + 1}`;
+    const parameters = [];
+    if (rawParams !== void 0 && rawParams.trim().length > 0) {
+      const parts = rawParams.split(",");
+      for (let pIdx = 0; pIdx < parts.length; pIdx++) {
+        const pTrimmed = parts[pIdx].trim();
+        if (!pTrimmed) continue;
+        const colonIdx = pTrimmed.indexOf(":");
+        let pName = pTrimmed;
+        let pType = "";
+        if (colonIdx !== -1) {
+          pName = pTrimmed.slice(0, colonIdx).trim();
+          pType = pTrimmed.slice(colonIdx + 1).trim();
+        }
+        if (pName.length > 0) {
+          parameters.push({
+            id: `${id}-param-${pIdx + 1}`,
+            name: pName,
+            ...pType ? { type: pType } : {}
+          });
+        }
+      }
+    }
+    const signature = rawParams !== void 0 ? `(${parameters.map((p) => p.type ? `${p.name}: ${p.type}` : p.name).join(", ")})` : "()";
+    result.push({
+      id,
+      visibility: vis,
+      name,
+      signature,
+      ...returnType ? { returnType } : {},
+      parameters
+    });
+  }
+  return result;
+}
+
+// src/extension/flows/metadata-flows.ts
+var ATTR_REGEX = /^\s*([+\-#~＋－])?\s*([a-zA-Z_$][\w$-]*)(?:\s*:\s*(.+?))?\s*$/;
+var OP_REGEX = /^\s*([+\-#~＋－])?\s*([a-zA-Z_$][\w$-]*)\s*(?:\((.*?)\))?(?:\s*:\s*(.+?))?\s*$/;
+async function promptRenameEntityFlow(ctx, params = {}) {
+  let { targetKind, targetId, memberId, currentValue } = params;
+  const doc = ctx.getLastValidDocument?.();
+  if (!targetKind) {
+    const kindItems = [
+      { label: "$(symbol-class) Node Name", description: "Rename a class, note, or shape", targetKindValue: "node" },
+      { label: "$(git-commit) Relation Label", description: "Edit text label on a relation link", targetKindValue: "edgeLabel" },
+      { label: "$(symbol-field) Class Attribute", description: "Edit visibility, name, or type of an attribute", targetKindValue: "attribute" },
+      { label: "$(symbol-method) Class Operation", description: "Edit method signature, parameters, or return type", targetKindValue: "operation" },
+      { label: "$(book) Document Title", description: "Change the title of this .viz diagram", targetKindValue: "documentTitle" }
+    ];
+    const pickedKind = await vscode3.window.showQuickPick(kindItems, {
+      title: "Vizion: What would you like to edit?",
+      placeHolder: "Select entity category"
+    });
+    if (!pickedKind) {
+      ctx.restoreFocus(ctx.panel);
+      return;
+    }
+    targetKind = pickedKind.targetKindValue;
+  }
+  switch (targetKind) {
+    case "node": {
+      if (!targetId) {
+        const nodes = doc?.nodes ?? [];
+        if (nodes.length === 0) {
+          void vscode3.window.showInformationMessage("No nodes found in diagram to rename.");
+          ctx.restoreFocus(ctx.panel);
+          return;
+        }
+        const pickedNode = await vscode3.window.showQuickPick(
+          nodes.map((n) => ({ label: n.name || n.id, description: n.kind, nodeId: n.id })),
+          { title: "Vizion: Select Node to Rename" }
+        );
+        if (!pickedNode) {
+          ctx.restoreFocus(ctx.panel);
+          return;
+        }
+        targetId = pickedNode.nodeId;
+        const found = nodes.find((n) => n.id === targetId);
+        if (found) currentValue = found.name;
+      }
+      const nextName = await vscode3.window.showInputBox({
+        title: "Vizion: Rename UML Node",
+        value: currentValue ?? "",
+        prompt: "Enter new node identifier",
+        validateInput: (v) => !v.trim() ? "Name cannot be empty." : void 0
+      });
+      ctx.restoreFocus(ctx.panel);
+      if (!nextName || !nextName.trim()) return;
+      if (ctx.document.version !== ctx.expectedVersion) {
+        void vscode3.window.showWarningMessage("Document changed while input box was open. Edit cancelled.");
+        return;
+      }
+      await ctx.enqueueOperation(async () => {
+        await ctx.executeOperation(ctx.panel, `rename-node-${targetId}`, ctx.expectedVersion, {
+          type: "uml.updateNode",
+          nodeId: targetId,
+          name: nextName.trim()
+        });
+      });
+      break;
+    }
+    case "edgeLabel": {
+      if (!targetId) {
+        const edges = doc?.edges ?? [];
+        if (edges.length === 0) {
+          void vscode3.window.showInformationMessage("No relations found in diagram.");
+          ctx.restoreFocus(ctx.panel);
+          return;
+        }
+        const pickedEdge = await vscode3.window.showQuickPick(
+          edges.map((e) => ({
+            label: e.label || `(${e.kind ?? "relation"})`,
+            description: `${e.sourceNodeId} \u2192 ${e.targetNodeId}`,
+            edgeId: e.id
+          })),
+          { title: "Vizion: Select Relation to Edit Label" }
+        );
+        if (!pickedEdge) {
+          ctx.restoreFocus(ctx.panel);
+          return;
+        }
+        targetId = pickedEdge.edgeId;
+        const found = edges.find((e) => e.id === targetId);
+        if (found) currentValue = found.label ?? "";
+      }
+      const nextLabel = await vscode3.window.showInputBox({
+        title: "Vizion: Edit Relation Label",
+        value: currentValue ?? "",
+        prompt: "Enter relation label (leave empty to clear)"
+      });
+      ctx.restoreFocus(ctx.panel);
+      if (nextLabel === void 0) return;
+      if (ctx.document.version !== ctx.expectedVersion) {
+        void vscode3.window.showWarningMessage("Document changed while input box was open. Edit cancelled.");
+        return;
+      }
+      await ctx.enqueueOperation(async () => {
+        await ctx.executeOperation(ctx.panel, `rename-edge-${targetId}`, ctx.expectedVersion, {
+          type: "uml.updateEdge",
+          edgeId: targetId,
+          label: nextLabel.trim()
+        });
+      });
+      break;
+    }
+    case "documentTitle": {
+      const nextTitle = await vscode3.window.showInputBox({
+        title: "Vizion: Rename Document Title",
+        value: currentValue ?? doc?.title ?? "",
+        prompt: "Enter new diagram title",
+        validateInput: (v) => !v.trim() ? "Title cannot be empty." : void 0
+      });
+      ctx.restoreFocus(ctx.panel);
+      if (!nextTitle || !nextTitle.trim()) return;
+      if (ctx.document.version !== ctx.expectedVersion) {
+        void vscode3.window.showWarningMessage("Document changed while input box was open. Edit cancelled.");
+        return;
+      }
+      await ctx.enqueueOperation(async () => {
+        await ctx.executeOperation(ctx.panel, "rename-doc", ctx.expectedVersion, {
+          type: "uml.updateMetadata",
+          title: nextTitle.trim()
+        });
+      });
+      break;
+    }
+    case "attribute": {
+      const candidateNodes = doc?.nodes.filter((n) => n.kind === "class" || n.attributes && n.attributes.length > 0) ?? [];
+      if (candidateNodes.length === 0) {
+        void vscode3.window.showInformationMessage("No classes with attributes found in diagram.");
+        ctx.restoreFocus(ctx.panel);
+        return;
+      }
+      let targetNode = candidateNodes.find((n) => n.id === targetId);
+      if (!targetNode) {
+        const picked = await vscode3.window.showQuickPick(
+          candidateNodes.map((n) => ({ label: n.name, description: `${n.attributes?.length ?? 0} attributes`, node: n })),
+          { title: "Vizion: Select Class Containing Attribute" }
+        );
+        if (!picked) {
+          ctx.restoreFocus(ctx.panel);
+          return;
+        }
+        targetNode = picked.node;
+        targetId = targetNode.id;
+      }
+      const attrs = targetNode.attributes ?? [];
+      let targetAttr = attrs.find((a) => a.id === memberId);
+      if (!targetAttr && attrs.length > 0) {
+        const pickedAttr = await vscode3.window.showQuickPick(
+          attrs.map((a) => ({
+            label: `${a.visibility ?? "+"} ${a.name}${a.type ? `: ${a.type}` : ""}`,
+            attr: a
+          })),
+          { title: `Vizion: Select Attribute in "${targetNode.name}"` }
+        );
+        if (!pickedAttr) {
+          ctx.restoreFocus(ctx.panel);
+          return;
+        }
+        targetAttr = pickedAttr.attr;
+        memberId = targetAttr.id;
+      }
+      const defaultAttrText = targetAttr ? `${targetAttr.visibility ?? "+"} ${targetAttr.name}${targetAttr.type ? `: ${targetAttr.type}` : ""}` : "+ id: string";
+      const nextAttrText = await vscode3.window.showInputBox({
+        title: `Vizion: Edit Attribute (${targetNode.name})`,
+        value: currentValue ?? defaultAttrText,
+        prompt: "Format: [+|-|#|~] name: type (e.g. + totalAmount: number)",
+        validateInput: (v) => !ATTR_REGEX.test(v.trim()) ? "Invalid attribute syntax. Example: + name: string" : void 0
+      });
+      ctx.restoreFocus(ctx.panel);
+      if (!nextAttrText || !nextAttrText.trim()) return;
+      if (ctx.document.version !== ctx.expectedVersion) {
+        void vscode3.window.showWarningMessage("Document changed while input box was open. Edit cancelled.");
+        return;
+      }
+      const parsedAttrs = parseAttributesFromText(nextAttrText.trim(), targetId, targetAttr ? [targetAttr] : []);
+      if (parsedAttrs.length === 0) return;
+      const newAttr = parsedAttrs[0];
+      const updatedList = attrs.map((a) => a.id === memberId ? newAttr : a);
+      if (!attrs.some((a) => a.id === memberId)) {
+        updatedList.push(newAttr);
+      }
+      await ctx.enqueueOperation(async () => {
+        await ctx.executeOperation(ctx.panel, `update-attr-${targetId}`, ctx.expectedVersion, {
+          type: "uml.updateNode",
+          nodeId: targetId,
+          attributes: updatedList
+        });
+      });
+      break;
+    }
+    case "operation": {
+      const candidateNodes = doc?.nodes.filter((n) => n.kind === "class" || n.operations && n.operations.length > 0) ?? [];
+      if (candidateNodes.length === 0) {
+        void vscode3.window.showInformationMessage("No classes with operations found in diagram.");
+        ctx.restoreFocus(ctx.panel);
+        return;
+      }
+      let targetNode = candidateNodes.find((n) => n.id === targetId);
+      if (!targetNode) {
+        const picked = await vscode3.window.showQuickPick(
+          candidateNodes.map((n) => ({ label: n.name, description: `${n.operations?.length ?? 0} operations`, node: n })),
+          { title: "Vizion: Select Class Containing Operation" }
+        );
+        if (!picked) {
+          ctx.restoreFocus(ctx.panel);
+          return;
+        }
+        targetNode = picked.node;
+        targetId = targetNode.id;
+      }
+      const ops = targetNode.operations ?? [];
+      let targetOp = ops.find((o) => o.id === memberId);
+      if (!targetOp && ops.length > 0) {
+        const pickedOp = await vscode3.window.showQuickPick(
+          ops.map((o) => ({
+            label: `${o.visibility ?? "+"} ${o.name}${o.signature ?? "()"}${o.returnType ? `: ${o.returnType}` : ""}`,
+            op: o
+          })),
+          { title: `Vizion: Select Operation in "${targetNode.name}"` }
+        );
+        if (!pickedOp) {
+          ctx.restoreFocus(ctx.panel);
+          return;
+        }
+        targetOp = pickedOp.op;
+        memberId = targetOp.id;
+      }
+      const defaultOpText = targetOp ? `${targetOp.visibility ?? "+"} ${targetOp.name}${targetOp.signature ?? "()"}${targetOp.returnType ? `: ${targetOp.returnType}` : ""}` : "+ execute(): void";
+      const nextOpText = await vscode3.window.showInputBox({
+        title: `Vizion: Edit Operation (${targetNode.name})`,
+        value: currentValue ?? defaultOpText,
+        prompt: "Format: [+|-|#|~] name(param: type): returnType (e.g. + calculateTotal(discount: number): number)",
+        validateInput: (v) => !OP_REGEX.test(v.trim()) ? "Invalid operation syntax. Example: + execute(): void" : void 0
+      });
+      ctx.restoreFocus(ctx.panel);
+      if (!nextOpText || !nextOpText.trim()) return;
+      if (ctx.document.version !== ctx.expectedVersion) {
+        void vscode3.window.showWarningMessage("Document changed while input box was open. Edit cancelled.");
+        return;
+      }
+      const parsedOps = parseOperationsFromText(nextOpText.trim(), targetId, targetOp ? [targetOp] : []);
+      if (parsedOps.length === 0) return;
+      const newOp = parsedOps[0];
+      const updatedList = ops.map((o) => o.id === memberId ? newOp : o);
+      if (!ops.some((o) => o.id === memberId)) {
+        updatedList.push(newOp);
+      }
+      await ctx.enqueueOperation(async () => {
+        await ctx.executeOperation(ctx.panel, `update-op-${targetId}`, ctx.expectedVersion, {
+          type: "uml.updateNode",
+          nodeId: targetId,
+          operations: updatedList
+        });
+      });
+      break;
+    }
+  }
+}
+
+// src/extension/commands/canvas-commands.ts
+function registerCanvasCommands(context, registry) {
+  context.subscriptions.push(
+    vscode4.commands.registerCommand("vizion.initializeCurrentDocument", async () => {
+      const active = registry.getActiveCoordinator();
+      if (active) {
+        await active.explicitlyInitializeEmptyDocument();
+        return;
+      }
+      const editor = vscode4.window.activeTextEditor;
+      if (editor && editor.document.fileName.endsWith(".viz")) {
+        const coord = registry.acquire(editor.document, "uml");
+        await coord.explicitlyInitializeEmptyDocument();
+      } else {
+        void vscode4.window.showInformationMessage("Focus an empty .viz document first.");
+      }
+    }),
+    vscode4.commands.registerCommand("vizion.openCurrentAsText", async () => {
+      const active = registry.getActiveCoordinator();
+      if (active) {
+        await vscode4.commands.executeCommand("vscode.openWith", active.document.uri, "default");
+      }
+    }),
+    vscode4.commands.registerCommand("vizion.fitCanvasToContent", () => {
+      const active = registry.getActiveCoordinator();
+      active?.broadcastCommand("fitContent", true);
+    }),
+    vscode4.commands.registerCommand("vizion.resetCanvasZoom", () => {
+      const active = registry.getActiveCoordinator();
+      active?.broadcastCommand("resetZoom", true);
+    }),
+    vscode4.commands.registerCommand("vizion.addNode", async () => {
+      const active = registry.getActiveCoordinator();
+      if (!active) {
+        void vscode4.window.showInformationMessage("Open or focus a Vizion UML editor first.");
+        return;
+      }
+      await promptAddUmlNodeFlow(active.createFlowContext());
+    }),
+    vscode4.commands.registerCommand("vizion.addRelation", async () => {
+      const active = registry.getActiveCoordinator();
+      if (!active) {
+        void vscode4.window.showInformationMessage("Open or focus a Vizion UML editor first.");
+        return;
+      }
+      await promptAddUmlEdgeFlow(active.createFlowContext());
+    }),
+    vscode4.commands.registerCommand("vizion.renameEntity", async () => {
+      const active = registry.getActiveCoordinator();
+      if (!active) {
+        void vscode4.window.showInformationMessage("Open or focus a Vizion UML editor first.");
+        return;
+      }
+      await promptRenameEntityFlow(active.createFlowContext());
+    })
+  );
+}
+
+// src/extension/commands/create-diagram.ts
+var path = __toESM(require("path"));
+var vscode5 = __toESM(require("vscode"));
 
 // package.json
 var package_default = {
   name: "vizion",
   displayName: "Vizion",
   description: "Custom UML editor for .viz JSON documents with embedded AI guidance.",
-  version: "0.2.0",
+  version: "0.3.0",
   publisher: "Vizionary",
   license: "MIT",
   engines: {
-    vscode: "^1.88.0"
+    vscode: "^1.90.0"
   },
   categories: [
     "Visualization",
@@ -59,7 +1001,10 @@ var package_default = {
   activationEvents: [
     "onCustomEditor:vizion.uml",
     "onCommand:vizion.newUmlDiagram",
-    "onCommand:vizion.initializeCurrentDocument"
+    "onCommand:vizion.initializeCurrentDocument",
+    "onCommand:vizion.addNode",
+    "onCommand:vizion.addRelation",
+    "onCommand:vizion.renameEntity"
   ],
   main: "./dist/extension.cjs",
   contributes: {
@@ -119,6 +1064,24 @@ var package_default = {
         title: "Reset Canvas Zoom (100%)",
         category: "Vizion",
         icon: "$(zoom-in)"
+      },
+      {
+        command: "vizion.addNode",
+        title: "Add UML Node",
+        category: "Vizion",
+        icon: "$(add)"
+      },
+      {
+        command: "vizion.addRelation",
+        title: "Add UML Relation",
+        category: "Vizion",
+        icon: "$(git-commit)"
+      },
+      {
+        command: "vizion.renameEntity",
+        title: "Rename UML Entity",
+        category: "Vizion",
+        icon: "$(edit)"
       }
     ],
     menus: {
@@ -140,6 +1103,7 @@ var package_default = {
     build: "node scripts/build.mjs",
     watch: "node scripts/build.mjs --watch",
     typecheck: "tsc --noEmit",
+    check: "svelte-check --tsconfig ./tsconfig.json",
     test: "vitest run",
     package: "vsce package --no-dependencies --allow-missing-repository"
   },
@@ -147,14 +1111,15 @@ var package_default = {
     "jsonc-parser": "^3.3.1"
   },
   devDependencies: {
-    "@sveltejs/vite-plugin-svelte": "^4.0.0",
-    "@types/node": "^20.14.0",
-    "@types/vscode": "^1.88.0",
-    "@vscode/vsce": "^3.0.0",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.2.0",
     esbuild: "^0.24.0",
-    svelte: "^5.16.0",
-    typescript: "^5.6.3",
-    vitest: "^2.1.4"
+    "esbuild-svelte": "^0.8.2",
+    svelte: "^5.15.0",
+    "svelte-check": "^4.1.0",
+    typescript: "^5.7.0",
+    vitest: "^2.1.0"
   }
 };
 
@@ -223,23 +1188,23 @@ function isEmptyOrWhitespaceDocument(text) {
   return withoutBom.trim().length === 0;
 }
 
-// src/extension/commands/index.ts
+// src/extension/commands/create-diagram.ts
 async function resolveTargetFolder(contextUri) {
   if (contextUri) {
     try {
-      const stat = await vscode.workspace.fs.stat(contextUri);
-      if ((stat.type & vscode.FileType.Directory) !== 0) {
+      const stat = await vscode5.workspace.fs.stat(contextUri);
+      if ((stat.type & vscode5.FileType.Directory) !== 0) {
         return contextUri;
       }
-      return vscode.Uri.file(path.dirname(contextUri.fsPath));
+      return vscode5.Uri.file(path.dirname(contextUri.fsPath));
     } catch {
     }
   }
-  const firstWorkspace = vscode.workspace.workspaceFolders?.[0];
+  const firstWorkspace = vscode5.workspace.workspaceFolders?.[0];
   if (firstWorkspace) {
-    return vscode.Uri.joinPath(firstWorkspace.uri, ".vizion", "architecture");
+    return vscode5.Uri.joinPath(firstWorkspace.uri, ".vizion", "architecture");
   }
-  const picked = await vscode.window.showOpenDialog({
+  const picked = await vscode5.window.showOpenDialog({
     canSelectFiles: false,
     canSelectFolders: true,
     canSelectMany: false,
@@ -250,7 +1215,7 @@ async function resolveTargetFolder(contextUri) {
 async function createAndOpenVizionFile(contextUri) {
   const suffix = ".viz";
   const defaultBase = "domain";
-  const entered = await vscode.window.showInputBox({
+  const entered = await vscode5.window.showInputBox({
     title: "Vizion: New UML Diagram",
     prompt: `Enter filename (automatically appends ${suffix} if omitted)`,
     value: `${defaultBase}${suffix}`,
@@ -268,11 +1233,11 @@ async function createAndOpenVizionFile(contextUri) {
   }
   const folderUri = await resolveTargetFolder(contextUri);
   if (!folderUri) return;
-  await vscode.workspace.fs.createDirectory(folderUri);
-  const fileUri = vscode.Uri.joinPath(folderUri, fileName);
+  await vscode5.workspace.fs.createDirectory(folderUri);
+  const fileUri = vscode5.Uri.joinPath(folderUri, fileName);
   try {
-    await vscode.workspace.fs.stat(fileUri);
-    const overwrite = await vscode.window.showWarningMessage(
+    await vscode5.workspace.fs.stat(fileUri);
+    const overwrite = await vscode5.window.showWarningMessage(
       `File "${fileName}" already exists. Open existing file instead?`,
       "Open Existing",
       "Cancel"
@@ -280,54 +1245,27 @@ async function createAndOpenVizionFile(contextUri) {
     if (overwrite !== "Open Existing") return;
   } catch {
     const initialJson = serializeDefaultDocument("uml", fileName);
-    await vscode.workspace.fs.writeFile(fileUri, Buffer.from(initialJson, "utf8"));
+    await vscode5.workspace.fs.writeFile(fileUri, Buffer.from(initialJson, "utf8"));
   }
-  await vscode.commands.executeCommand("vscode.openWith", fileUri, "vizion.uml");
-}
-function registerVizionCommands(context, registry) {
-  context.subscriptions.push(
-    vscode.commands.registerCommand("vizion.newUmlDiagram", async (uri) => {
-      await createAndOpenVizionFile(uri);
-    }),
-    vscode.commands.registerCommand("vizion.initializeCurrentDocument", async () => {
-      const active = registry.getActiveCoordinator();
-      if (active) {
-        await active.explicitlyInitializeEmptyDocument();
-        return;
-      }
-      const editor = vscode.window.activeTextEditor;
-      if (editor && editor.document.fileName.endsWith(".viz")) {
-        const coord = registry.acquire(editor.document, "uml");
-        await coord.explicitlyInitializeEmptyDocument();
-      } else {
-        void vscode.window.showInformationMessage(
-          "Focus an empty .viz document first."
-        );
-      }
-    }),
-    vscode.commands.registerCommand("vizion.openCurrentAsText", async () => {
-      const active = registry.getActiveCoordinator();
-      if (active) {
-        await vscode.commands.executeCommand("vscode.openWith", active.document.uri, "default");
-      }
-    }),
-    vscode.commands.registerCommand("vizion.fitCanvasToContent", () => {
-      const active = registry.getActiveCoordinator();
-      active?.broadcastCommand("fitContent", true);
-    }),
-    vscode.commands.registerCommand("vizion.resetCanvasZoom", () => {
-      const active = registry.getActiveCoordinator();
-      active?.broadcastCommand("resetZoom", true);
-    })
-  );
+  await vscode5.commands.executeCommand("vscode.openWith", fileUri, "vizion.uml");
 }
 
-// src/extension/documents/diagnostics.ts
-var vscode2 = __toESM(require("vscode"));
+// src/extension/commands/index.ts
+function registerVizionCommands(context, registry) {
+  context.subscriptions.push(
+    vscode6.commands.registerCommand("vizion.newUmlDiagram", async (uri) => {
+      await createAndOpenVizionFile(uri);
+    })
+  );
+  registerCanvasCommands(context, registry);
+}
+
+// src/extension/coordinator/diagnostics-manager.ts
+var vscode7 = __toESM(require("vscode"));
 var VizionDiagnosticsManager = class {
   collection;
   constructor() {
-    this.collection = vscode2.languages.createDiagnosticCollection("vizion");
+    this.collection = vscode7.languages.createDiagnosticCollection("vizion");
   }
   updateDiagnostics(document, issues) {
     if (issues.length === 0) {
@@ -337,8 +1275,8 @@ var VizionDiagnosticsManager = class {
     const text = document.getText();
     const diagnostics = issues.map((issue) => {
       const range = this.resolveIssueRange(document, text, issue);
-      const severity = issue.severity === "error" ? vscode2.DiagnosticSeverity.Error : vscode2.DiagnosticSeverity.Warning;
-      const diag = new vscode2.Diagnostic(
+      const severity = issue.severity === "error" ? vscode7.DiagnosticSeverity.Error : vscode7.DiagnosticSeverity.Warning;
+      const diag = new vscode7.Diagnostic(
         range,
         `[${issue.path}] ${issue.message}`,
         severity
@@ -358,8 +1296,8 @@ var VizionDiagnosticsManager = class {
         Math.max(0, document.lineCount - 1)
       );
       const zeroCol = Math.max(0, (issue.column ?? 1) - 1);
-      const pos = new vscode2.Position(zeroLine, zeroCol);
-      return new vscode2.Range(pos, pos.translate(0, 1));
+      const pos = new vscode7.Position(zeroLine, zeroCol);
+      return new vscode7.Range(pos, pos.translate(0, 1));
     }
     const tailKey = issue.path.split(".").pop()?.replace(/\[\d+\]$/, "");
     if (tailKey && tailKey !== "$") {
@@ -368,18 +1306,18 @@ var VizionDiagnosticsManager = class {
       if (idx !== -1) {
         const start = document.positionAt(idx);
         const end = document.positionAt(idx + needle.length);
-        return new vscode2.Range(start, end);
+        return new vscode7.Range(start, end);
       }
     }
-    return new vscode2.Range(new vscode2.Position(0, 0), new vscode2.Position(0, 1));
+    return new vscode7.Range(new vscode7.Position(0, 0), new vscode7.Position(0, 1));
   }
   dispose() {
     this.collection.dispose();
   }
 };
 
-// src/extension/documents/coordinator.ts
-var vscode3 = __toESM(require("vscode"));
+// src/extension/coordinator/document-coordinator.ts
+var vscode10 = __toESM(require("vscode"));
 
 // node_modules/jsonc-parser/lib/esm/impl/scanner.js
 function createScanner(text, ignoreTrivia = false) {
@@ -1134,12 +2072,12 @@ function parseTree(text, errors = [], options = ParseOptions.DEFAULT) {
   }
   return result;
 }
-function findNodeAtLocation(root, path2) {
+function findNodeAtLocation(root, path3) {
   if (!root) {
     return void 0;
   }
   let node = root;
-  for (let segment of path2) {
+  for (let segment of path3) {
     if (typeof segment === "string") {
       if (node.type !== "object" || !Array.isArray(node.children)) {
         return void 0;
@@ -1493,14 +2431,14 @@ function getNodeType(value) {
 
 // node_modules/jsonc-parser/lib/esm/impl/edit.js
 function setProperty(text, originalPath, value, options) {
-  const path2 = originalPath.slice();
+  const path3 = originalPath.slice();
   const errors = [];
   const root = parseTree(text, errors);
   let parent = void 0;
   let lastSegment = void 0;
-  while (path2.length > 0) {
-    lastSegment = path2.pop();
-    parent = findNodeAtLocation(root, path2);
+  while (path3.length > 0) {
+    lastSegment = path3.pop();
+    parent = findNodeAtLocation(root, path3);
     if (parent === void 0 && value !== void 0) {
       if (typeof lastSegment === "string") {
         value = { [lastSegment]: value };
@@ -1723,8 +2661,8 @@ function printParseErrorCode(code) {
   }
   return "<unknown ParseErrorCode>";
 }
-function modify(text, path2, value, options) {
-  return setProperty(text, path2, value, options);
+function modify(text, path3, value, options) {
+  return setProperty(text, path3, value, options);
 }
 function applyEdits(text, edits) {
   let sortedEdits = edits.slice(0).sort((a, b) => {
@@ -1746,301 +2684,6 @@ function applyEdits(text, edits) {
   }
   return text;
 }
-
-// src/shared/documents/json-patch.ts
-function detectFormattingOptions(text) {
-  const eol = text.includes("\r\n") ? "\r\n" : "\n";
-  const lines = text.split(/\r?\n/);
-  for (const line of lines) {
-    const match = /^(\s+)\S/.exec(line);
-    if (match) {
-      const ws = match[1];
-      if (ws.startsWith("	")) {
-        return { tabSize: 2, insertSpaces: false, eol };
-      }
-      return { tabSize: Math.min(8, Math.max(2, ws.length)), insertSpaces: true, eol };
-    }
-  }
-  return { tabSize: 2, insertSpaces: true, eol };
-}
-function computeMinimalJsonEdits(originalText, patches) {
-  const formattingOptions = detectFormattingOptions(originalText);
-  if (patches.length === 1) {
-    const patch = patches[0];
-    const edits = modify(originalText, patch.path, patch.value, {
-      formattingOptions,
-      isArrayInsertion: patch.isArrayInsertion
-    });
-    const updatedText = applyEdits(originalText, edits);
-    return { updatedText, edits };
-  }
-  let currentText = originalText;
-  for (const patch of patches) {
-    const stepEdits = modify(currentText, patch.path, patch.value, {
-      formattingOptions,
-      isArrayInsertion: patch.isArrayInsertion
-    });
-    currentText = applyEdits(currentText, stepEdits);
-  }
-  const singleSpan = computeMinimalDiffSpan(originalText, currentText);
-  return {
-    updatedText: currentText,
-    edits: singleSpan ? [singleSpan] : []
-  };
-}
-function computeMinimalDiffSpan(before, after) {
-  if (before === after) {
-    return null;
-  }
-  let start = 0;
-  const minLen = Math.min(before.length, after.length);
-  while (start < minLen && before.charCodeAt(start) === after.charCodeAt(start)) {
-    start++;
-  }
-  let endBefore = before.length;
-  let endAfter = after.length;
-  while (endBefore > start && endAfter > start && before.charCodeAt(endBefore - 1) === after.charCodeAt(endAfter - 1)) {
-    endBefore--;
-    endAfter--;
-  }
-  return {
-    offset: start,
-    length: endBefore - start,
-    content: after.slice(start, endAfter)
-  };
-}
-
-// src/shared/registry/uml-registry.ts
-var endpointShapeRegistry = /* @__PURE__ */ new Map();
-var nodeKindRegistry = /* @__PURE__ */ new Map();
-var relationPresetRegistry = /* @__PURE__ */ new Map();
-function registerEndpointShape(descriptor) {
-  endpointShapeRegistry.set(descriptor.kind, descriptor);
-}
-function getEndpointShape(kind) {
-  return endpointShapeRegistry.get(kind);
-}
-function listEndpointShapes() {
-  return Array.from(endpointShapeRegistry.values());
-}
-function registerUmlNodeKind(descriptor) {
-  nodeKindRegistry.set(descriptor.kind, descriptor);
-}
-function getUmlNodeKind(kind) {
-  return nodeKindRegistry.get(kind);
-}
-function listUmlNodeKinds() {
-  return Array.from(nodeKindRegistry.values());
-}
-function registerUmlRelationPreset(preset) {
-  relationPresetRegistry.set(preset.kind, preset);
-}
-function getUmlRelationPreset(kind) {
-  if (kind === "none") {
-    return relationPresetRegistry.get("other");
-  }
-  return relationPresetRegistry.get(kind);
-}
-function listUmlRelationPresets() {
-  return Array.from(relationPresetRegistry.values());
-}
-function detectMatchingRelationPreset(line, start, end) {
-  const isDashed = line === "dashed";
-  const startShape = start?.shape ?? "none";
-  const startFill = start?.fill ?? "hollow";
-  const endShape = end?.shape ?? "none";
-  const endFill = end?.fill ?? "hollow";
-  if (isDashed && startShape === "none" && endShape === "open-arrow") {
-    return "dependency";
-  }
-  if (isDashed && startShape === "none" && endShape === "triangle" && endFill === "hollow") {
-    return "realization";
-  }
-  if (!isDashed && startShape === "none" && endShape === "triangle" && endFill === "hollow") {
-    return "generalization";
-  }
-  if (!isDashed && startShape === "diamond" && startFill === "hollow" && endShape === "none") {
-    return "aggregation";
-  }
-  if (!isDashed && startShape === "diamond" && startFill === "filled" && endShape === "none") {
-    return "composition";
-  }
-  const isStartAssoc = startShape === "none" || startShape === "open-arrow";
-  const isEndAssoc = endShape === "none" || endShape === "open-arrow";
-  if (!isDashed && isStartAssoc && isEndAssoc) {
-    return "association";
-  }
-  return null;
-}
-registerEndpointShape({
-  kind: "none",
-  label: "None",
-  description: "Plain line termination with no marker",
-  supportsFill: false,
-  defaultSize: 10,
-  trimMultiplier: 0,
-  buildLocalPath: () => ""
-});
-registerEndpointShape({
-  kind: "circle",
-  label: "Circle",
-  description: "Circular endpoint decoration (hollow or filled)",
-  supportsFill: true,
-  defaultFill: "hollow",
-  defaultSize: 10,
-  trimMultiplier: 1,
-  buildLocalPath: (size) => {
-    const r = size / 2;
-    return `M 0 0 A ${r} ${r} 0 1 0 -${size} 0 A ${r} ${r} 0 1 0 0 0 Z`;
-  }
-});
-registerEndpointShape({
-  kind: "diamond",
-  label: "Diamond",
-  description: "Diamond endpoint decoration (hollow for aggregation, filled for composition)",
-  supportsFill: true,
-  defaultFill: "hollow",
-  defaultSize: 13,
-  trimMultiplier: 1,
-  buildLocalPath: (size) => {
-    const halfLen = size / 2;
-    const halfWidth = size * 0.36;
-    return `M 0 0 L -${halfLen} -${halfWidth} L -${size} 0 L -${halfLen} ${halfWidth} Z`;
-  }
-});
-registerEndpointShape({
-  kind: "square",
-  label: "Square",
-  description: "Square port/endpoint decoration (hollow or filled)",
-  supportsFill: true,
-  defaultFill: "hollow",
-  defaultSize: 10,
-  trimMultiplier: 1,
-  buildLocalPath: (size) => {
-    const half = size / 2;
-    return `M 0 -${half} L -${size} -${half} L -${size} ${half} L 0 ${half} Z`;
-  }
-});
-registerEndpointShape({
-  kind: "triangle",
-  label: "Triangle",
-  description: "Closed triangular arrowhead (hollow for generalization/realization, or filled)",
-  supportsFill: true,
-  defaultFill: "hollow",
-  defaultSize: 12,
-  trimMultiplier: 1,
-  buildLocalPath: (size) => {
-    const halfWidth = size * 0.48;
-    return `M 0 0 L -${size} -${halfWidth} L -${size} ${halfWidth} Z`;
-  }
-});
-registerEndpointShape({
-  kind: "open-arrow",
-  label: "Open Arrow",
-  description: "Open V-shaped navigable arrowhead (stroke only)",
-  supportsFill: false,
-  defaultSize: 11,
-  trimMultiplier: 0.15,
-  buildLocalPath: (size) => {
-    const halfWidth = size * 0.45;
-    return `M -${size} -${halfWidth} L 0 0 L -${size} ${halfWidth}`;
-  }
-});
-registerUmlNodeKind({
-  kind: "class",
-  label: "Class",
-  description: "Standard UML class with attributes and operations compartments",
-  defaultWidth: 240,
-  defaultHeight: 140,
-  hasCompartments: true
-});
-registerUmlNodeKind({
-  kind: "note",
-  label: "Note",
-  description: "Free-text UML annotation note with folded corner",
-  defaultWidth: 185,
-  defaultHeight: 100,
-  hasCompartments: false
-});
-registerUmlNodeKind({
-  kind: "shape",
-  label: "Shape",
-  description: "Geometric shape node with centered label (ellipse, rectangle, rhombus, trapezoid, parallelogram)",
-  defaultWidth: 160,
-  defaultHeight: 90,
-  hasCompartments: false
-});
-registerUmlNodeKind({
-  kind: "frame",
-  label: "Frame",
-  description: "Container frame with label that automatically encloses contained elements",
-  defaultWidth: 260,
-  defaultHeight: 180,
-  hasCompartments: false
-});
-registerUmlRelationPreset({
-  kind: "association",
-  label: "Association",
-  description: "Structural link between classes (solid line, no endpoint markers by default)",
-  line: "solid",
-  routing: "default",
-  start: { shape: "none", size: 10 },
-  end: { shape: "none", size: 10 }
-});
-registerUmlRelationPreset({
-  kind: "dependency",
-  label: "Dependency",
-  description: "Uses/depends-on relationship (dashed line, open arrow at target)",
-  line: "dashed",
-  routing: "default",
-  start: { shape: "none", size: 10 },
-  end: { shape: "open-arrow", size: 11 }
-});
-registerUmlRelationPreset({
-  kind: "generalization",
-  label: "Generalization (Inheritance)",
-  description: "Subclasses a general classifier (solid line, hollow triangle at target)",
-  line: "solid",
-  routing: "default",
-  start: { shape: "none", size: 10 },
-  end: { shape: "triangle", fill: "hollow", size: 12 }
-});
-registerUmlRelationPreset({
-  kind: "realization",
-  label: "Realization (Implements)",
-  description: "Implements a specification contract (dashed line, hollow triangle at target)",
-  line: "dashed",
-  routing: "default",
-  start: { shape: "none", size: 10 },
-  end: { shape: "triangle", fill: "hollow", size: 12 }
-});
-registerUmlRelationPreset({
-  kind: "aggregation",
-  label: "Aggregation",
-  description: "Whole-part weak ownership (solid line, hollow diamond at source)",
-  line: "solid",
-  routing: "default",
-  start: { shape: "diamond", fill: "hollow", size: 13 },
-  end: { shape: "none", size: 10 }
-});
-registerUmlRelationPreset({
-  kind: "composition",
-  label: "Composition",
-  description: "Whole-part strong lifecycle ownership (solid line, filled diamond at source)",
-  line: "solid",
-  routing: "default",
-  start: { shape: "diamond", fill: "filled", size: 13 },
-  end: { shape: "none", size: 10 }
-});
-registerUmlRelationPreset({
-  kind: "other",
-  label: "Other",
-  description: "Generic relation without semantic UML decoration",
-  line: "dashed",
-  routing: "default",
-  start: { shape: "none", size: 10 },
-  end: { shape: "none", size: 10 }
-});
 
 // src/shared/documents/validator.ts
 var FORBIDDEN_VERSION_KEYS = [
@@ -2197,20 +2840,20 @@ function validateUmlDocument(raw, issues) {
       });
     }
     raw.nodes.forEach((node, idx) => {
-      const path2 = `nodes[${idx}]`;
+      const path3 = `nodes[${idx}]`;
       if (!isPlainObject(node)) {
-        issues.push({ path: path2, message: "Node entry must be an object.", severity: "error" });
+        issues.push({ path: path3, message: "Node entry must be an object.", severity: "error" });
         return;
       }
       if (typeof node.id !== "string" || node.id.trim().length === 0) {
         issues.push({
-          path: `${path2}.id`,
+          path: `${path3}.id`,
           message: 'Node "id" must be a non-empty string.',
           severity: "error"
         });
       } else if (nodeIds.has(node.id)) {
         issues.push({
-          path: `${path2}.id`,
+          path: `${path3}.id`,
           message: `Duplicate node ID "${node.id}".`,
           severity: "error"
         });
@@ -2219,21 +2862,21 @@ function validateUmlDocument(raw, issues) {
       }
       if (typeof node.kind !== "string" || node.kind.trim().length === 0) {
         issues.push({
-          path: `${path2}.kind`,
+          path: `${path3}.kind`,
           message: 'Node "kind" must be a non-empty string.',
           severity: "error"
         });
       } else if (!getUmlNodeKind(node.kind)) {
         hasUnsupportedConstructs = true;
         issues.push({
-          path: `${path2}.kind`,
+          path: `${path3}.kind`,
           message: `Unsupported node kind "${node.kind}". Shown in non-destructive fallback mode.`,
           severity: "warning"
         });
       }
       if (typeof node.name !== "string") {
         issues.push({
-          path: `${path2}.name`,
+          path: `${path3}.name`,
           message: 'Node "name" must be a string.',
           severity: "error"
         });
@@ -2241,7 +2884,7 @@ function validateUmlDocument(raw, issues) {
       if (node.shape !== void 0) {
         if (typeof node.shape !== "string" || !VALID_SHAPE_GEOMETRIES.has(node.shape)) {
           issues.push({
-            path: `${path2}.shape`,
+            path: `${path3}.shape`,
             message: `Node "shape" must be one of: ${Array.from(VALID_SHAPE_GEOMETRIES).join(", ")}.`,
             severity: "error"
           });
@@ -2250,7 +2893,7 @@ function validateUmlDocument(raw, issues) {
       if (node.attributes !== void 0) {
         if (!Array.isArray(node.attributes)) {
           issues.push({
-            path: `${path2}.attributes`,
+            path: `${path3}.attributes`,
             message: 'Node "attributes" must be an array when present.',
             severity: "error"
           });
@@ -2259,13 +2902,13 @@ function validateUmlDocument(raw, issues) {
           node.attributes.forEach((attr, aIdx) => {
             if (!isPlainObject(attr) || typeof attr.id !== "string" || typeof attr.name !== "string") {
               issues.push({
-                path: `${path2}.attributes[${aIdx}]`,
+                path: `${path3}.attributes[${aIdx}]`,
                 message: 'Attribute must have string "id" and "name".',
                 severity: "error"
               });
             } else if (attrIds.has(attr.id)) {
               issues.push({
-                path: `${path2}.attributes[${aIdx}].id`,
+                path: `${path3}.attributes[${aIdx}].id`,
                 message: `Duplicate attribute ID "${attr.id}" on node "${node.id}".`,
                 severity: "error"
               });
@@ -2278,7 +2921,7 @@ function validateUmlDocument(raw, issues) {
       if (node.operations !== void 0) {
         if (!Array.isArray(node.operations)) {
           issues.push({
-            path: `${path2}.operations`,
+            path: `${path3}.operations`,
             message: 'Node "operations" must be an array when present.',
             severity: "error"
           });
@@ -2287,13 +2930,13 @@ function validateUmlDocument(raw, issues) {
           node.operations.forEach((op, oIdx) => {
             if (!isPlainObject(op) || typeof op.id !== "string" || typeof op.name !== "string") {
               issues.push({
-                path: `${path2}.operations[${oIdx}]`,
+                path: `${path3}.operations[${oIdx}]`,
                 message: 'Operation must have string "id" and "name".',
                 severity: "error"
               });
             } else if (opIds.has(op.id)) {
               issues.push({
-                path: `${path2}.operations[${oIdx}].id`,
+                path: `${path3}.operations[${oIdx}].id`,
                 message: `Duplicate operation ID "${op.id}" on node "${node.id}".`,
                 severity: "error"
               });
@@ -2315,20 +2958,20 @@ function validateUmlDocument(raw, issues) {
       });
     }
     raw.edges.forEach((edge, idx) => {
-      const path2 = `edges[${idx}]`;
+      const path3 = `edges[${idx}]`;
       if (!isPlainObject(edge)) {
-        issues.push({ path: path2, message: "Edge entry must be an object.", severity: "error" });
+        issues.push({ path: path3, message: "Edge entry must be an object.", severity: "error" });
         return;
       }
       if (typeof edge.id !== "string" || edge.id.trim().length === 0) {
         issues.push({
-          path: `${path2}.id`,
+          path: `${path3}.id`,
           message: 'Edge "id" must be a non-empty string.',
           severity: "error"
         });
       } else if (edgeIds.has(edge.id)) {
         issues.push({
-          path: `${path2}.id`,
+          path: `${path3}.id`,
           message: `Duplicate edge ID "${edge.id}".`,
           severity: "error"
         });
@@ -2337,33 +2980,33 @@ function validateUmlDocument(raw, issues) {
       }
       if (typeof edge.kind !== "string" || !VALID_RELATION_KINDS.has(edge.kind)) {
         issues.push({
-          path: `${path2}.kind`,
+          path: `${path3}.kind`,
           message: `Edge "kind" must be one of: ${Array.from(VALID_RELATION_KINDS).join(", ")}.`,
           severity: "error"
         });
       }
       if (!isPlainObject(edge.source) || typeof edge.source.nodeId !== "string") {
         issues.push({
-          path: `${path2}.source.nodeId`,
+          path: `${path3}.source.nodeId`,
           message: 'Edge "source.nodeId" must be a string.',
           severity: "error"
         });
       } else if (!nodeIds.has(edge.source.nodeId)) {
         issues.push({
-          path: `${path2}.source.nodeId`,
+          path: `${path3}.source.nodeId`,
           message: `Node "${edge.source.nodeId}" does not exist.`,
           severity: "error"
         });
       }
       if (!isPlainObject(edge.target) || typeof edge.target.nodeId !== "string") {
         issues.push({
-          path: `${path2}.target.nodeId`,
+          path: `${path3}.target.nodeId`,
           message: 'Edge "target.nodeId" must be a string.',
           severity: "error"
         });
       } else if (!nodeIds.has(edge.target.nodeId)) {
         issues.push({
-          path: `${path2}.target.nodeId`,
+          path: `${path3}.target.nodeId`,
           message: `Node "${edge.target.nodeId}" does not exist.`,
           severity: "error"
         });
@@ -2371,7 +3014,7 @@ function validateUmlDocument(raw, issues) {
       if (edge.visual !== void 0) {
         if (!isPlainObject(edge.visual)) {
           issues.push({
-            path: `${path2}.visual`,
+            path: `${path3}.visual`,
             message: 'Edge "visual" must be an object when present.',
             severity: "error"
           });
@@ -2381,7 +3024,7 @@ function validateUmlDocument(raw, issues) {
             if (dec !== void 0) {
               if (!isPlainObject(dec) || typeof dec.shape !== "string") {
                 issues.push({
-                  path: `${path2}.visual.${endKey}`,
+                  path: `${path3}.visual.${endKey}`,
                   message: `Endpoint "${endKey}" must be an object with a string "shape".`,
                   severity: "error"
                 });
@@ -2390,14 +3033,14 @@ function validateUmlDocument(raw, issues) {
                 if (!shapeDesc) {
                   hasUnsupportedConstructs = true;
                   issues.push({
-                    path: `${path2}.visual.${endKey}.shape`,
+                    path: `${path3}.visual.${endKey}.shape`,
                     message: `Unknown endpoint shape "${dec.shape}". Rendering fallback marker.`,
                     severity: "warning"
                   });
                 }
                 if (dec.fill !== void 0 && dec.fill !== "hollow" && dec.fill !== "filled") {
                   issues.push({
-                    path: `${path2}.visual.${endKey}.fill`,
+                    path: `${path3}.visual.${endKey}.fill`,
                     message: 'Endpoint fill must be "hollow" or "filled".',
                     severity: "error"
                   });
@@ -2411,10 +3054,10 @@ function validateUmlDocument(raw, issues) {
   }
   if (isPlainObject(raw.layout) && isPlainObject(raw.layout.nodes)) {
     for (const [nodeId, box] of Object.entries(raw.layout.nodes)) {
-      const path2 = `layout.nodes.${nodeId}`;
+      const path3 = `layout.nodes.${nodeId}`;
       if (!nodeIds.has(nodeId)) {
         issues.push({
-          path: path2,
+          path: path3,
           message: `Layout entry references non-existent node "${nodeId}".`,
           severity: "error"
         });
@@ -2422,7 +3065,7 @@ function validateUmlDocument(raw, issues) {
       }
       if (!isPlainObject(box) || !isFiniteCoordinate(box.x) || !isFiniteCoordinate(box.y) || !isFiniteCoordinate(box.width) || !isFiniteCoordinate(box.height) || box.width < 20 || box.height < 20) {
         issues.push({
-          path: path2,
+          path: path3,
           message: `Layout for node "${nodeId}" must have finite x, y and width/height >= 20.`,
           severity: "error"
         });
@@ -2519,6 +3162,579 @@ function parseAndValidateDocument(text, expectedKind = "uml") {
   };
 }
 
+// src/extension/coordinator/export-service.ts
+var fs = __toESM(require("node:fs"));
+var os = __toESM(require("node:os"));
+var path2 = __toESM(require("node:path"));
+var import_node_child_process = require("node:child_process");
+var vscode8 = __toESM(require("vscode"));
+var ExportService = class {
+  constructor(document) {
+    this.document = document;
+  }
+  /**
+   * Prompts user with native OS save dialog and saves high-resolution PNG or SVG diagram.
+   */
+  async exportDiagram(options) {
+    const format2 = options.format;
+    const defaultUri = this.resolveDefaultSaveUri(format2, options.defaultFileName);
+    const filterName = format2 === "svg" ? "SVG Image" : "PNG Image";
+    const filterExt = format2 === "svg" ? ["svg"] : ["png"];
+    const chosenUri = await vscode8.window.showSaveDialog({
+      defaultUri,
+      saveLabel: `Export ${format2.toUpperCase()}`,
+      title: `Export Diagram as ${format2.toUpperCase()}`,
+      filters: {
+        [filterName]: filterExt,
+        "All Files": ["*"]
+      }
+    });
+    if (!chosenUri) {
+      return { success: false, cancelled: true };
+    }
+    let targetUri = chosenUri;
+    const expectedExt = `.${format2}`;
+    if (!targetUri.path.toLowerCase().endsWith(expectedExt)) {
+      targetUri = targetUri.with({ path: `${targetUri.path}${expectedExt}` });
+    }
+    try {
+      let bytes;
+      if (format2 === "svg") {
+        const svgContent = options.svgData ?? (options.base64Data ? Buffer.from(options.base64Data, "base64").toString("utf8") : "");
+        if (!svgContent.trim()) {
+          throw new Error("SVG export content is empty.");
+        }
+        bytes = Buffer.from(svgContent, "utf8");
+      } else {
+        const cleanBase64 = (options.base64Data ?? "").replace(/^data:image\/png;base64,/, "").trim();
+        if (!cleanBase64) {
+          throw new Error("PNG export image data is empty.");
+        }
+        bytes = Buffer.from(cleanBase64, "base64");
+        if (bytes.length === 0) {
+          throw new Error("Decoded image buffer is empty.");
+        }
+      }
+      const isLarge = bytes.length > 2 * 1024 * 1024;
+      if (isLarge) {
+        await vscode8.window.withProgress(
+          {
+            location: vscode8.ProgressLocation.Notification,
+            title: `Exporting diagram (${(bytes.length / (1024 * 1024)).toFixed(1)} MB)...`,
+            cancellable: false
+          },
+          async () => {
+            await vscode8.workspace.fs.writeFile(targetUri, bytes);
+          }
+        );
+      } else {
+        await vscode8.workspace.fs.writeFile(targetUri, bytes);
+      }
+      const relPath = vscode8.workspace.asRelativePath(targetUri);
+      void vscode8.window.showInformationMessage(
+        `Exported diagram ${format2.toUpperCase()} to ${relPath}`
+      );
+      return { success: true, targetUri };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      void vscode8.window.showErrorMessage(`Failed to export diagram: ${message}`);
+      return { success: false, error: message };
+    }
+  }
+  /**
+   * Convenience alias for exporting file, returning the saved URI if successful.
+   */
+  async exportFile(base64Data, format2 = "png", svgData, defaultFileName) {
+    const res = await this.exportDiagram({
+      format: format2,
+      base64Data,
+      svgData,
+      defaultFileName
+    });
+    return res.targetUri;
+  }
+  /**
+   * Copies PNG image binary data to system clipboard in an OS-agnostic manner.
+   * Supports Linux (wl-copy / xclip), macOS (osascript), Windows (PowerShell STA).
+   */
+  async copyImageToClipboard(base64Data) {
+    const cleanBase64 = (base64Data ?? "").replace(/^data:image\/png;base64,/, "").trim();
+    if (!cleanBase64) {
+      void vscode8.window.showErrorMessage("Failed to copy: image data is empty.");
+      return { success: false, error: "Empty image data" };
+    }
+    const buffer = Buffer.from(cleanBase64, "base64");
+    if (buffer.length === 0) {
+      void vscode8.window.showErrorMessage("Failed to copy: decoded image buffer is empty.");
+      return { success: false, error: "Decoded buffer empty" };
+    }
+    try {
+      if (process.platform === "linux") {
+        await this.copyLinuxImage(buffer);
+      } else if (process.platform === "darwin") {
+        await this.copyMacImage(buffer);
+      } else if (process.platform === "win32") {
+        await this.copyWindowsImage(buffer);
+      } else {
+        throw new Error(`Unsupported platform for image clipboard: ${process.platform}`);
+      }
+      void vscode8.window.showInformationMessage("Diagram image copied to clipboard.");
+      return { success: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      void vscode8.window.showWarningMessage(`Could not copy image to clipboard: ${message}`);
+      return { success: false, error: message };
+    }
+  }
+  /**
+   * Copies text-based content (SVG vector data or JSON AST) to system clipboard via VS Code API.
+   */
+  async copyTextToClipboard(content, formatName = "text") {
+    if (!content) {
+      void vscode8.window.showErrorMessage(`Failed to copy: ${formatName} content is empty.`);
+      return { success: false, error: "Empty content" };
+    }
+    try {
+      await vscode8.env.clipboard.writeText(content);
+      void vscode8.window.showInformationMessage(`Diagram ${formatName} copied to clipboard.`);
+      return { success: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      void vscode8.window.showErrorMessage(`Failed to copy to clipboard: ${message}`);
+      return { success: false, error: message };
+    }
+  }
+  // ============================================================================
+  // Platform-Specific Implementations
+  // ============================================================================
+  resolveDefaultSaveUri(format2, defaultFileName) {
+    const ext = `.${format2}`;
+    let baseName = defaultFileName;
+    if (!baseName) {
+      if (this.document.uri.scheme === "file") {
+        const parsed = path2.parse(this.document.uri.fsPath);
+        baseName = parsed.name.replace(/\.uml$/i, "");
+      } else {
+        baseName = "diagram";
+      }
+    }
+    baseName = baseName.replace(/\.(?:png|svg|viz)$/i, "");
+    const targetFileName = `${baseName}${ext}`;
+    if (this.document.uri.scheme === "file") {
+      const parentDir = path2.dirname(this.document.uri.fsPath);
+      return vscode8.Uri.file(path2.join(parentDir, targetFileName));
+    }
+    const workspaceFolder = vscode8.workspace.getWorkspaceFolder(this.document.uri) ?? vscode8.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      return vscode8.Uri.joinPath(workspaceFolder.uri, targetFileName);
+    }
+    return vscode8.Uri.file(targetFileName);
+  }
+  async copyLinuxImage(buffer) {
+    const isWayland = Boolean(process.env.WAYLAND_DISPLAY);
+    const primaryTool = isWayland ? "wl-copy" : "xclip";
+    const secondaryTool = isWayland ? "xclip" : "wl-copy";
+    const runTool = (tool) => {
+      return new Promise((resolve, reject) => {
+        const args = tool === "wl-copy" ? ["-t", "image/png"] : ["-selection", "clipboard", "-t", "image/png"];
+        const proc = (0, import_node_child_process.spawn)(tool, args, { stdio: ["pipe", "ignore", "pipe"] });
+        let stderr = "";
+        const timer = setTimeout(() => {
+          proc.kill("SIGKILL");
+          reject(new Error(`${tool} timed out after 5000ms`));
+        }, 5e3);
+        proc.stderr.on("data", (d) => {
+          stderr += d.toString();
+        });
+        proc.on("error", (err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+        proc.on("close", (code) => {
+          clearTimeout(timer);
+          if (code === 0) resolve();
+          else reject(new Error(`${tool} exited with code ${code}: ${stderr.trim()}`));
+        });
+        proc.stdin.on("error", (err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+        proc.stdin.end(buffer);
+      });
+    };
+    try {
+      await runTool(primaryTool);
+    } catch (err) {
+      if (err?.code === "ENOENT") {
+        try {
+          await runTool(secondaryTool);
+        } catch (err2) {
+          if (err2?.code === "ENOENT") {
+            throw new Error(
+              'Neither "wl-copy" nor "xclip" was found. Install "wl-clipboard" (Wayland) or "xclip" (X11).'
+            );
+          }
+          throw err2;
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
+  async copyMacImage(buffer) {
+    const tmpPath = path2.join(
+      os.tmpdir(),
+      `vizion-clip-${Date.now()}-${Math.random().toString(36).slice(2)}.png`
+    );
+    await fs.promises.writeFile(tmpPath, buffer);
+    try {
+      await new Promise((resolve, reject) => {
+        const script = `set the clipboard to (read (POSIX file "${tmpPath}") as \xABclass PNGf\xBB)`;
+        const proc = (0, import_node_child_process.spawn)("osascript", ["-e", script], { stdio: ["ignore", "ignore", "pipe"] });
+        let stderr = "";
+        const timer = setTimeout(() => {
+          proc.kill("SIGKILL");
+          reject(new Error("osascript timed out after 5000ms"));
+        }, 5e3);
+        proc.stderr.on("data", (d) => {
+          stderr += d.toString();
+        });
+        proc.on("error", (err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+        proc.on("close", (code) => {
+          clearTimeout(timer);
+          if (code === 0) resolve();
+          else reject(new Error(`osascript exited with code ${code}: ${stderr.trim()}`));
+        });
+      });
+    } finally {
+      await fs.promises.unlink(tmpPath).catch(() => {
+      });
+    }
+  }
+  async copyWindowsImage(buffer) {
+    const tmpPath = path2.join(
+      os.tmpdir(),
+      `vizion-clip-${Date.now()}-${Math.random().toString(36).slice(2)}.png`
+    );
+    await fs.promises.writeFile(tmpPath, buffer);
+    try {
+      await new Promise((resolve, reject) => {
+        const escaped = tmpPath.replace(/'/g, "''");
+        const psCommand = `Add-Type -AssemblyName System.Windows.Forms; $img = [System.Drawing.Image]::FromFile('${escaped}'); [System.Windows.Forms.Clipboard]::SetImage($img); $img.Dispose()`;
+        const proc = (0, import_node_child_process.spawn)(
+          "powershell.exe",
+          ["-NoProfile", "-NonInteractive", "-STA", "-Command", psCommand],
+          { stdio: ["ignore", "ignore", "pipe"] }
+        );
+        let stderr = "";
+        const timer = setTimeout(() => {
+          proc.kill("SIGKILL");
+          reject(new Error("PowerShell clipboard command timed out after 5000ms"));
+        }, 5e3);
+        proc.stderr.on("data", (d) => {
+          stderr += d.toString();
+        });
+        proc.on("error", (err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+        proc.on("close", (code) => {
+          clearTimeout(timer);
+          if (code === 0) resolve();
+          else reject(new Error(`PowerShell exited with code ${code}: ${stderr.trim()}`));
+        });
+      });
+    } finally {
+      setTimeout(() => {
+        fs.promises.unlink(tmpPath).catch(() => {
+        });
+      }, 100);
+    }
+  }
+};
+
+// src/extension/coordinator/workspace-edit-pipeline.ts
+var vscode9 = __toESM(require("vscode"));
+
+// src/shared/documents/json-patch.ts
+function detectFormattingOptions(text) {
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    const match = /^(\s+)\S/.exec(line);
+    if (match) {
+      const ws = match[1];
+      if (ws.startsWith("	")) {
+        return { tabSize: 2, insertSpaces: false, eol };
+      }
+      return { tabSize: Math.min(8, Math.max(2, ws.length)), insertSpaces: true, eol };
+    }
+  }
+  return { tabSize: 2, insertSpaces: true, eol };
+}
+function computeMinimalJsonEdits(originalText, patches) {
+  const formattingOptions = detectFormattingOptions(originalText);
+  if (patches.length === 1) {
+    const patch = patches[0];
+    const edits = modify(originalText, patch.path, patch.value, {
+      formattingOptions,
+      isArrayInsertion: patch.isArrayInsertion
+    });
+    const updatedText = applyEdits(originalText, edits);
+    return { updatedText, edits };
+  }
+  let currentText = originalText;
+  for (const patch of patches) {
+    const stepEdits = modify(currentText, patch.path, patch.value, {
+      formattingOptions,
+      isArrayInsertion: patch.isArrayInsertion
+    });
+    currentText = applyEdits(currentText, stepEdits);
+  }
+  const singleSpan = computeMinimalDiffSpan(originalText, currentText);
+  return {
+    updatedText: currentText,
+    edits: singleSpan ? [singleSpan] : []
+  };
+}
+function computeMinimalDiffSpan(before, after) {
+  if (before === after) {
+    return null;
+  }
+  let start = 0;
+  const minLen = Math.min(before.length, after.length);
+  while (start < minLen && before.charCodeAt(start) === after.charCodeAt(start)) {
+    start++;
+  }
+  let endBefore = before.length;
+  let endAfter = after.length;
+  while (endBefore > start && endAfter > start && before.charCodeAt(endBefore - 1) === after.charCodeAt(endAfter - 1)) {
+    endBefore--;
+    endAfter--;
+  }
+  return {
+    offset: start,
+    length: endBefore - start,
+    content: after.slice(start, endAfter)
+  };
+}
+
+// src/shared/operations/edge-operations.ts
+function resolveMatchingRelation(currentKind, line, start, end) {
+  const match = detectMatchingRelationPreset(line, start, end);
+  if (match) {
+    return match;
+  }
+  const isStartAssoc = (start?.shape ?? "none") === "none" || (start?.shape ?? "none") === "open-arrow";
+  const isEndAssoc = (end?.shape ?? "none") === "none" || (end?.shape ?? "none") === "open-arrow";
+  if (line !== "dashed" && isStartAssoc && isEndAssoc) {
+    return "association";
+  }
+  return "other";
+}
+function applyAddEdge(doc, op) {
+  if (doc.edges.some((e) => e.id === op.id)) {
+    return { ok: false, error: `Edge ID "${op.id}" already exists.` };
+  }
+  const sourceNode = doc.nodes.find((n) => n.id === op.sourceNodeId);
+  if (!sourceNode) {
+    return { ok: false, error: `Source node "${op.sourceNodeId}" does not exist.` };
+  }
+  const targetNode = doc.nodes.find((n) => n.id === op.targetNodeId);
+  if (!targetNode) {
+    return { ok: false, error: `Target node "${op.targetNodeId}" does not exist.` };
+  }
+  if (sourceNode.kind === "frame" || targetNode.kind === "frame") {
+    return { ok: false, error: "Frames cannot have relationships." };
+  }
+  const touchesNote = sourceNode.kind === "note" || targetNode.kind === "note";
+  const edgeKind = op.kind ?? (touchesNote ? "other" : "association");
+  const preset = getUmlRelationPreset(edgeKind);
+  const defaultLine = touchesNote ? "dashed" : preset?.line ?? "solid";
+  const newEdge = {
+    id: op.id,
+    kind: edgeKind,
+    source: {
+      nodeId: op.sourceNodeId
+    },
+    target: {
+      nodeId: op.targetNodeId
+    },
+    ...op.label ? { label: op.label } : {},
+    visual: {
+      line: op.line ?? defaultLine,
+      routing: op.routing ?? preset?.routing ?? "default",
+      start: { ...preset?.start ?? { shape: "none", size: 10 } },
+      end: { ...preset?.end ?? { shape: "none", size: 10 } }
+    }
+  };
+  const patches = [
+    {
+      path: ["edges", doc.edges.length],
+      value: newEdge,
+      isArrayInsertion: true
+    }
+  ];
+  return { ok: true, patches, createdIds: [op.id] };
+}
+function applyUpdateEdge(doc, op) {
+  const idx = doc.edges.findIndex((e) => e.id === op.edgeId);
+  if (idx === -1) {
+    return { ok: false, error: `Edge "${op.edgeId}" not found.` };
+  }
+  const existing = doc.edges[idx];
+  const patches = [];
+  if (op.reverseDirection) {
+    patches.push({
+      path: ["edges", idx, "source"],
+      value: { ...existing.target }
+    });
+    patches.push({
+      path: ["edges", idx, "target"],
+      value: { ...existing.source }
+    });
+  }
+  if (op.sourceNodeId !== void 0) {
+    const sNode = doc.nodes.find((n) => n.id === op.sourceNodeId);
+    if (!sNode) {
+      return { ok: false, error: `Node "${op.sourceNodeId}" does not exist.` };
+    }
+    if (sNode.kind === "frame") {
+      return { ok: false, error: "Frames cannot have relationships." };
+    }
+    patches.push({
+      path: ["edges", idx, "source", "nodeId"],
+      value: op.sourceNodeId
+    });
+  }
+  if (op.targetNodeId !== void 0) {
+    const tNode = doc.nodes.find((n) => n.id === op.targetNodeId);
+    if (!tNode) {
+      return { ok: false, error: `Node "${op.targetNodeId}" does not exist.` };
+    }
+    if (tNode.kind === "frame") {
+      return { ok: false, error: "Frames cannot have relationships." };
+    }
+    patches.push({
+      path: ["edges", idx, "target", "nodeId"],
+      value: op.targetNodeId
+    });
+  }
+  if (op.sourceMultiplicity !== void 0) {
+    patches.push({
+      path: ["edges", idx, "source", "multiplicity"],
+      value: op.sourceMultiplicity.trim() || void 0
+    });
+  }
+  if (op.targetMultiplicity !== void 0) {
+    patches.push({
+      path: ["edges", idx, "target", "multiplicity"],
+      value: op.targetMultiplicity.trim() || void 0
+    });
+  }
+  if (op.label !== void 0) {
+    patches.push({
+      path: ["edges", idx, "label"],
+      value: op.label.trim() || void 0
+    });
+  }
+  if (op.kind !== void 0) {
+    patches.push({ path: ["edges", idx, "kind"], value: op.kind });
+    const preset = getUmlRelationPreset(op.kind);
+    if (preset) {
+      patches.push({
+        path: ["edges", idx, "visual"],
+        value: {
+          ...existing.visual ?? {},
+          line: preset.line,
+          routing: existing.visual?.routing ?? preset.routing,
+          start: { ...preset.start },
+          end: { ...preset.end }
+        }
+      });
+    }
+  } else if (op.line !== void 0) {
+    patches.push({
+      path: ["edges", idx, "visual", "line"],
+      value: op.line
+    });
+    const nextKind = resolveMatchingRelation(
+      existing.kind,
+      op.line,
+      existing.visual?.start,
+      existing.visual?.end
+    );
+    if (nextKind !== existing.kind) {
+      patches.push({ path: ["edges", idx, "kind"], value: nextKind });
+    }
+  }
+  if (op.routing !== void 0) {
+    patches.push({
+      path: ["edges", idx, "visual", "routing"],
+      value: op.routing
+    });
+  }
+  return { ok: true, patches };
+}
+function applyUpdateEndpoint(doc, op) {
+  const idx = doc.edges.findIndex((e) => e.id === op.edgeId);
+  if (idx === -1) {
+    return { ok: false, error: `Edge "${op.edgeId}" not found.` };
+  }
+  const shapeDesc = getEndpointShape(op.decoration.shape);
+  if (!shapeDesc) {
+    return {
+      ok: false,
+      error: `Unknown endpoint decoration shape "${op.decoration.shape}".`
+    };
+  }
+  const existingEnd = doc.edges[idx].visual?.[op.end] ?? {};
+  const cleanedDecoration = {
+    ...existingEnd,
+    shape: op.decoration.shape,
+    size: op.decoration.size ?? existingEnd.size ?? shapeDesc.defaultSize
+  };
+  if (shapeDesc.supportsFill) {
+    cleanedDecoration.fill = op.decoration.fill ?? existingEnd.fill ?? shapeDesc.defaultFill ?? "hollow";
+  } else {
+    delete cleanedDecoration.fill;
+  }
+  const patches = [];
+  if (!doc.edges[idx].visual) {
+    const preset = getUmlRelationPreset(doc.edges[idx].kind);
+    patches.push({
+      path: ["edges", idx, "visual"],
+      value: {
+        line: preset?.line ?? "solid",
+        routing: preset?.routing ?? "default",
+        start: op.end === "start" ? cleanedDecoration : { ...preset?.start ?? { shape: "none", size: 10 } },
+        end: op.end === "end" ? cleanedDecoration : { ...preset?.end ?? { shape: "none", size: 10 } }
+      }
+    });
+  } else {
+    patches.push({
+      path: ["edges", idx, "visual", op.end],
+      value: cleanedDecoration
+    });
+  }
+  const currentEdge = doc.edges[idx];
+  const startDec = op.end === "start" ? cleanedDecoration : currentEdge.visual?.start;
+  const endDec = op.end === "end" ? cleanedDecoration : currentEdge.visual?.end;
+  const nextKind = resolveMatchingRelation(
+    currentEdge.kind,
+    currentEdge.visual?.line,
+    startDec,
+    endDec
+  );
+  if (nextKind !== currentEdge.kind) {
+    patches.push({ path: ["edges", idx, "kind"], value: nextKind });
+  }
+  return { ok: true, patches };
+}
+
 // src/shared/documents/migrations.ts
 var DOCUMENT_MIGRATIONS = [
   {
@@ -2580,19 +3796,41 @@ function runDocumentMigrations(doc) {
   return { doc: cloned, appliedSteps };
 }
 
-// src/shared/operations/index.ts
-function resolveMatchingRelation(currentKind, line, start, end) {
-  const match = detectMatchingRelationPreset(line, start, end);
-  if (match) {
-    return match;
+// src/shared/operations/metadata-operations.ts
+function applyUpdateMetadata(doc, op) {
+  const patches = [];
+  if (op.title !== void 0 && op.title.trim().length > 0) {
+    patches.push({ path: ["title"], value: op.title.trim() });
   }
-  const isStartAssoc = (start?.shape ?? "none") === "none" || (start?.shape ?? "none") === "open-arrow";
-  const isEndAssoc = (end?.shape ?? "none") === "none" || (end?.shape ?? "none") === "open-arrow";
-  if (line !== "dashed" && isStartAssoc && isEndAssoc) {
-    return "association";
+  if (op.description !== void 0) {
+    patches.push({ path: ["description"], value: op.description.trim() });
+  } else if (op.purpose !== void 0) {
+    patches.push({ path: ["description"], value: op.purpose.trim() });
   }
-  return "other";
+  if (op.defaultRouting !== void 0) {
+    patches.push({ path: ["defaultRouting"], value: op.defaultRouting });
+  }
+  return { ok: true, patches };
 }
+function applyMigrateDocument(doc, _op) {
+  const { doc: migratedDoc, appliedSteps } = runDocumentMigrations(doc);
+  if (appliedSteps.length === 0 && doc.version === EXTENSION_VERSION) {
+    return { ok: false, error: "Document is already up to date." };
+  }
+  const patches = [];
+  patches.push({ path: ["version"], value: EXTENSION_VERSION });
+  if (migratedDoc.description !== void 0) {
+    patches.push({ path: ["description"], value: migratedDoc.description });
+  }
+  if (doc.ai && "purpose" in doc.ai) {
+    patches.push({ path: ["ai", "purpose"], value: void 0 });
+  }
+  patches.push({ path: ["ai", "interpretation"], value: migratedDoc.ai.interpretation });
+  patches.push({ path: ["ai", "editingRules"], value: migratedDoc.ai.editingRules });
+  return { ok: true, patches };
+}
+
+// src/shared/operations/node-operations.ts
 function generateCloneId(baseId, existingIds) {
   const cleanBase = baseId.replace(/-copy(-\d+)?$/, "");
   let candidate = `${cleanBase}-copy`;
@@ -2604,6 +3842,328 @@ function generateCloneId(baseId, existingIds) {
   existingIds.add(candidate);
   return candidate;
 }
+function applyAddNode(doc, op) {
+  if (doc.nodes.some((n) => n.id === op.id)) {
+    return { ok: false, error: `Node ID "${op.id}" already exists.` };
+  }
+  const descriptor = getUmlNodeKind(op.kind);
+  const width = Math.max(60, Math.round(op.width ?? descriptor?.defaultWidth ?? 240));
+  const height = Math.max(45, Math.round(op.height ?? descriptor?.defaultHeight ?? 140));
+  const newNode = {
+    id: op.id,
+    kind: op.kind,
+    name: op.name.trim() || "NewEntity"
+  };
+  if (descriptor?.defaultStereotype) {
+    newNode.stereotype = descriptor.defaultStereotype;
+  }
+  if (op.kind === "note") {
+    newNode.text = op.text ?? "Design note...";
+  } else if (op.kind === "shape") {
+    newNode.shape = op.shape ?? "rectangle";
+  } else if (op.kind === "frame") {
+    newNode.children = op.children ?? [];
+  } else if (descriptor?.hasCompartments !== false) {
+    newNode.attributes = [
+      {
+        id: `${op.id}-attr-1`,
+        visibility: "+",
+        name: "id",
+        type: "string"
+      }
+    ];
+    newNode.operations = [];
+  }
+  const layoutBox = {
+    x: Math.round(op.x),
+    y: Math.round(op.y),
+    width,
+    height
+  };
+  const patches = [
+    {
+      path: ["nodes", doc.nodes.length],
+      value: newNode,
+      isArrayInsertion: true
+    },
+    {
+      path: ["layout", "nodes", op.id],
+      value: layoutBox
+    }
+  ];
+  return { ok: true, patches, createdIds: [op.id] };
+}
+function applyUpdateNode(doc, op) {
+  const idx = doc.nodes.findIndex((n) => n.id === op.nodeId);
+  if (idx === -1) {
+    return { ok: false, error: `Node "${op.nodeId}" not found.` };
+  }
+  const existingNode = doc.nodes[idx];
+  if (!getUmlNodeKind(existingNode.kind)) {
+    return {
+      ok: false,
+      error: `Node "${op.nodeId}" has unsupported kind "${existingNode.kind}" and is read-only.`
+    };
+  }
+  const patches = [];
+  if (op.name !== void 0) {
+    patches.push({ path: ["nodes", idx, "name"], value: op.name.trim() });
+  }
+  if (op.stereotype !== void 0) {
+    patches.push({
+      path: ["nodes", idx, "stereotype"],
+      value: op.stereotype.trim() || void 0
+    });
+  }
+  if (op.text !== void 0) {
+    patches.push({ path: ["nodes", idx, "text"], value: op.text });
+  }
+  if (op.shape !== void 0) {
+    patches.push({ path: ["nodes", idx, "shape"], value: op.shape });
+  }
+  if (op.children !== void 0) {
+    patches.push({ path: ["nodes", idx, "children"], value: op.children });
+  }
+  if (op.line !== void 0) {
+    patches.push({ path: ["nodes", idx, "line"], value: op.line === "solid" ? void 0 : op.line });
+  }
+  if (op.showAttributes !== void 0) {
+    patches.push({ path: ["nodes", idx, "showAttributes"], value: op.showAttributes });
+  }
+  if (op.showOperations !== void 0) {
+    patches.push({ path: ["nodes", idx, "showOperations"], value: op.showOperations });
+  }
+  if (op.attributes !== void 0) {
+    patches.push({ path: ["nodes", idx, "attributes"], value: op.attributes });
+  }
+  if (op.operations !== void 0) {
+    patches.push({ path: ["nodes", idx, "operations"], value: op.operations });
+  }
+  return { ok: true, patches };
+}
+function applyMoveResizeNodes(doc, op) {
+  const patches = [];
+  for (const [nodeId, box] of Object.entries(op.updates)) {
+    if (!doc.nodes.some((n) => n.id === nodeId)) {
+      return { ok: false, error: `Cannot move non-existent node "${nodeId}".` };
+    }
+    const existingLayout = doc.layout.nodes[nodeId] ?? {};
+    patches.push({
+      path: ["layout", "nodes", nodeId],
+      value: {
+        ...existingLayout,
+        x: Math.round(box.x),
+        y: Math.round(box.y),
+        width: Math.max(60, Math.round(box.width)),
+        height: Math.max(40, Math.round(box.height))
+      }
+    });
+  }
+  if (op.frameChildrenUpdates) {
+    for (const [frameId, children] of Object.entries(op.frameChildrenUpdates)) {
+      const idx = doc.nodes.findIndex((n) => n.id === frameId);
+      if (idx !== -1) {
+        patches.push({
+          path: ["nodes", idx, "children"],
+          value: children
+        });
+      }
+    }
+  }
+  return { ok: true, patches };
+}
+function applyDeleteEntities(doc, op) {
+  const patches = [];
+  const delNodes = new Set(op.nodeIds);
+  const delEdges = new Set(op.edgeIds);
+  for (const edge of doc.edges) {
+    if (delNodes.has(edge.source.nodeId) || delNodes.has(edge.target.nodeId)) {
+      delEdges.add(edge.id);
+    }
+  }
+  if (delNodes.size > 0) {
+    const remainingNodes = doc.nodes.filter((n) => !delNodes.has(n.id)).map((n) => {
+      if (n.kind === "frame" && n.children) {
+        const cleanedChildren = n.children.filter((cid) => !delNodes.has(cid));
+        if (cleanedChildren.length !== n.children.length) {
+          return { ...n, children: cleanedChildren };
+        }
+      }
+      return n;
+    });
+    patches.push({ path: ["nodes"], value: remainingNodes });
+    for (const nodeId of delNodes) {
+      if (nodeId in doc.layout.nodes) {
+        patches.push({ path: ["layout", "nodes", nodeId], value: void 0 });
+      }
+    }
+  }
+  if (delEdges.size > 0) {
+    const remainingEdges = doc.edges.filter((e) => !delEdges.has(e.id));
+    patches.push({ path: ["edges"], value: remainingEdges });
+    for (const edgeId of delEdges) {
+      if (edgeId in doc.layout.edges) {
+        patches.push({ path: ["layout", "edges", edgeId], value: void 0 });
+      }
+    }
+  }
+  return { ok: true, patches };
+}
+function applyDuplicateSelection(doc, op) {
+  const patches = [];
+  const createdIds = [];
+  const selectedNodeSet = new Set(op.nodeIds);
+  const existingNodeIds = new Set(doc.nodes.map((n) => n.id));
+  const existingEdgeIds = new Set(doc.edges.map((e) => e.id));
+  const nodeIdMap = /* @__PURE__ */ new Map();
+  const offsetX = op.offsetX ?? 40;
+  const offsetY = op.offsetY ?? 40;
+  const stripCustom = Boolean(op.stripCustomData);
+  const clonedNodes = [];
+  for (const node of doc.nodes) {
+    if (!selectedNodeSet.has(node.id)) continue;
+    const newId = generateCloneId(node.id, existingNodeIds);
+    nodeIdMap.set(node.id, newId);
+    createdIds.push(newId);
+    const descriptor = getUmlNodeKind(node.kind);
+    if (stripCustom) {
+      const nextNum = doc.nodes.length + clonedNodes.length + 1;
+      const freshNameMap = {
+        class: `Class${nextNum}`,
+        note: `Note ${nextNum}`,
+        shape: `Shape ${nextNum}`,
+        frame: `Frame ${nextNum}`
+      };
+      const freshId = `${node.kind}-${Date.now().toString(36).slice(-4)}-${clonedNodes.length + 1}`;
+      existingNodeIds.delete(newId);
+      existingNodeIds.add(freshId);
+      nodeIdMap.set(node.id, freshId);
+      createdIds[createdIds.length - 1] = freshId;
+      const defaultNode = {
+        id: freshId,
+        kind: node.kind,
+        name: freshNameMap[node.kind] ?? `Entity${nextNum}`
+      };
+      if (descriptor?.defaultStereotype) {
+        defaultNode.stereotype = descriptor.defaultStereotype;
+      }
+      if (node.kind === "note") {
+        defaultNode.text = "Design note...";
+      } else if (node.kind === "shape") {
+        defaultNode.shape = node.shape ?? "rectangle";
+      } else if (descriptor?.hasCompartments !== false) {
+        defaultNode.attributes = [
+          {
+            id: `${freshId}-attr-1`,
+            visibility: "+",
+            name: "id",
+            type: "string"
+          }
+        ];
+        defaultNode.operations = [
+          {
+            id: `${freshId}-op-1`,
+            visibility: "+",
+            name: "validate",
+            signature: "()",
+            returnType: "boolean",
+            parameters: []
+          }
+        ];
+      }
+      clonedNodes.push(defaultNode);
+    } else {
+      const attrCopy = node.attributes?.map((attr, idx) => ({
+        ...attr,
+        id: `${newId}-attr-${idx + 1}`
+      }));
+      const opCopy = node.operations?.map((method, idx) => ({
+        ...method,
+        id: `${newId}-op-${idx + 1}`,
+        ...method.parameters ? {
+          parameters: method.parameters.map((p, pIdx) => ({
+            ...p,
+            id: `${newId}-op-${idx + 1}-param-${pIdx + 1}`
+          }))
+        } : {}
+      }));
+      const clonedNode = {
+        ...node,
+        id: newId,
+        name: `${node.name}Copy`
+      };
+      if (node.children) {
+        clonedNode.children = node.children.map((cid) => nodeIdMap.get(cid)).filter((cid) => Boolean(cid));
+      }
+      if (attrCopy) clonedNode.attributes = attrCopy;
+      if (opCopy) clonedNode.operations = opCopy;
+      clonedNodes.push(clonedNode);
+    }
+    const origLayout = doc.layout.nodes[node.id] ?? {
+      x: 80,
+      y: 80,
+      width: descriptor?.defaultWidth ?? 220,
+      height: descriptor?.defaultHeight ?? 140
+    };
+    const targetCloneId = nodeIdMap.get(node.id) ?? newId;
+    patches.push({
+      path: ["layout", "nodes", targetCloneId],
+      value: {
+        x: Math.round((origLayout.x + offsetX) / 20) * 20,
+        y: Math.round((origLayout.y + offsetY) / 20) * 20,
+        width: origLayout.width,
+        height: origLayout.height
+      }
+    });
+  }
+  if (clonedNodes.length > 0) {
+    patches.push({
+      path: ["nodes"],
+      value: [...doc.nodes, ...clonedNodes]
+    });
+  }
+  const selectedEdgeSet = new Set(op.edgeIds);
+  const clonedEdges = [];
+  for (const edge of doc.edges) {
+    const bothEndsCloned = nodeIdMap.has(edge.source.nodeId) && nodeIdMap.has(edge.target.nodeId);
+    const explicitlySelected = selectedEdgeSet.has(edge.id);
+    if (!bothEndsCloned && !explicitlySelected) continue;
+    if (clonedNodes.length > 0 && !bothEndsCloned) continue;
+    const newEdgeId = generateCloneId(edge.id, existingEdgeIds);
+    createdIds.push(newEdgeId);
+    const preset = getUmlRelationPreset(edge.kind);
+    clonedEdges.push({
+      ...stripCustom ? {} : edge,
+      id: newEdgeId,
+      kind: edge.kind,
+      source: {
+        ...stripCustom ? {} : edge.source,
+        nodeId: nodeIdMap.get(edge.source.nodeId) ?? edge.source.nodeId
+      },
+      target: {
+        ...stripCustom ? {} : edge.target,
+        nodeId: nodeIdMap.get(edge.target.nodeId) ?? edge.target.nodeId
+      },
+      ...stripCustom ? {
+        visual: {
+          line: preset?.line ?? "solid",
+          routing: preset?.routing ?? "default",
+          start: { ...preset?.start ?? { shape: "none", size: 10 } },
+          end: { ...preset?.end ?? { shape: "none", size: 10 } }
+        }
+      } : {}
+    });
+  }
+  if (clonedEdges.length > 0) {
+    patches.push({
+      path: ["edges"],
+      value: [...doc.edges, ...clonedEdges]
+    });
+  }
+  return { ok: true, patches, createdIds };
+}
+
+// src/shared/operations/index.ts
 function applyUmlOperationToText(rawText, op) {
   const parsed = parseAndValidateDocument(rawText, "uml");
   if (!parsed.ok || !parsed.document) {
@@ -2613,550 +4173,51 @@ function applyUmlOperationToText(rawText, op) {
     };
   }
   const doc = parsed.document;
-  const patches = [];
-  const createdIds = [];
+  let result;
   switch (op.type) {
-    case "uml.updateMetadata": {
-      if (op.title !== void 0 && op.title.trim().length > 0) {
-        patches.push({ path: ["title"], value: op.title.trim() });
-      }
-      if (op.description !== void 0) {
-        patches.push({ path: ["description"], value: op.description.trim() });
-      } else if (op.purpose !== void 0) {
-        patches.push({ path: ["description"], value: op.purpose.trim() });
-      }
-      if (op.defaultRouting !== void 0) {
-        patches.push({ path: ["defaultRouting"], value: op.defaultRouting });
-      }
+    case "uml.updateMetadata":
+      result = applyUpdateMetadata(doc, op);
       break;
-    }
-    case "uml.migrateDocument": {
-      const { doc: migratedDoc, appliedSteps } = runDocumentMigrations(doc);
-      if (appliedSteps.length === 0 && doc.version === EXTENSION_VERSION) {
-        return { ok: false, error: "Document is already up to date." };
-      }
-      patches.push({ path: ["version"], value: EXTENSION_VERSION });
-      if (migratedDoc.description !== void 0) {
-        patches.push({ path: ["description"], value: migratedDoc.description });
-      }
-      if (doc.ai && "purpose" in doc.ai) {
-        patches.push({ path: ["ai", "purpose"], value: void 0 });
-      }
-      patches.push({ path: ["ai", "interpretation"], value: migratedDoc.ai.interpretation });
-      patches.push({ path: ["ai", "editingRules"], value: migratedDoc.ai.editingRules });
+    case "uml.migrateDocument":
+      result = applyMigrateDocument(doc, op);
       break;
-    }
-    case "uml.addNode": {
-      if (doc.nodes.some((n) => n.id === op.id)) {
-        return { ok: false, error: `Node ID "${op.id}" already exists.` };
-      }
-      const descriptor = getUmlNodeKind(op.kind);
-      const width = Math.max(60, Math.round(op.width ?? descriptor?.defaultWidth ?? 240));
-      const height = Math.max(45, Math.round(op.height ?? descriptor?.defaultHeight ?? 140));
-      const newNode = {
-        id: op.id,
-        kind: op.kind,
-        name: op.name.trim() || "NewEntity"
+    case "uml.addNode":
+      result = applyAddNode(doc, op);
+      break;
+    case "uml.updateNode":
+      result = applyUpdateNode(doc, op);
+      break;
+    case "uml.moveResizeNodes":
+      result = applyMoveResizeNodes(doc, op);
+      break;
+    case "uml.deleteEntities":
+      result = applyDeleteEntities(doc, op);
+      break;
+    case "uml.duplicateSelection":
+      result = applyDuplicateSelection(doc, op);
+      break;
+    case "uml.addEdge":
+      result = applyAddEdge(doc, op);
+      break;
+    case "uml.updateEdge":
+      result = applyUpdateEdge(doc, op);
+      break;
+    case "uml.updateEndpoint":
+      result = applyUpdateEndpoint(doc, op);
+      break;
+    default: {
+      const exhaustiveCheck = op;
+      return {
+        ok: false,
+        error: `Unhandled operation type: ${exhaustiveCheck?.type ?? "unknown"}`
       };
-      if (descriptor?.defaultStereotype) {
-        newNode.stereotype = descriptor.defaultStereotype;
-      }
-      if (op.kind === "note") {
-        newNode.text = op.text ?? "Design note...";
-      } else if (op.kind === "shape") {
-        newNode.shape = op.shape ?? "rectangle";
-      } else if (op.kind === "frame") {
-        newNode.children = op.children ?? [];
-      } else if (descriptor?.hasCompartments !== false) {
-        newNode.attributes = [
-          {
-            id: `${op.id}-attr-1`,
-            visibility: "+",
-            name: "id",
-            type: "string"
-          }
-        ];
-        newNode.operations = [];
-      }
-      const layoutBox = {
-        x: Math.round(op.x),
-        y: Math.round(op.y),
-        width,
-        height
-      };
-      patches.push({
-        path: ["nodes", doc.nodes.length],
-        value: newNode,
-        isArrayInsertion: true
-      });
-      patches.push({
-        path: ["layout", "nodes", op.id],
-        value: layoutBox
-      });
-      createdIds.push(op.id);
-      break;
-    }
-    case "uml.updateNode": {
-      const idx = doc.nodes.findIndex((n) => n.id === op.nodeId);
-      if (idx === -1) {
-        return { ok: false, error: `Node "${op.nodeId}" not found.` };
-      }
-      const existingNode = doc.nodes[idx];
-      if (!getUmlNodeKind(existingNode.kind)) {
-        return {
-          ok: false,
-          error: `Node "${op.nodeId}" has unsupported kind "${existingNode.kind}" and is read-only.`
-        };
-      }
-      if (op.name !== void 0) {
-        patches.push({ path: ["nodes", idx, "name"], value: op.name.trim() });
-      }
-      if (op.stereotype !== void 0) {
-        patches.push({
-          path: ["nodes", idx, "stereotype"],
-          value: op.stereotype.trim() || void 0
-        });
-      }
-      if (op.text !== void 0) {
-        patches.push({ path: ["nodes", idx, "text"], value: op.text });
-      }
-      if (op.shape !== void 0) {
-        patches.push({ path: ["nodes", idx, "shape"], value: op.shape });
-      }
-      if (op.children !== void 0) {
-        patches.push({ path: ["nodes", idx, "children"], value: op.children });
-      }
-      if (op.line !== void 0) {
-        patches.push({ path: ["nodes", idx, "line"], value: op.line === "solid" ? void 0 : op.line });
-      }
-      if (op.showAttributes !== void 0) {
-        patches.push({ path: ["nodes", idx, "showAttributes"], value: op.showAttributes });
-      }
-      if (op.showOperations !== void 0) {
-        patches.push({ path: ["nodes", idx, "showOperations"], value: op.showOperations });
-      }
-      if (op.attributes !== void 0) {
-        patches.push({ path: ["nodes", idx, "attributes"], value: op.attributes });
-      }
-      if (op.operations !== void 0) {
-        patches.push({ path: ["nodes", idx, "operations"], value: op.operations });
-      }
-      break;
-    }
-    case "uml.moveResizeNodes": {
-      for (const [nodeId, box] of Object.entries(op.updates)) {
-        if (!doc.nodes.some((n) => n.id === nodeId)) {
-          return { ok: false, error: `Cannot move non-existent node "${nodeId}".` };
-        }
-        const existingLayout = doc.layout.nodes[nodeId] ?? {};
-        patches.push({
-          path: ["layout", "nodes", nodeId],
-          value: {
-            ...existingLayout,
-            x: Math.round(box.x),
-            y: Math.round(box.y),
-            width: Math.max(60, Math.round(box.width)),
-            height: Math.max(40, Math.round(box.height))
-          }
-        });
-      }
-      if (op.frameChildrenUpdates) {
-        for (const [frameId, children] of Object.entries(op.frameChildrenUpdates)) {
-          const idx = doc.nodes.findIndex((n) => n.id === frameId);
-          if (idx !== -1) {
-            patches.push({
-              path: ["nodes", idx, "children"],
-              value: children
-            });
-          }
-        }
-      }
-      break;
-    }
-    case "uml.deleteEntities": {
-      const delNodes = new Set(op.nodeIds);
-      const delEdges = new Set(op.edgeIds);
-      for (const edge of doc.edges) {
-        if (delNodes.has(edge.source.nodeId) || delNodes.has(edge.target.nodeId)) {
-          delEdges.add(edge.id);
-        }
-      }
-      if (delNodes.size > 0) {
-        const remainingNodes = doc.nodes.filter((n) => !delNodes.has(n.id)).map((n) => {
-          if (n.kind === "frame" && n.children) {
-            const cleanedChildren = n.children.filter((cid) => !delNodes.has(cid));
-            if (cleanedChildren.length !== n.children.length) {
-              return { ...n, children: cleanedChildren };
-            }
-          }
-          return n;
-        });
-        patches.push({ path: ["nodes"], value: remainingNodes });
-        for (const nodeId of delNodes) {
-          if (nodeId in doc.layout.nodes) {
-            patches.push({ path: ["layout", "nodes", nodeId], value: void 0 });
-          }
-        }
-      }
-      if (delEdges.size > 0) {
-        const remainingEdges = doc.edges.filter((e) => !delEdges.has(e.id));
-        patches.push({ path: ["edges"], value: remainingEdges });
-        for (const edgeId of delEdges) {
-          if (edgeId in doc.layout.edges) {
-            patches.push({ path: ["layout", "edges", edgeId], value: void 0 });
-          }
-        }
-      }
-      break;
-    }
-    case "uml.duplicateSelection": {
-      const selectedNodeSet = new Set(op.nodeIds);
-      const existingNodeIds = new Set(doc.nodes.map((n) => n.id));
-      const existingEdgeIds = new Set(doc.edges.map((e) => e.id));
-      const nodeIdMap = /* @__PURE__ */ new Map();
-      const offsetX = op.offsetX ?? 40;
-      const offsetY = op.offsetY ?? 40;
-      const stripCustom = Boolean(op.stripCustomData);
-      const clonedNodes = [];
-      for (const node of doc.nodes) {
-        if (!selectedNodeSet.has(node.id)) continue;
-        const newId = generateCloneId(node.id, existingNodeIds);
-        nodeIdMap.set(node.id, newId);
-        createdIds.push(newId);
-        const descriptor = getUmlNodeKind(node.kind);
-        if (stripCustom) {
-          const nextNum = doc.nodes.length + clonedNodes.length + 1;
-          const freshNameMap = {
-            class: `Class${nextNum}`,
-            note: `Note ${nextNum}`,
-            shape: `Shape ${nextNum}`,
-            frame: `Frame ${nextNum}`
-          };
-          const freshId = `${node.kind}-${Date.now().toString(36).slice(-4)}-${clonedNodes.length + 1}`;
-          existingNodeIds.delete(newId);
-          existingNodeIds.add(freshId);
-          nodeIdMap.set(node.id, freshId);
-          createdIds[createdIds.length - 1] = freshId;
-          const defaultNode = {
-            id: freshId,
-            kind: node.kind,
-            name: freshNameMap[node.kind] ?? `Entity${nextNum}`
-          };
-          if (descriptor?.defaultStereotype) {
-            defaultNode.stereotype = descriptor.defaultStereotype;
-          }
-          if (node.kind === "note") {
-            defaultNode.text = "Design note...";
-          } else if (node.kind === "shape") {
-            defaultNode.shape = node.shape ?? "rectangle";
-          } else if (descriptor?.hasCompartments !== false) {
-            defaultNode.attributes = [
-              {
-                id: `${freshId}-attr-1`,
-                visibility: "+",
-                name: "id",
-                type: "string"
-              }
-            ];
-            defaultNode.operations = [
-              {
-                id: `${freshId}-op-1`,
-                visibility: "+",
-                name: "validate",
-                signature: "()",
-                returnType: "boolean",
-                parameters: []
-              }
-            ];
-          }
-          clonedNodes.push(defaultNode);
-        } else {
-          const attrCopy = node.attributes?.map((attr, idx) => ({
-            ...attr,
-            id: `${newId}-attr-${idx + 1}`
-          }));
-          const opCopy = node.operations?.map((method, idx) => ({
-            ...method,
-            id: `${newId}-op-${idx + 1}`,
-            ...method.parameters ? {
-              parameters: method.parameters.map((p, pIdx) => ({
-                ...p,
-                id: `${newId}-op-${idx + 1}-param-${pIdx + 1}`
-              }))
-            } : {}
-          }));
-          const clonedNode = {
-            ...node,
-            id: newId,
-            name: `${node.name}Copy`
-          };
-          if (node.children) {
-            clonedNode.children = node.children.map((cid) => nodeIdMap.get(cid)).filter((cid) => Boolean(cid));
-          }
-          if (attrCopy) clonedNode.attributes = attrCopy;
-          if (opCopy) clonedNode.operations = opCopy;
-          clonedNodes.push(clonedNode);
-        }
-        const origLayout = doc.layout.nodes[node.id] ?? {
-          x: 80,
-          y: 80,
-          width: descriptor?.defaultWidth ?? 220,
-          height: descriptor?.defaultHeight ?? 140
-        };
-        const targetCloneId = nodeIdMap.get(node.id) ?? newId;
-        patches.push({
-          path: ["layout", "nodes", targetCloneId],
-          value: {
-            x: Math.round((origLayout.x + offsetX) / 20) * 20,
-            y: Math.round((origLayout.y + offsetY) / 20) * 20,
-            width: origLayout.width,
-            height: origLayout.height
-          }
-        });
-      }
-      if (clonedNodes.length > 0) {
-        patches.push({
-          path: ["nodes"],
-          value: [...doc.nodes, ...clonedNodes]
-        });
-      }
-      const selectedEdgeSet = new Set(op.edgeIds);
-      const clonedEdges = [];
-      for (const edge of doc.edges) {
-        const bothEndsCloned = nodeIdMap.has(edge.source.nodeId) && nodeIdMap.has(edge.target.nodeId);
-        const explicitlySelected = selectedEdgeSet.has(edge.id);
-        if (!bothEndsCloned && !explicitlySelected) continue;
-        if (clonedNodes.length > 0 && !bothEndsCloned) continue;
-        const newEdgeId = generateCloneId(edge.id, existingEdgeIds);
-        createdIds.push(newEdgeId);
-        const preset = getUmlRelationPreset(edge.kind);
-        clonedEdges.push({
-          ...stripCustom ? {} : edge,
-          id: newEdgeId,
-          kind: edge.kind,
-          source: {
-            ...stripCustom ? {} : edge.source,
-            nodeId: nodeIdMap.get(edge.source.nodeId) ?? edge.source.nodeId
-          },
-          target: {
-            ...stripCustom ? {} : edge.target,
-            nodeId: nodeIdMap.get(edge.target.nodeId) ?? edge.target.nodeId
-          },
-          ...stripCustom ? {
-            visual: {
-              line: preset?.line ?? "solid",
-              routing: preset?.routing ?? "default",
-              start: { ...preset?.start ?? { shape: "none", size: 10 } },
-              end: { ...preset?.end ?? { shape: "none", size: 10 } }
-            }
-          } : {}
-        });
-      }
-      if (clonedEdges.length > 0) {
-        patches.push({
-          path: ["edges"],
-          value: [...doc.edges, ...clonedEdges]
-        });
-      }
-      break;
-    }
-    case "uml.addEdge": {
-      if (doc.edges.some((e) => e.id === op.id)) {
-        return { ok: false, error: `Edge ID "${op.id}" already exists.` };
-      }
-      const sourceNode = doc.nodes.find((n) => n.id === op.sourceNodeId);
-      if (!sourceNode) {
-        return { ok: false, error: `Source node "${op.sourceNodeId}" does not exist.` };
-      }
-      const targetNode = doc.nodes.find((n) => n.id === op.targetNodeId);
-      if (!targetNode) {
-        return { ok: false, error: `Target node "${op.targetNodeId}" does not exist.` };
-      }
-      if (sourceNode.kind === "frame" || targetNode.kind === "frame") {
-        return { ok: false, error: "Frames cannot have relationships." };
-      }
-      const touchesNote = sourceNode.kind === "note" || targetNode.kind === "note";
-      const edgeKind = op.kind ?? (touchesNote ? "other" : "association");
-      const preset = getUmlRelationPreset(edgeKind);
-      const defaultLine = touchesNote ? "dashed" : preset?.line ?? "solid";
-      const newEdge = {
-        id: op.id,
-        kind: edgeKind,
-        source: {
-          nodeId: op.sourceNodeId
-        },
-        target: {
-          nodeId: op.targetNodeId
-        },
-        ...op.label ? { label: op.label } : {},
-        visual: {
-          line: op.line ?? defaultLine,
-          routing: op.routing ?? preset?.routing ?? "default",
-          start: { ...preset?.start ?? { shape: "none", size: 10 } },
-          end: { ...preset?.end ?? { shape: "none", size: 10 } }
-        }
-      };
-      patches.push({
-        path: ["edges", doc.edges.length],
-        value: newEdge,
-        isArrayInsertion: true
-      });
-      createdIds.push(op.id);
-      break;
-    }
-    case "uml.updateEdge": {
-      const idx = doc.edges.findIndex((e) => e.id === op.edgeId);
-      if (idx === -1) {
-        return { ok: false, error: `Edge "${op.edgeId}" not found.` };
-      }
-      const existing = doc.edges[idx];
-      if (op.reverseDirection) {
-        patches.push({
-          path: ["edges", idx, "source"],
-          value: { ...existing.target }
-        });
-        patches.push({
-          path: ["edges", idx, "target"],
-          value: { ...existing.source }
-        });
-      }
-      if (op.sourceNodeId !== void 0) {
-        const sNode = doc.nodes.find((n) => n.id === op.sourceNodeId);
-        if (!sNode) {
-          return { ok: false, error: `Node "${op.sourceNodeId}" does not exist.` };
-        }
-        if (sNode.kind === "frame") {
-          return { ok: false, error: "Frames cannot have relationships." };
-        }
-        patches.push({
-          path: ["edges", idx, "source", "nodeId"],
-          value: op.sourceNodeId
-        });
-      }
-      if (op.targetNodeId !== void 0) {
-        const tNode = doc.nodes.find((n) => n.id === op.targetNodeId);
-        if (!tNode) {
-          return { ok: false, error: `Node "${op.targetNodeId}" does not exist.` };
-        }
-        if (tNode.kind === "frame") {
-          return { ok: false, error: "Frames cannot have relationships." };
-        }
-        patches.push({
-          path: ["edges", idx, "target", "nodeId"],
-          value: op.targetNodeId
-        });
-      }
-      if (op.sourceMultiplicity !== void 0) {
-        patches.push({
-          path: ["edges", idx, "source", "multiplicity"],
-          value: op.sourceMultiplicity.trim() || void 0
-        });
-      }
-      if (op.targetMultiplicity !== void 0) {
-        patches.push({
-          path: ["edges", idx, "target", "multiplicity"],
-          value: op.targetMultiplicity.trim() || void 0
-        });
-      }
-      if (op.label !== void 0) {
-        patches.push({
-          path: ["edges", idx, "label"],
-          value: op.label.trim() || void 0
-        });
-      }
-      if (op.kind !== void 0) {
-        patches.push({ path: ["edges", idx, "kind"], value: op.kind });
-        const preset = getUmlRelationPreset(op.kind);
-        if (preset) {
-          patches.push({
-            path: ["edges", idx, "visual"],
-            value: {
-              ...existing.visual ?? {},
-              line: preset.line,
-              routing: existing.visual?.routing ?? preset.routing,
-              start: { ...preset.start },
-              end: { ...preset.end }
-            }
-          });
-        }
-      } else if (op.line !== void 0) {
-        patches.push({
-          path: ["edges", idx, "visual", "line"],
-          value: op.line
-        });
-        const nextKind = resolveMatchingRelation(
-          existing.kind,
-          op.line,
-          existing.visual?.start,
-          existing.visual?.end
-        );
-        if (nextKind !== existing.kind) {
-          patches.push({ path: ["edges", idx, "kind"], value: nextKind });
-        }
-      }
-      if (op.routing !== void 0) {
-        patches.push({
-          path: ["edges", idx, "visual", "routing"],
-          value: op.routing
-        });
-      }
-      break;
-    }
-    case "uml.updateEndpoint": {
-      const idx = doc.edges.findIndex((e) => e.id === op.edgeId);
-      if (idx === -1) {
-        return { ok: false, error: `Edge "${op.edgeId}" not found.` };
-      }
-      const shapeDesc = getEndpointShape(op.decoration.shape);
-      if (!shapeDesc) {
-        return {
-          ok: false,
-          error: `Unknown endpoint decoration shape "${op.decoration.shape}".`
-        };
-      }
-      const existingEnd = doc.edges[idx].visual?.[op.end] ?? {};
-      const cleanedDecoration = {
-        ...existingEnd,
-        shape: op.decoration.shape,
-        size: op.decoration.size ?? existingEnd.size ?? shapeDesc.defaultSize
-      };
-      if (shapeDesc.supportsFill) {
-        cleanedDecoration.fill = op.decoration.fill ?? existingEnd.fill ?? shapeDesc.defaultFill ?? "hollow";
-      } else {
-        delete cleanedDecoration.fill;
-      }
-      if (!doc.edges[idx].visual) {
-        const preset = getUmlRelationPreset(doc.edges[idx].kind);
-        patches.push({
-          path: ["edges", idx, "visual"],
-          value: {
-            line: preset?.line ?? "solid",
-            routing: preset?.routing ?? "default",
-            start: op.end === "start" ? cleanedDecoration : { ...preset?.start ?? { shape: "none", size: 10 } },
-            end: op.end === "end" ? cleanedDecoration : { ...preset?.end ?? { shape: "none", size: 10 } }
-          }
-        });
-      } else {
-        patches.push({
-          path: ["edges", idx, "visual", op.end],
-          value: cleanedDecoration
-        });
-      }
-      const currentEdge = doc.edges[idx];
-      const startDec = op.end === "start" ? cleanedDecoration : currentEdge.visual?.start;
-      const endDec = op.end === "end" ? cleanedDecoration : currentEdge.visual?.end;
-      const nextKind = resolveMatchingRelation(
-        currentEdge.kind,
-        currentEdge.visual?.line,
-        startDec,
-        endDec
-      );
-      if (nextKind !== currentEdge.kind) {
-        patches.push({ path: ["edges", idx, "kind"], value: nextKind });
-      }
-      break;
     }
   }
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+  const patches = result.patches;
+  const createdIds = result.createdIds ?? [];
   if (patches.length === 0) {
     return { ok: true, updatedText: rawText, edits: [], createdIds };
   }
@@ -3171,7 +4232,106 @@ function applyUmlOperationToText(rawText, op) {
   return { ok: true, updatedText, edits, createdIds };
 }
 
-// src/extension/documents/coordinator.ts
+// src/extension/coordinator/workspace-edit-pipeline.ts
+var WorkspaceEditPipeline = class {
+  /**
+   * Checks whether the underlying document is read-only (e.g. git diff, virtual file).
+   */
+  static isDocumentReadOnly(document) {
+    const scheme = document.uri.scheme;
+    return scheme !== "file" && scheme !== "untitled";
+  }
+  /**
+   * Applies a semantic UML operation to the document atomically:
+   * 1. Validates document is not read-only.
+   * 2. Checks concurrency token (document.version === expectedVersion) to prevent lost updates.
+   * 3. Calculates minimal JSON edits via applyUmlOperationToText.
+   * 4. Re-verifies concurrency token immediately before applying edits.
+   * 5. Translates TextSpanEdit[] into vscode.Range replacement spans.
+   * 6. Commits vscode.workspace.applyEdit(WorkspaceEdit).
+   */
+  static async applyOperation(document, expectedVersion, operation) {
+    if (this.isDocumentReadOnly(document)) {
+      return { ok: false, applied: false, error: "Document is read-only." };
+    }
+    if (document.version !== expectedVersion) {
+      return {
+        ok: false,
+        applied: false,
+        staleRejected: true,
+        error: "Document changed externally during gesture. View refreshed."
+      };
+    }
+    const rawText = document.getText();
+    const result = applyUmlOperationToText(rawText, operation);
+    if (!result.ok || !result.edits) {
+      return {
+        ok: false,
+        applied: false,
+        error: result.error ?? "Operation failed validation."
+      };
+    }
+    if (result.edits.length === 0) {
+      return {
+        ok: true,
+        applied: true,
+        createdIds: result.createdIds
+      };
+    }
+    if (document.version !== expectedVersion) {
+      return {
+        ok: false,
+        applied: false,
+        staleRejected: true,
+        error: "Document changed concurrently before edit could be committed."
+      };
+    }
+    const wsEdit = new vscode9.WorkspaceEdit();
+    for (const span of result.edits) {
+      const range = new vscode9.Range(
+        document.positionAt(span.offset),
+        document.positionAt(span.offset + span.length)
+      );
+      wsEdit.replace(document.uri, range, span.content);
+    }
+    const applied = await vscode9.workspace.applyEdit(wsEdit);
+    return {
+      ok: applied,
+      applied,
+      createdIds: applied ? result.createdIds : void 0,
+      error: applied ? void 0 : "VS Code rejected WorkspaceEdit."
+    };
+  }
+  /**
+   * Atomically initializes an empty document with default JSON schema content.
+   */
+  static async applyDefaultInitialization(document, kind) {
+    if (this.isDocumentReadOnly(document)) {
+      return false;
+    }
+    const tokenBefore = document.version;
+    const textBefore = document.getText();
+    if (!isEmptyOrWhitespaceDocument(textBefore)) {
+      return false;
+    }
+    const defaultContent = serializeDefaultDocument(
+      kind,
+      document.uri.fsPath || document.uri.path
+    );
+    if (document.version !== tokenBefore || !isEmptyOrWhitespaceDocument(document.getText())) {
+      return false;
+    }
+    const fullRange = new vscode9.Range(
+      document.positionAt(0),
+      document.positionAt(textBefore.length)
+    );
+    const edit = new vscode9.WorkspaceEdit();
+    edit.replace(document.uri, fullRange, defaultContent);
+    return await vscode9.workspace.applyEdit(edit);
+  }
+};
+
+// src/extension/coordinator/document-coordinator.ts
 var DocumentCoordinator = class {
   constructor(document, kind, diagnostics, onAllPanelsAndDocumentClosed) {
     this.document = document;
@@ -3179,13 +4339,14 @@ var DocumentCoordinator = class {
     this.diagnostics = diagnostics;
     this.onAllPanelsAndDocumentClosed = onAllPanelsAndDocumentClosed;
     this.uriKey = document.uri.toString();
+    this.exportService = new ExportService(document);
     this.disposables.push(
-      vscode3.workspace.onDidChangeTextDocument((e) => {
+      vscode10.workspace.onDidChangeTextDocument((e) => {
         if (e.document.uri.toString() === this.uriKey) {
           this.scheduleRevalidateAndBroadcast();
         }
       }),
-      vscode3.workspace.onDidCloseTextDocument((closedDoc) => {
+      vscode10.workspace.onDidCloseTextDocument((closedDoc) => {
         if (closedDoc.uri.toString() === this.uriKey) {
           this.diagnostics.clearDiagnostics(closedDoc.uri);
           this.onAllPanelsAndDocumentClosed(this.uriKey);
@@ -3196,25 +4357,20 @@ var DocumentCoordinator = class {
   uriKey;
   panels = /* @__PURE__ */ new Set();
   disposables = [];
-  /**
-   * Tracks whether one-time empty initialization has already been considered during this
-   * live `TextDocument`'s lifetime. Splitting the editor, reloading a webview, or undoing
-   * back to empty will NOT re-initialize automatically.
-   */
+  exportService;
   initializationConsidered = false;
   isInitializing = false;
   lastValidDocument;
   operationQueue = Promise.resolve();
   validationDebounceTimer;
-  undoStack = [];
-  redoStack = [];
   get hasActivePanel() {
     for (const entry of this.panels) {
-      if (entry.panel.active) {
-        return true;
-      }
+      if (entry.panel.active) return true;
     }
     return false;
+  }
+  get lastValidDoc() {
+    return this.lastValidDocument;
   }
   attachPanel(panel) {
     const entry = { panel, ready: false };
@@ -3241,167 +4397,34 @@ var DocumentCoordinator = class {
       void entry.panel.webview.postMessage(msg);
     }
   }
-  isDocumentReadOnly() {
-    const scheme = this.document.uri.scheme;
-    if (scheme !== "file" && scheme !== "untitled") {
-      return true;
-    }
-    return false;
+  restoreFocus(panel) {
+    if (!panel) return;
+    void panel.webview.postMessage({
+      type: "host.command",
+      command: "restoreCanvasFocus"
+    });
   }
-  async handleWebviewMessage(entry, msg) {
-    if (!msg || typeof msg !== "object" || typeof msg.type !== "string") {
-      return;
-    }
-    switch (msg.type) {
-      case "webview.ready": {
-        entry.ready = true;
-        await this.maybeAutoInitializeOnFirstOpen();
-        this.revalidateAndBroadcast();
-        break;
-      }
-      case "webview.recheck": {
-        this.revalidateAndBroadcast();
-        break;
-      }
-      case "webview.openAsText": {
-        await vscode3.commands.executeCommand(
-          "vscode.openWith",
-          this.document.uri,
-          "default",
-          entry.panel.viewColumn
-        );
-        break;
-      }
-      case "webview.showProblems": {
-        await vscode3.commands.executeCommand("workbench.actions.view.problems");
-        break;
-      }
-      case "webview.initializeEmpty": {
-        await this.explicitlyInitializeEmptyDocument();
-        break;
-      }
-      case "webview.operation": {
-        this.enqueueOperation(async () => {
-          await this.executeOperationRequest(
-            entry.panel,
-            msg.requestId,
-            msg.expectedDocumentVersion,
-            msg.operation
-          );
-        });
-        break;
-      }
-      case "webview.promptAddUmlNode": {
-        await this.promptAddUmlNodeFlow(
-          entry.panel,
-          msg.expectedDocumentVersion,
-          msg.x,
-          msg.y,
-          msg.defaultKind
-        );
-        break;
-      }
-      case "webview.promptAddUmlEdge": {
-        await this.promptAddUmlEdgeFlow(
-          entry.panel,
-          msg.expectedDocumentVersion,
-          msg.sourceNodeId,
-          msg.targetNodeId,
-          msg.defaultKind
-        );
-        break;
-      }
-      case "webview.promptEndpointDecoration": {
-        await this.promptEndpointDecorationFlow(
-          entry.panel,
-          msg.expectedDocumentVersion,
-          msg.edgeId,
-          msg.end,
-          msg.currentDecoration
-        );
-        break;
-      }
-      case "webview.promptRenameEntity": {
-        await this.promptRenameEntityFlow(
-          entry.panel,
-          msg.expectedDocumentVersion,
-          msg.targetKind,
-          msg.targetId,
-          msg.currentValue
-        );
-        break;
-      }
-      case "webview.promptChangeRelationKind": {
-        await this.promptChangeRelationKindFlow(
-          entry.panel,
-          msg.expectedDocumentVersion,
-          msg.edgeId,
-          msg.currentKind
-        );
-        break;
-      }
-      case "webview.undo": {
-        this.enqueueOperation(async () => {
-          await this.performUndo();
-        });
-        break;
-      }
-      case "webview.redo": {
-        this.enqueueOperation(async () => {
-          await this.performRedo();
-        });
-        break;
-      }
-      case "webview.exportFile": {
-        await this.exportDiagramPng(msg.base64Data);
-        break;
-      }
-      case "webview.copyImageToClipboard": {
-        await this.copyImageToClipboard(msg.base64Data);
-        break;
-      }
-      case "webview.checkForExtensionUpdate": {
-        try {
-          await vscode3.commands.executeCommand("workbench.extensions.action.checkForUpdates");
-          await vscode3.commands.executeCommand("workbench.extensions.search", "@installed Vizion");
-        } catch {
-          void vscode3.window.showInformationMessage("Please check the Extensions view for the latest Vizion update.");
-        }
-        break;
-      }
-    }
+  enqueueOperation(task) {
+    const resultPromise = this.operationQueue.then(task, task);
+    this.operationQueue = resultPromise.then(() => {
+    }, () => {
+    });
+    return resultPromise;
   }
-  /**
-   * Implements Section 5.2 Initialization Algorithm:
-   * - Runs at most once per live `TextDocument` lifetime.
-   * - Re-checks text and concurrency token immediately before applying.
-   * - Applies a single standard WorkspaceEdit (marks dirty, respects normal VS Code Save/Undo).
-   */
   async maybeAutoInitializeOnFirstOpen() {
-    if (this.initializationConsidered || this.isInitializing) {
-      return;
-    }
+    if (this.initializationConsidered || this.isInitializing) return;
     this.initializationConsidered = true;
-    if (this.isDocumentReadOnly()) {
-      return;
-    }
-    const initialText = this.document.getText();
-    if (!isEmptyOrWhitespaceDocument(initialText)) {
-      return;
-    }
+    if (WorkspaceEditPipeline.isDocumentReadOnly(this.document)) return;
+    if (!isEmptyOrWhitespaceDocument(this.document.getText())) return;
     await this.applyDefaultInitializationEdit();
   }
   async explicitlyInitializeEmptyDocument() {
-    if (this.isDocumentReadOnly()) {
-      void vscode3.window.showWarningMessage(
-        "Cannot initialize a read-only Vizion document."
-      );
+    if (WorkspaceEditPipeline.isDocumentReadOnly(this.document)) {
+      void vscode10.window.showWarningMessage("Cannot initialize a read-only Vizion document.");
       return;
     }
     if (!isEmptyOrWhitespaceDocument(this.document.getText())) {
-      void vscode3.window.showWarningMessage(
-        "Document is not empty. Vizion never overwrites non-empty content."
-      );
+      void vscode10.window.showWarningMessage("Document is not empty. Vizion never overwrites non-empty content.");
       return;
     }
     await this.applyDefaultInitializationEdit();
@@ -3411,436 +4434,170 @@ var DocumentCoordinator = class {
     if (this.isInitializing) return;
     this.isInitializing = true;
     try {
-      const tokenBefore = this.document.version;
-      const textBefore = this.document.getText();
-      if (!isEmptyOrWhitespaceDocument(textBefore)) {
-        return;
-      }
-      const defaultContent = serializeDefaultDocument(
-        this.kind,
-        this.document.uri.fsPath || this.document.uri.path
+      const applied = await WorkspaceEditPipeline.applyDefaultInitialization(
+        this.document,
+        this.kind
       );
-      if (this.document.version !== tokenBefore || !isEmptyOrWhitespaceDocument(this.document.getText())) {
-        return;
-      }
-      const fullRange = new vscode3.Range(
-        this.document.positionAt(0),
-        this.document.positionAt(textBefore.length)
-      );
-      const edit = new vscode3.WorkspaceEdit();
-      edit.replace(this.document.uri, fullRange, defaultContent);
-      const applied = await vscode3.workspace.applyEdit(edit);
       if (!applied) {
-        void vscode3.window.showErrorMessage(
-          "Vizion could not apply default initialization to the document."
-        );
+        void vscode10.window.showErrorMessage("Vizion could not apply default initialization to the document.");
       }
     } finally {
       this.isInitializing = false;
     }
   }
-  enqueueOperation(task) {
-    this.operationQueue = this.operationQueue.then(task, task);
-  }
   async executeOperationRequest(requestingPanel, requestId, expectedVersion, operation) {
-    if (this.isDocumentReadOnly()) {
-      void requestingPanel.webview.postMessage({
-        type: "host.operationResult",
-        requestId,
-        ok: false,
-        error: "Document is read-only."
-      });
-      return;
-    }
-    if (this.document.version !== expectedVersion) {
-      void requestingPanel.webview.postMessage({
-        type: "host.operationResult",
-        requestId,
-        ok: false,
-        staleRejected: true,
-        error: "Document changed externally during gesture. View refreshed."
-      });
-      this.sendSnapshotToPanel(requestingPanel);
-      return;
-    }
-    const rawText = this.document.getText();
-    const result = applyUmlOperationToText(rawText, operation);
-    if (!result.ok || !result.edits) {
-      void requestingPanel.webview.postMessage({
-        type: "host.operationResult",
-        requestId,
-        ok: false,
-        error: result.error ?? "Operation failed validation."
-      });
-      return;
-    }
-    if (result.edits.length === 0) {
-      void requestingPanel.webview.postMessage({
-        type: "host.operationResult",
-        requestId,
-        ok: true,
-        createdIds: result.createdIds
-      });
-      return;
-    }
-    if (this.document.version !== expectedVersion) {
-      void requestingPanel.webview.postMessage({
-        type: "host.operationResult",
-        requestId,
-        ok: false,
-        staleRejected: true,
-        error: "Document changed concurrently before edit could be committed."
-      });
-      this.sendSnapshotToPanel(requestingPanel);
-      return;
-    }
-    const wsEdit = new vscode3.WorkspaceEdit();
-    for (const span of result.edits) {
-      const range = new vscode3.Range(
-        this.document.positionAt(span.offset),
-        this.document.positionAt(span.offset + span.length)
-      );
-      wsEdit.replace(this.document.uri, range, span.content);
-    }
-    const applied = await vscode3.workspace.applyEdit(wsEdit);
-    if (applied) {
-      this.undoStack.push(rawText);
-      if (this.undoStack.length > 200) {
-        this.undoStack.shift();
-      }
-      this.redoStack.length = 0;
-      this.revalidateAndBroadcast();
-    }
-    void requestingPanel.webview.postMessage({
-      type: "host.operationResult",
-      requestId,
-      ok: applied,
-      createdIds: applied ? result.createdIds : void 0,
-      error: applied ? void 0 : "VS Code rejected WorkspaceEdit."
-    });
-  }
-  async performUndo() {
-    if (this.isDocumentReadOnly()) return;
-    if (this.undoStack.length === 0) {
-      await vscode3.commands.executeCommand("undo");
-      this.revalidateAndBroadcast();
-      return;
-    }
-    const targetText = this.undoStack.pop();
-    const currentText = this.document.getText();
-    const diff = computeMinimalDiffSpan(currentText, targetText);
-    if (!diff) {
-      return;
-    }
-    const wsEdit = new vscode3.WorkspaceEdit();
-    const range = new vscode3.Range(
-      this.document.positionAt(diff.offset),
-      this.document.positionAt(diff.offset + diff.length)
+    const result = await WorkspaceEditPipeline.applyOperation(
+      this.document,
+      expectedVersion,
+      operation
     );
-    wsEdit.replace(this.document.uri, range, diff.content);
-    const applied = await vscode3.workspace.applyEdit(wsEdit);
-    if (applied) {
-      this.redoStack.push(currentText);
-      this.revalidateAndBroadcast();
-    }
-  }
-  async performRedo() {
-    if (this.isDocumentReadOnly()) return;
-    if (this.redoStack.length === 0) {
-      await vscode3.commands.executeCommand("redo");
-      this.revalidateAndBroadcast();
-      return;
-    }
-    const targetText = this.redoStack.pop();
-    const currentText = this.document.getText();
-    const diff = computeMinimalDiffSpan(currentText, targetText);
-    if (!diff) {
-      return;
-    }
-    const wsEdit = new vscode3.WorkspaceEdit();
-    const range = new vscode3.Range(
-      this.document.positionAt(diff.offset),
-      this.document.positionAt(diff.offset + diff.length)
-    );
-    wsEdit.replace(this.document.uri, range, diff.content);
-    const applied = await vscode3.workspace.applyEdit(wsEdit);
-    if (applied) {
-      this.undoStack.push(currentText);
-      this.revalidateAndBroadcast();
-    }
-  }
-  // ============================================================================
-  // Native VS Code Picker & Input Box Workflows (Section 2.3 & 9.5)
-  // ============================================================================
-  async promptAddUmlNodeFlow(panel, expectedVersion = this.document.version, x = 120, y = 100, preselectedKind) {
-    if (this.kind !== "uml" || this.isDocumentReadOnly()) return;
-    let chosenKind = preselectedKind;
-    if (!chosenKind) {
-      const kindItems = listUmlNodeKinds().map((desc) => ({
-        label: desc.label,
-        description: desc.kind,
-        detail: desc.description,
-        kindValue: desc.kind
-      }));
-      const picked = await vscode3.window.showQuickPick(kindItems, {
-        title: "Vizion UML: Choose Node Kind",
-        placeHolder: "Select class, note, or shape"
+    if (requestingPanel) {
+      void requestingPanel.webview.postMessage({
+        type: "host.operationResult",
+        requestId,
+        ok: result.ok,
+        createdIds: result.createdIds,
+        error: result.error,
+        staleRejected: result.staleRejected
       });
-      if (!picked) {
-        this.restoreFocus(panel);
-        return;
+      if (result.staleRejected) {
+        this.sendSnapshotToPanel(requestingPanel);
       }
-      chosenKind = picked.kindValue;
     }
-    const defaultName = chosenKind === "note" ? "Architecture Note" : chosenKind === "shape" ? "Shape" : chosenKind === "frame" ? "Frame" : "DomainEntity";
-    const enteredName = await vscode3.window.showInputBox({
-      title: `Vizion UML: New ${chosenKind.toUpperCase()} Name`,
-      prompt: chosenKind === "note" ? "Enter note text or summary" : `Enter ${chosenKind} identifier`,
-      value: defaultName,
-      validateInput: (val) => val.trim().length === 0 ? "Name cannot be empty" : void 0
-    });
-    this.restoreFocus(panel);
-    if (!enteredName || enteredName.trim().length === 0) {
-      return;
+    if (result.applied) {
+      this.revalidateAndBroadcast();
     }
-    if (this.document.version !== expectedVersion) {
-      void vscode3.window.showWarningMessage(
-        "Document changed while the picker was open. Please retry adding the node."
-      );
-      return;
-    }
-    const baseSlug = enteredName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || chosenKind;
-    const uniqueId = `${baseSlug}-${Date.now().toString(36).slice(-4)}`;
-    this.enqueueOperation(async () => {
-      const targetPanel = panel ?? Array.from(this.panels)[0]?.panel;
-      if (!targetPanel) return;
-      await this.executeOperationRequest(targetPanel, `host-add-${uniqueId}`, expectedVersion, {
-        type: "uml.addNode",
-        id: uniqueId,
-        kind: chosenKind,
-        name: enteredName.trim(),
-        x,
-        y,
-        text: chosenKind === "note" ? enteredName.trim() : void 0
-      });
-    });
   }
-  async promptAddUmlEdgeFlow(panel, expectedVersion, sourceNodeId, targetNodeId, defaultKind) {
-    const presetItems = listUmlRelationPresets().map((preset) => ({
-      label: preset.label,
-      description: preset.kind,
-      detail: preset.description,
-      picked: preset.kind === (defaultKind ?? "association"),
-      presetKind: preset.kind
-    }));
-    const picked = await vscode3.window.showQuickPick(presetItems, {
-      title: `Vizion UML: Relation Kind (${sourceNodeId} > ${targetNodeId})`,
-      placeHolder: "Choose semantic relationship kind"
-    });
-    this.restoreFocus(panel);
-    if (!picked) {
-      return;
-    }
-    if (this.document.version !== expectedVersion) {
-      void vscode3.window.showWarningMessage(
-        "Document changed while choosing relation kind. Connection cancelled."
-      );
-      return;
-    }
-    const edgeId = `edge-${sourceNodeId}-${targetNodeId}-${Date.now().toString(36).slice(-4)}`;
-    this.enqueueOperation(async () => {
-      await this.executeOperationRequest(panel, `host-edge-${edgeId}`, expectedVersion, {
-        type: "uml.addEdge",
-        id: edgeId,
-        kind: picked.presetKind,
-        sourceNodeId,
-        targetNodeId
-      });
-    });
-  }
-  /**
-   * Implements Section 9.5 Endpoint Editing Flow:
-   * 1. Identifies start or end explicitly in the Quick Pick title.
-   * 2. Opens native Quick Pick for decoration shape (none, circle, diamond, square, triangle, open-arrow).
-   * 3. For closed shapes (`supportsFill: true`), offers hollow / filled selection.
-   * 4. Commits the complete choice as a single atomic operation, or cancels without mutating.
-   */
-  async promptEndpointDecorationFlow(panel, expectedVersion, edgeId, end, currentDecoration) {
-    const endLabel = end === "start" ? "START (Source)" : "END (Target)";
-    const shapeItems = listEndpointShapes().map((shape) => ({
-      label: shape.label,
-      description: currentDecoration?.shape === shape.kind ? `${shape.kind} (current)` : shape.kind,
-      detail: shape.description,
-      shapeDescriptor: shape
-    }));
-    const pickedShape = await vscode3.window.showQuickPick(shapeItems, {
-      title: `Vizion UML: Customize ${endLabel} Endpoint Shape`,
-      placeHolder: `Select decoration shape for ${endLabel} endpoint of relation "${edgeId}"`
-    });
-    if (!pickedShape) {
-      this.restoreFocus(panel);
-      return;
-    }
-    let chosenFill;
-    if (pickedShape.shapeDescriptor.supportsFill) {
-      const currentFill = currentDecoration?.fill ?? pickedShape.shapeDescriptor.defaultFill ?? "hollow";
-      const fillItems = [
-        {
-          label: "Hollow",
-          description: currentFill === "hollow" ? "hollow (current)" : "hollow",
-          detail: "Interior filled with theme canvas background; path trimmed cleanly at boundary",
-          fillValue: "hollow"
-        },
-        {
-          label: "Filled",
-          description: currentFill === "filled" ? "filled (current)" : "filled",
-          detail: "Solid foreground fill",
-          fillValue: "filled"
-        }
-      ];
-      const pickedFill = await vscode3.window.showQuickPick(fillItems, {
-        title: `Vizion UML: Choose ${endLabel} ${pickedShape.shapeDescriptor.label} Fill Mode`,
-        placeHolder: "Select Hollow or Filled appearance"
-      });
-      if (!pickedFill) {
-        this.restoreFocus(panel);
-        return;
-      }
-      chosenFill = pickedFill.fillValue;
-    }
-    this.restoreFocus(panel);
-    if (this.document.version !== expectedVersion) {
-      void vscode3.window.showWarningMessage(
-        "Document changed while endpoint picker was open. Endpoint update cancelled."
-      );
-      return;
-    }
-    const decoration = {
-      shape: pickedShape.shapeDescriptor.kind,
-      size: currentDecoration?.size ?? pickedShape.shapeDescriptor.defaultSize,
-      ...chosenFill ? { fill: chosenFill } : {}
+  createFlowContext(panel, expectedVersion = this.document.version) {
+    return {
+      document: this.document,
+      panel,
+      expectedVersion,
+      getLastValidDocument: () => this.lastValidDocument,
+      enqueueOperation: (task) => this.enqueueOperation(task),
+      executeOperation: (targetPanel, reqId, expVer, op) => this.executeOperationRequest(targetPanel, reqId, expVer, op),
+      restoreFocus: (targetPanel) => this.restoreFocus(targetPanel ?? panel)
     };
-    this.enqueueOperation(async () => {
-      await this.executeOperationRequest(
-        panel,
-        `host-endpoint-${edgeId}-${end}`,
-        expectedVersion,
-        {
-          type: "uml.updateEndpoint",
-          edgeId,
-          end,
-          decoration
+  }
+  async handleWebviewMessage(entry, msg) {
+    if (!msg || typeof msg !== "object" || typeof msg.type !== "string") return;
+    switch (msg.type) {
+      case "webview.ready":
+        entry.ready = true;
+        await this.maybeAutoInitializeOnFirstOpen();
+        this.revalidateAndBroadcast();
+        break;
+      case "webview.recheck":
+        this.revalidateAndBroadcast();
+        break;
+      case "webview.openAsText":
+        await vscode10.commands.executeCommand(
+          "vscode.openWith",
+          this.document.uri,
+          "default",
+          entry.panel.viewColumn
+        );
+        break;
+      case "webview.showProblems":
+        await vscode10.commands.executeCommand("workbench.actions.view.problems");
+        break;
+      case "webview.initializeEmpty":
+        await this.explicitlyInitializeEmptyDocument();
+        break;
+      case "webview.operation":
+        this.enqueueOperation(async () => {
+          await this.executeOperationRequest(
+            entry.panel,
+            msg.requestId,
+            msg.expectedDocumentVersion,
+            msg.operation
+          );
+        });
+        break;
+      case "webview.promptAddUmlNode":
+        await promptAddUmlNodeFlow(
+          this.createFlowContext(entry.panel, msg.expectedDocumentVersion),
+          { x: msg.x, y: msg.y, defaultKind: msg.defaultKind }
+        );
+        break;
+      case "webview.promptAddUmlEdge":
+        await promptAddUmlEdgeFlow(
+          this.createFlowContext(entry.panel, msg.expectedDocumentVersion),
+          {
+            sourceNodeId: msg.sourceNodeId,
+            targetNodeId: msg.targetNodeId,
+            defaultKind: msg.defaultKind
+          }
+        );
+        break;
+      case "webview.promptEndpointDecoration":
+        await promptEndpointDecorationFlow(
+          this.createFlowContext(entry.panel, msg.expectedDocumentVersion),
+          {
+            edgeId: msg.edgeId,
+            end: msg.end,
+            currentDecoration: msg.currentDecoration
+          }
+        );
+        break;
+      case "webview.promptRenameEntity":
+        await promptRenameEntityFlow(
+          this.createFlowContext(entry.panel, msg.expectedDocumentVersion),
+          {
+            targetKind: msg.targetKind,
+            targetId: msg.targetId,
+            memberId: msg.memberId,
+            currentValue: msg.currentValue
+          }
+        );
+        break;
+      case "webview.promptChangeRelationKind":
+        await promptChangeRelationKindFlow(
+          this.createFlowContext(entry.panel, msg.expectedDocumentVersion),
+          {
+            edgeId: msg.edgeId,
+            currentKind: msg.currentKind
+          }
+        );
+        break;
+      case "webview.undo":
+        if (!WorkspaceEditPipeline.isDocumentReadOnly(this.document)) {
+          this.enqueueOperation(async () => {
+            await vscode10.commands.executeCommand("undo");
+          });
         }
-      );
-    });
-  }
-  async promptChangeRelationKindFlow(panel, expectedVersion, edgeId, currentKind) {
-    const items = listUmlRelationPresets().map((preset) => ({
-      label: preset.label,
-      description: preset.kind === currentKind ? `${preset.kind} (current)` : preset.kind,
-      detail: preset.description,
-      presetKind: preset.kind
-    }));
-    const picked = await vscode3.window.showQuickPick(items, {
-      title: `Vizion UML: Change Relation Kind (${edgeId})`,
-      placeHolder: "Select relation semantic kind and reset notation preset"
-    });
-    this.restoreFocus(panel);
-    if (!picked) return;
-    if (this.document.version !== expectedVersion) {
-      void vscode3.window.showWarningMessage(
-        "Document changed while picker was open. Operation cancelled."
-      );
-      return;
-    }
-    this.enqueueOperation(async () => {
-      await this.executeOperationRequest(panel, `host-relkind-${edgeId}`, expectedVersion, {
-        type: "uml.updateEdge",
-        edgeId,
-        kind: picked.presetKind
-      });
-    });
-  }
-  async promptRenameEntityFlow(panel, expectedVersion, targetKind, targetId, currentValue) {
-    const titleMap = {
-      node: "Rename UML Node",
-      edgeLabel: "Edit Label",
-      documentTitle: "Rename Document Title"
-    };
-    const nextValue = await vscode3.window.showInputBox({
-      title: `Vizion: ${titleMap[targetKind]}`,
-      value: currentValue,
-      prompt: targetKind === "edgeLabel" ? "Enter relation label (leave empty to clear)" : "Enter new text"
-    });
-    this.restoreFocus(panel);
-    if (nextValue === void 0) {
-      return;
-    }
-    if (this.document.version !== expectedVersion) {
-      void vscode3.window.showWarningMessage(
-        "Document changed while input box was open. Edit cancelled."
-      );
-      return;
-    }
-    this.enqueueOperation(async () => {
-      if (targetKind === "node") {
-        if (!nextValue.trim()) return;
-        await this.executeOperationRequest(panel, `rename-node-${targetId}`, expectedVersion, {
-          type: "uml.updateNode",
-          nodeId: targetId,
-          name: nextValue.trim()
+        break;
+      case "webview.redo":
+        if (!WorkspaceEditPipeline.isDocumentReadOnly(this.document)) {
+          this.enqueueOperation(async () => {
+            await vscode10.commands.executeCommand("redo");
+          });
+        }
+        break;
+      case "webview.exportFile":
+        await this.exportService.exportDiagram({
+          format: msg.format,
+          base64Data: msg.base64Data,
+          svgData: msg.svgData,
+          defaultFileName: msg.defaultFileName
         });
-      } else if (targetKind === "edgeLabel") {
-        await this.executeOperationRequest(panel, `rename-edge-${targetId}`, expectedVersion, {
-          type: "uml.updateEdge",
-          edgeId: targetId,
-          label: nextValue.trim()
-        });
-      } else if (targetKind === "documentTitle") {
-        if (!nextValue.trim()) return;
-        await this.executeOperationRequest(panel, `rename-doc`, expectedVersion, {
-          type: "uml.updateMetadata",
-          title: nextValue.trim()
-        });
-      }
-    });
-  }
-  async exportDiagramPng(base64Data) {
-    const originalFsPath = this.document.uri.fsPath;
-    const targetFsPath = originalFsPath.replace(/(?:\.uml)?\.viz$/i, ".png");
-    const targetUri = vscode3.Uri.file(targetFsPath);
-    const bytes = Buffer.from(base64Data, "base64");
-    await vscode3.workspace.fs.writeFile(targetUri, bytes);
-    const relName = vscode3.workspace.asRelativePath(targetUri);
-    void vscode3.window.showInformationMessage(`Exported diagram PNG to ${relName}`);
-  }
-  async copyImageToClipboard(base64Data) {
-    const buffer = Buffer.from(base64Data, "base64");
-    try {
-      if (process.platform === "linux") {
-        const { spawn } = await import("node:child_process");
-        const proc = spawn("wl-copy", ["-t", "image/png"]);
-        proc.stdin.write(buffer);
-        proc.stdin.end();
-        await new Promise((resolve, reject) => {
-          proc.on("close", (code) => code === 0 ? resolve() : reject(new Error(`wl-copy exited with ${code}`)));
-          proc.on("error", reject);
-        });
-        void vscode3.window.showInformationMessage("Diagram image snapshot copied to clipboard");
-      }
-    } catch {
+        break;
+      case "webview.copyImageToClipboard":
+        await this.exportService.copyImageToClipboard(msg.base64Data);
+        break;
+      case "webview.copyToClipboard":
+        await this.exportService.copyTextToClipboard(msg.content, msg.format.toUpperCase());
+        break;
+      case "webview.checkForExtensionUpdate":
+        try {
+          await vscode10.commands.executeCommand("workbench.extensions.action.checkForUpdates");
+          await vscode10.commands.executeCommand("workbench.extensions.search", "@installed Vizion");
+        } catch {
+          void vscode10.window.showInformationMessage("Please check the Extensions view for the latest Vizion update.");
+        }
+        break;
     }
   }
-  restoreFocus(panel) {
-    if (!panel) return;
-    void panel.webview.postMessage({
-      type: "host.command",
-      command: "restoreCanvasFocus"
-    });
-  }
-  // ============================================================================
-  // Validation & Snapshot Broadcasting
-  // ============================================================================
   scheduleRevalidateAndBroadcast() {
     if (this.validationDebounceTimer) {
       clearTimeout(this.validationDebounceTimer);
@@ -3873,9 +4630,9 @@ var DocumentCoordinator = class {
       type: "host.snapshot",
       expectedKind: this.kind,
       documentVersion: this.document.version,
-      isReadOnly: this.isDocumentReadOnly(),
+      isReadOnly: WorkspaceEditPipeline.isDocumentReadOnly(this.document),
       isEmptyDocument: isEmpty,
-      canExplicitlyInitialize: isEmpty && !this.isDocumentReadOnly(),
+      canExplicitlyInitialize: isEmpty && !WorkspaceEditPipeline.isDocumentReadOnly(this.document),
       valid: parsed.ok,
       document: parsed.document,
       lastValidDocument: parsed.ok ? void 0 : this.lastValidDocument,
@@ -3891,10 +4648,11 @@ var DocumentCoordinator = class {
       d.dispose();
     }
     this.disposables.length = 0;
+    this.panels.clear();
   }
 };
 
-// src/extension/documents/registry.ts
+// src/extension/coordinator/coordinator-registry.ts
 var CoordinatorRegistry = class {
   constructor(diagnostics) {
     this.diagnostics = diagnostics;
@@ -3938,16 +4696,16 @@ var CoordinatorRegistry = class {
 };
 
 // src/extension/providers/uml-provider.ts
-var vscode5 = __toESM(require("vscode"));
+var vscode12 = __toESM(require("vscode"));
 
 // src/extension/webviews/html.ts
 var crypto = __toESM(require("crypto"));
-var fs = __toESM(require("fs"));
-var vscode4 = __toESM(require("vscode"));
+var fs2 = __toESM(require("fs"));
+var vscode11 = __toESM(require("vscode"));
 function readAssetText(extensionUri, fileName) {
   try {
-    const fullPath = vscode4.Uri.joinPath(extensionUri, "media", fileName).fsPath;
-    return fs.readFileSync(fullPath, "utf8");
+    const fullPath = vscode11.Uri.joinPath(extensionUri, "media", fileName).fsPath;
+    return fs2.readFileSync(fullPath, "utf8");
   } catch (err) {
     return `console.error("Failed to read ${fileName}:", ${JSON.stringify(String(err))});`;
   }
@@ -4008,7 +4766,7 @@ var UmlEditorProvider = class {
   async resolveCustomTextEditor(document, webviewPanel, _token) {
     webviewPanel.webview.options = {
       enableScripts: true,
-      localResourceRoots: [vscode5.Uri.joinPath(this.extensionUri, "media")]
+      localResourceRoots: [vscode12.Uri.joinPath(this.extensionUri, "media")]
     };
     const coordinator = this.registry.acquire(document, "uml");
     coordinator.attachPanel(webviewPanel);
@@ -4030,7 +4788,7 @@ function activate(context) {
   context.subscriptions.push(
     diagnostics,
     registry,
-    vscode6.window.registerCustomEditorProvider(
+    vscode13.window.registerCustomEditorProvider(
       UmlEditorProvider.viewType,
       new UmlEditorProvider(context.extensionUri, registry),
       {

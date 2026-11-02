@@ -630,24 +630,24 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
       { shape: 'none', size: 10 },
       { shape: 'none', size: 10 }
     );
-    expect(orthoGeom.startTip).toEqual({ x: 100, y: 50 });
-    expect(orthoGeom.endTip).toEqual({ x: 300, y: 150 });
-    // Expect orthogonal path with 90° straight turns: (100, 50) -> (200, 50) -> (200, 150) -> (300, 150)
-    expect(orthoGeom.pathD).toBe('M 100 50 L 200 50 L 200 150 L 300 150');
-    expect(orthoGeom.hitPathD).toBe('M 100 50 L 200 50 L 200 150 L 300 150');
+    expect(orthoGeom.startTip).toEqual({ x: 100, y: 60 });
+    expect(orthoGeom.endTip).toEqual({ x: 300, y: 160 });
+    // Grid-snapped orthogonal route: (100, 60) -> (200, 60) -> (200, 160) -> (300, 160)
+    expect(orthoGeom.pathD).toBe('M 100 60 L 200 60 L 200 160 L 300 160');
+    expect(orthoGeom.hitPathD).toBe('M 100 60 L 200 60 L 200 160 L 300 160');
     // Relation label sits on the middle segment (vertical, length 100 >= 28)
-    expect(orthoGeom.labelPoint).toEqual({ x: 200, y: 100 });
+    expect(orthoGeom.labelPoint).toEqual({ x: 200, y: 110 });
 
-    // When middle segment is too short to fit label height (e.g. length = 10 < 28), falls back to longest segment
+    // When middle segment is too short to fit label height (e.g. length = 20 < 28), falls back to longest segment
     const tightOrthoGeom = computeUmlEdgeGeometry(
-      { x: 0, y: 0, width: 100, height: 100 },
-      { x: 300, y: 10, width: 100, height: 100 },
+      { x: 0, y: 10, width: 100, height: 100 },
+      { x: 300, y: 30, width: 100, height: 100 },
       'orthogonal',
       { shape: 'none', size: 10 },
       { shape: 'none', size: 10 }
     );
-    // Vertical middle segment has length 10 (from 50 to 60), too short -> sits on first segment (100, 50) to (200, 50)
-    expect(tightOrthoGeom.labelPoint).toEqual({ x: 150, y: 50 });
+    // Vertical middle segment has length 20 (from 60 to 80), too short -> sits on first segment
+    expect(tightOrthoGeom.labelPoint).toEqual({ x: 150, y: 60 });
 
     // Test bezier (smooth) routing
     const bezierGeom = computeUmlEdgeGeometry(
@@ -1178,7 +1178,7 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
 
     const futureDoc = {
       format: 'vizion',
-      version: '0.3.0',
+      version: '0.4.0',
       kind: 'uml',
       title: 'Future Architecture',
       ai: {
@@ -1190,7 +1190,7 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
       layout: { nodes: {}, edges: {} }
     };
 
-    // A document with a newer version than EXTENSION_VERSION (0.2.0) should be recognized as newer
+    // A document with a newer version than EXTENSION_VERSION should be recognized as newer
     expect(isNewerVersionDocument(futureDoc as any)).toBe(true);
     // And it should NOT be flagged for migration (which would downgrade it)
     expect(isMigrationNeeded(futureDoc as any)).toBe(false);

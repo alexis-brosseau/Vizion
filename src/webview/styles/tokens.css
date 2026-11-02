@@ -1,0 +1,50 @@
+/*
+ * Vizion design tokens.
+ * Colors always resolve to native VS Code theme variables so the editor matches
+ * light, dark, and high-contrast themes without hard-coded palettes.
+ */
+:root {
+  --vz-font-family: var(--vscode-font-family);
+  --vz-mono-font-family: var(--vscode-editor-font-family);
+
+  --vz-bg: var(--vscode-editor-background);
+  --vz-fg: var(--vscode-editor-foreground);
+  --vz-muted-fg: var(--vscode-descriptionForeground);
+  --vz-widget-bg: var(--vscode-editorWidget-background);
+  --vz-widget-border: var(--vscode-editorWidget-border, var(--vscode-panel-border));
+  --vz-accent: var(--vscode-focusBorder);
+  --vz-danger: var(--vscode-errorForeground);
+  --vz-warning: var(--vscode-editorWarning-foreground, var(--vscode-errorForeground));
+  --vz-note-bg: var(--vscode-textBlockQuote-background, var(--vscode-editorWidget-background));
+
+  --vz-radius-sm: 3px;
+  --vz-radius-md: 5px;
+  --vz-radius-lg: 8px;
+  --vz-space-1: 4px;
+  --vz-space-2: 8px;
+  --vz-space-3: 12px;
+  --vz-space-4: 16px;
+  --vz-space-5: 24px;
+
+  --vz-font-size-xs: 10.5px;
+  --vz-font-size-sm: 11.5px;
+  --vz-font-size-md: 13px;
+  --vz-font-size-lg: 15px;
+
+  --vz-node-radius: 5px;
+  --vz-node-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+  --vz-grid-size: 20px;
+
+  --vz-z-grid: 0;
+  --vz-z-frames: 1;
+  --vz-z-relations: 2;
+  --vz-z-nodes: 3;
+  --vz-z-overlay: 4;
+  --vz-z-floating: 5;
+  --vz-z-popup: 6;
+  --vz-z-context-menu: 7;
+
+  --vz-sidebar-min-width: 210px;
+  --vz-sidebar-max-width: 560px;
+  --vz-transition-fast: 120ms ease;
+}

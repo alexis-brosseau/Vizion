@@ -1,0 +1,437 @@
+/* Custom Extensible UML Nodes */
+.vz-uml-node {
+  position: absolute;
+  pointer-events: auto;
+  background-color: var(--vscode-editorWidget-background);
+  color: var(--vscode-editor-foreground);
+  border: 1.5px solid var(--vscode-panel-border, var(--vscode-editor-foreground));
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+  cursor: grab;
+}
+
+.vz-uml-node.selected {
+  border: 2px solid var(--vscode-focusBorder);
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.25);
+}
+
+.vz-uml-node.kind-note {
+  background-color: var(--vscode-textBlockQuote-background, var(--vscode-editorWidget-background));
+  border-style: dashed;
+  border-width: 3px;
+}
+
+.vz-uml-node.kind-note.selected {
+  border-width: 3px;
+}
+
+.vz-uml-node.kind-note .vz-inline-textarea,
+.vz-uml-node.kind-note .vz-inline-input,
+.vz-uml-note-body .vz-inline-textarea {
+  background-color: var(--vscode-textBlockQuote-background, var(--vscode-editorWidget-background)) !important;
+  color: var(--vscode-editor-foreground);
+}
+
+.vz-html-frames {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.vz-uml-node.kind-frame {
+  background-color: transparent !important;
+  border: 3px solid var(--vscode-panel-border, var(--vscode-editor-foreground));
+  border-radius: 10px;
+  box-shadow: none;
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.vz-uml-node.kind-frame.dashed {
+  border-style: dashed;
+}
+
+.vz-uml-node.kind-frame.selected {
+  border-color: var(--vscode-focusBorder);
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.25);
+}
+
+.vz-frame-edge-hit {
+  position: absolute;
+  z-index: 5;
+}
+
+.vz-frame-edge-hit.top {
+  top: -6px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  cursor: ns-resize;
+}
+
+.vz-frame-edge-hit.bottom {
+  bottom: -6px;
+  left: 0;
+  right: 14px;
+  height: 12px;
+  cursor: ns-resize;
+}
+
+.vz-frame-edge-hit.left {
+  left: -6px;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: ew-resize;
+}
+
+.vz-frame-edge-hit.right {
+  right: -6px;
+  top: 0;
+  bottom: 14px;
+  width: 12px;
+  cursor: ew-resize;
+}
+
+.vz-frame-label {
+  position: absolute;
+  top: -11px;
+  left: 12px;
+  background-color: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+  border-radius: 4px;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  max-width: calc(100% - 24px);
+  user-select: none;
+  cursor: grab;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.vz-uml-node.kind-frame.selected .vz-frame-label {
+  border-color: var(--vscode-focusBorder);
+}
+
+.vz-frame-label-text {
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--vscode-editor-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vz-frame-inline-input,
+.vz-frame-inline-input:focus,
+.vz-frame-inline-input:focus-visible {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 0 4px;
+  background: var(--vscode-input-background) !important;
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-focusBorder) !important;
+  border-radius: 2px;
+  text-align: left;
+}
+
+.vz-contained-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.vz-contained-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: var(--vscode-input-background, rgba(128, 128, 128, 0.1));
+  font-size: 12px;
+}
+
+.vz-contained-name {
+  font-weight: 500;
+  color: var(--vscode-editor-foreground);
+}
+
+.vz-empty-hint {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.vz-uml-node.kind-shape {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.vz-uml-node.kind-shape.selected {
+  border: none;
+  box-shadow: none;
+}
+
+.vz-shape-node-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.vz-shape-node-path {
+  fill: var(--vscode-editorWidget-background);
+  stroke: var(--vscode-panel-border, var(--vscode-editor-foreground));
+  stroke-width: 1.75px;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.18));
+}
+
+.vz-uml-node.kind-shape.selected .vz-shape-node-path {
+  stroke: var(--vscode-focusBorder);
+  stroke-width: 2.25px;
+  filter: drop-shadow(0 0 4px rgba(0, 122, 204, 0.35));
+}
+
+.vz-shape-node-content {
+  position: relative;
+  z-index: 2;
+  padding: 10px 18px;
+  text-align: center;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.vz-inline-input {
+  text-align: center;
+}
+
+.vz-shape-inline-input,
+.vz-shape-inline-input:focus,
+.vz-shape-inline-input:focus-visible {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-align: center;
+  max-width: 140px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--vscode-editor-foreground);
+  padding: 0;
+  caret-color: var(--vscode-editor-foreground);
+}
+
+.vz-uml-node.unsupported {
+  border-style: dotted;
+  border-color: var(--vscode-editorWarning-foreground, orange);
+}
+
+.vz-inline-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.vz-inline-field {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.vz-uml-node-header {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+  text-align: center;
+}
+
+.vz-uml-stereotype {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  margin-top: 2px;
+}
+
+.vz-inline-stereotype-input {
+  font-size: 11px;
+  margin-top: 3px;
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+  padding: 2px 4px;
+  max-width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.vz-uml-node-title {
+  font-weight: 600;
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.vz-uml-compartment {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.25));
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11.5px;
+  min-height: 22px;
+}
+
+.vz-uml-compartment:last-of-type {
+  border-bottom: none;
+}
+
+.vz-uml-member {
+  display: flex;
+  gap: 4px;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vz-vis {
+  color: var(--vscode-symbolIcon-MethodForeground, var(--vscode-focusBorder));
+  font-weight: bold;
+}
+
+.vz-type {
+  color: var(--vscode-descriptionForeground);
+}
+
+.vz-uml-note-body {
+  padding: 8px 10px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+.vz-uml-node.inline-editing {
+  cursor: default;
+  z-index: 25;
+  border-color: var(--vscode-focusBorder);
+}
+
+.vz-uml-node.inline-editing .vz-uml-note-body {
+  white-space: normal;
+}
+
+.vz-inline-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 24px;
+  padding: 4px 6px;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, var(--vscode-contrastBorder, rgba(128, 128, 128, 0.35)));
+  border-radius: var(--vz-radius-md);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  resize: none;
+}
+
+.vz-uml-compartment .vz-inline-textarea {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11.5px;
+}
+
+.vz-inline-member-row {
+  display: grid;
+  grid-template-columns: 32px 1fr 1fr 22px;
+  gap: 3px;
+  align-items: stretch;
+  margin-bottom: 3px;
+}
+
+.vz-inline-select,
+.vz-inline-cell-input {
+  width: 100%;
+  height: 22px;
+  padding: 2px 4px;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.4));
+  border-radius: var(--vz-radius-md);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+}
+
+.vz-inline-del-btn {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--vscode-contrastBorder, transparent);
+  border-radius: 3px;
+  background: rgba(128, 128, 128, 0.2);
+  color: var(--vscode-errorForeground);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.vz-inline-del-btn:hover {
+  background: var(--vscode-errorForeground);
+  color: var(--vscode-editor-background);
+}
+
+.vz-inline-add-btn {
+  width: 100%;
+  margin-top: 2px;
+  padding: 3px 6px;
+  border: 1px dashed var(--vscode-panel-border, rgba(128, 128, 128, 0.45));
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.vz-inline-add-btn:hover {
+  border-color: var(--vscode-focusBorder);
+  color: var(--vscode-editor-foreground);
+}
+
+.vz-floating-edge-label-editor {
+  position: absolute;
+  z-index: 40;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.vz-floating-edge-label-editor .vz-input {
+  height: 20px;
+  padding: 1px 4px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 18px;
+  box-sizing: border-box;
+}
+
+.vz-floating-mult-editor .vz-input {
+  height: 18px;
+  padding: 0 2px;
+  font-size: 11px;
+  line-height: 16px;
+  box-sizing: border-box;
+}
+
