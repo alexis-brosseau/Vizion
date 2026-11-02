@@ -130,3 +130,15 @@ export function rectsIntersect(a: Rect2D, b: Rect2D): boolean {
     a.y + a.height >= b.y
   );
 }
+
+/**
+ * Returns true when `inner` lies entirely within `outer`; boundary contact counts as inside.
+ */
+export function rectContainsRect(outer: Rect2D, inner: Rect2D): boolean {
+  return (
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height
+  );
+}

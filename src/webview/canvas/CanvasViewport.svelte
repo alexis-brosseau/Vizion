@@ -20,7 +20,7 @@
     getMultiplicityLabelPoint,
     GRID_SIZE,
     normalizeDragRect,
-    rectsIntersect,
+    rectContainsRect,
     screenToWorld,
     snapToGrid,
     type Point2D,
@@ -77,6 +77,7 @@
         mode: 'marquee';
         startWorld: Point2D;
         currentWorld: Point2D;
+        additive: boolean;
       }
     | {
         mode: 'moving';
@@ -405,14 +406,16 @@
     }
 
     if (e.button === 0) {
-      if (!e.shiftKey) {
+      const additive = e.shiftKey;
+      if (!additive) {
         store.clearSelection();
       }
       const pt = getRelativeWorldPoint(e);
       gesture = {
         mode: 'marquee',
         startWorld: pt,
-        currentWorld: pt
+        currentWorld: pt,
+        additive
       };
       try {
         viewportEl?.setPointerCapture(e.pointerId);
@@ -644,11 +647,15 @@
         const hitIds: string[] = [];
         for (const n of doc.nodes) {
           const nBox = effectiveNodeLayouts[n.id];
-          if (nBox && rectsIntersect(box, nBox)) {
+          if (nBox && rectContainsRect(box, nBox)) {
             hitIds.push(n.id);
           }
         }
-        store.setSelectedIds(hitIds);
+        if (!current.additive) {
+          store.setSelectedIds(hitIds);
+        } else if (hitIds.length > 0) {
+          store.setSelectedIds(Array.from(new Set([...store.selectedIds, ...hitIds])));
+        }
       }
       return;
     }

@@ -230,6 +230,7 @@ state, keyboard behavior, focus return, and empty/error states where relevant.
 ### Common pitfalls in this codebase
 
 - **Selection coupling:** selecting both endpoint nodes implies their relation, but a direct relation click must not be removed by that inference. `selection-logic.ts` is the authority.
+- **Marquee selection:** an entity is selected only when its full bounds are inside the marquee rectangle. Shift+marquee unions the enclosed entities with the existing selection instead of replacing it.
 - **Inline editing:** `InlineEditController` owns drafts. Do not reintroduce local draft variables in `CanvasViewport`.
 - **Grid routing:** orthogonal routes must be axis-aligned and their segments must lie on 20px grid lines. Shape endpoints must stay on the shape boundary at a snapped grid line.
 - **Labels:** relation labels, frame labels, and multiplicity tags are HTML in an overlay transformed with the viewport. Keep their positioning in CSS/inline transform, not in the SVG relations layer.

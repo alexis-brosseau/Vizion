@@ -6657,8 +6657,8 @@ ${component_stack}
       height: Math.round(height * 10) / 10
     };
   }
-  function rectsIntersect(a, b) {
-    return a.x <= b.x + b.width && a.x + a.width >= b.x && a.y <= b.y + b.height && a.y + a.height >= b.y;
+  function rectContainsRect(outer, inner) {
+    return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
   }
 
   // src/shared/geometry/intersections.ts
@@ -11308,11 +11308,12 @@ ${component_stack}
         return;
       }
       if (e.button === 0) {
-        if (!e.shiftKey) {
+        const additive = e.shiftKey;
+        if (!additive) {
           store().clearSelection();
         }
         const pt = getRelativeWorldPoint(e);
-        set(gesture, { mode: "marquee", startWorld: pt, currentWorld: pt }, true);
+        set(gesture, { mode: "marquee", startWorld: pt, currentWorld: pt, additive }, true);
         try {
           get(viewportEl)?.setPointerCapture(e.pointerId);
         } catch {
@@ -11513,11 +11514,15 @@ ${component_stack}
           const hitIds = [];
           for (const n of get(doc).nodes) {
             const nBox = get(effectiveNodeLayouts)[n.id];
-            if (nBox && rectsIntersect(box, nBox)) {
+            if (nBox && rectContainsRect(box, nBox)) {
               hitIds.push(n.id);
             }
           }
-          store().setSelectedIds(hitIds);
+          if (!current.additive) {
+            store().setSelectedIds(hitIds);
+          } else if (hitIds.length > 0) {
+            store().setSelectedIds(Array.from(/* @__PURE__ */ new Set([...store().selectedIds, ...hitIds])));
+          }
         }
         return;
       }

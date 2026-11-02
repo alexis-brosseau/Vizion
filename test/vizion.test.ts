@@ -15,6 +15,7 @@ import {
   computeUmlEdgeGeometry,
   getMultiplicityLabelPoint,
   normalizeDragRect,
+  rectContainsRect,
   screenToWorld,
   simplifyStrokePoints,
   worldToScreen
@@ -594,6 +595,12 @@ describe('UML Operations, Shape Nodes, Operation Parameters, and Multiplicities'
 
     const norm = normalizeDragRect({ x: 100, y: 200 }, { x: 40, y: 80 });
     expect(norm).toEqual({ x: 40, y: 80, width: 60, height: 120 });
+
+    const marquee = { x: 0, y: 0, width: 100, height: 100 };
+    expect(rectContainsRect(marquee, { x: 10, y: 10, width: 50, height: 50 })).toBe(true);
+    expect(rectContainsRect(marquee, { x: 0, y: 0, width: 100, height: 100 })).toBe(true);
+    expect(rectContainsRect(marquee, { x: 60, y: 60, width: 50, height: 50 })).toBe(false);
+    expect(rectContainsRect(marquee, { x: -1, y: 10, width: 20, height: 20 })).toBe(false);
 
     const simplified = simplifyStrokePoints(
       [
