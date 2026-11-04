@@ -10219,6 +10219,8 @@ ${component_stack}
     const readOnly = user_derived(() => $$props.store.isReadOnly);
     const showAttributes = user_derived(() => $$props.node.showAttributes !== false);
     const showOperations = user_derived(() => $$props.node.showOperations !== false);
+    const operationsRendered = user_derived(() => get(isEditing) || get(showOperations) && ($$props.node.operations ?? []).length > 0);
+    const attributesLast = user_derived(() => !get(operationsRendered));
     function toggleCompartment(kind) {
       if (get(readOnly)) return;
       $$props.store.dispatchOperation({
@@ -10272,6 +10274,9 @@ ${component_stack}
         },
         get readOnly() {
           return get(readOnly);
+        },
+        get last() {
+          return get(attributesLast);
         },
         onToggle: () => toggleCompartment("attributes"),
         onDraftChange: (value) => $$props.store.inlineEdit.updateNodeDraft({ attributes: value }),

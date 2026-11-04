@@ -38,6 +38,10 @@
   const readOnly = $derived(store.isReadOnly);
   const showAttributes = $derived(node.showAttributes !== false);
   const showOperations = $derived(node.showOperations !== false);
+  const operationsRendered = $derived(
+    isEditing || (showOperations && (node.operations ?? []).length > 0)
+  );
+  const attributesLast = $derived(!operationsRendered);
 
   function toggleCompartment(kind: 'attributes' | 'operations'): void {
     if (readOnly) return;
@@ -82,6 +86,7 @@
     editing={isEditing}
     draft={editingState?.attributes ?? ''}
     {readOnly}
+    last={attributesLast}
     onToggle={() => toggleCompartment('attributes')}
     onDraftChange={(value) => store.inlineEdit.updateNodeDraft({ attributes: value })}
     onCommit={() => store.inlineEdit.commitNode(node)}
