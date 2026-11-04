@@ -2,6 +2,7 @@
   import type { UmlNode, UmlNodeLayout } from '../../../shared/documents/types';
   import type { ResizeHandle } from '../../state/gesture-machine.svelte';
   import type { VizionWebviewStore } from '../../state.svelte';
+  import ResizeHandles from './parts/ResizeHandles.svelte';
 
   let {
     store,
@@ -58,13 +59,8 @@
     {/each}
   {/if}
 
-  {#if selected && !readOnly}
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="vz-resize-handle"
-      title="Drag to resize frame (snaps to 20px grid)"
-      role="presentation"
-      onpointerdown={(event) => onresizestart?.(event, node, 'se')}
-    ></div>
-  {/if}
+  <ResizeHandles
+    visible={selected && !readOnly}
+    onresize={(event, handle) => onresizestart?.(event, node, handle)}
+  />
 </div>

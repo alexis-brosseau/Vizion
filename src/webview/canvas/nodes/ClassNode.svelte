@@ -101,7 +101,6 @@
   />
 
   <ResizeHandles
-    {selected}
     visible={selected && !readOnly}
     onresize={(event, handle) => onresizestart?.(event, node, handle)}
   />

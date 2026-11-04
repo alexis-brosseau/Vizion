@@ -1284,13 +1284,11 @@ body,
 .vz-svg-relations .vz-edge-label-group,
 .vz-svg-relations .vz-edge-mult-group,
 .vz-svg-relations .vz-endpoint-picker-target,
-.vz-svg-relations .vz-reconnect-handle,
 .vz-svg-overlay .vz-edge-group,
 .vz-svg-overlay .vz-edge-hit,
 .vz-svg-overlay .vz-edge-label-group,
 .vz-svg-overlay .vz-edge-mult-group,
-.vz-svg-overlay .vz-endpoint-picker-target,
-.vz-svg-overlay .vz-reconnect-handle {
+.vz-svg-overlay .vz-endpoint-picker-target {
   pointer-events: all;
 }
 .vz-svg-foreground {
@@ -1746,9 +1744,8 @@ body,
 }
 .vz-connect-port {
   position: absolute;
-  right: -6px;
+  right: -7px;
   top: 50%;
-  transform: translateY(-50%);
   width: 11px;
   height: 11px;
   border-radius: 50%;
@@ -1758,13 +1755,22 @@ body,
 }
 .vz-resize-handle {
   position: absolute;
-  right: -5px;
-  bottom: -5px;
-  width: 10px;
-  height: 10px;
-  background-color: var(--vscode-focusBorder);
-  border: 1px solid var(--vscode-editor-background);
+  right: -6px;
+  bottom: -6px;
+  width: 11px;
+  height: 11px;
+  border-radius: 2.5px;
+  background-color: var(--vscode-button-background);
+  border: 1.5px solid var(--vscode-editor-background);
   cursor: nwse-resize;
+}
+.vz-uml-node.kind-shape .vz-connect-port {
+  right: -4px;
+  top: calc(50% - 4px);
+}
+.vz-uml-node.kind-shape .vz-resize-handle {
+  right: -4px;
+  bottom: -4px;
 }
 .vz-edge-hit {
   fill: none;
@@ -1800,12 +1806,6 @@ body,
 }
 .vz-endpoint-picker-target:hover {
   fill: rgba(0, 122, 204, 0.4);
-}
-.vz-reconnect-handle {
-  fill: var(--vscode-button-background);
-  stroke: var(--vscode-editor-background);
-  stroke-width: 1.5px;
-  cursor: move;
 }
 .vz-edge-label-bg {
   fill: var(--vscode-editorWidget-background);

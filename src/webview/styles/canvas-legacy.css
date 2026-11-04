@@ -95,13 +95,11 @@
 .vz-svg-relations .vz-edge-label-group,
 .vz-svg-relations .vz-edge-mult-group,
 .vz-svg-relations .vz-endpoint-picker-target,
-.vz-svg-relations .vz-reconnect-handle,
 .vz-svg-overlay .vz-edge-group,
 .vz-svg-overlay .vz-edge-hit,
 .vz-svg-overlay .vz-edge-label-group,
 .vz-svg-overlay .vz-edge-mult-group,
-.vz-svg-overlay .vz-endpoint-picker-target,
-.vz-svg-overlay .vz-reconnect-handle {
+.vz-svg-overlay .vz-endpoint-picker-target {
   pointer-events: all;
 }
 

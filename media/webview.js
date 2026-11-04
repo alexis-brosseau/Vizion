@@ -10166,33 +10166,20 @@ ${component_stack}
   delegate(["input", "keydown"]);
 
   // src/webview/canvas/nodes/parts/ResizeHandles.svelte
-  var root5 = from_html(`<div class="vz-resize-handle vz-resize-corner" title="Drag to resize (snaps to 20px grid)" role="presentation"></div>`);
-  var root_15 = from_html(`<div class="vz-resize-handle" title="Drag to resize (snaps to 20px grid)" role="presentation"></div> <!>`, 1);
+  var root5 = from_html(`<div class="vz-resize-handle" title="Drag to resize (snaps to 20px grid)" role="presentation"></div>`);
   function ResizeHandles($$anchor, $$props) {
     push($$props, true);
-    let selected = prop($$props, "selected", 3, false), visible = prop($$props, "visible", 3, false), showCorner = prop($$props, "showCorner", 3, true);
+    let visible = prop($$props, "visible", 3, false);
     var fragment = comment();
     var node = first_child(fragment);
     {
-      var consequent_1 = ($$anchor2) => {
-        var fragment_1 = root_15();
-        var div = first_child(fragment_1);
-        var node_1 = sibling(div, 2);
-        {
-          var consequent = ($$anchor3) => {
-            var div_1 = root5();
-            delegated("pointerdown", div_1, (event2) => $$props.onresize?.(event2, "se"));
-            append($$anchor3, div_1);
-          };
-          if_block(node_1, ($$render) => {
-            if (selected() && showCorner()) $$render(consequent);
-          });
-        }
+      var consequent = ($$anchor2) => {
+        var div = root5();
         delegated("pointerdown", div, (event2) => $$props.onresize?.(event2, "se"));
-        append($$anchor2, fragment_1);
+        append($$anchor2, div);
       };
       if_block(node, ($$render) => {
-        if (visible()) $$render(consequent_1);
+        if (visible()) $$render(consequent);
       });
     }
     append($$anchor, fragment);
@@ -10321,9 +10308,6 @@ ${component_stack}
     {
       let $0 = user_derived(() => selected() && !get(readOnly));
       ResizeHandles(node_4, {
-        get selected() {
-          return selected();
-        },
         get visible() {
           return get($0);
         },
@@ -10359,8 +10343,7 @@ ${component_stack}
 
   // src/webview/canvas/nodes/FrameNode.svelte
   var root8 = from_html(`<div role="presentation"></div>`);
-  var root_16 = from_html(`<div class="vz-resize-handle" title="Drag to resize frame (snaps to 20px grid)" role="presentation"></div>`);
-  var root_25 = from_html(`<div role="button"><!> <!></div>`);
+  var root_15 = from_html(`<div role="button"><!> <!></div>`);
   function FrameNode($$anchor, $$props) {
     push($$props, true);
     let selected = prop($$props, "selected", 3, false);
@@ -10387,7 +10370,7 @@ ${component_stack}
         label: "Drag to resize right side"
       }
     ];
-    var div = root_25();
+    var div = root_15();
     let classes;
     var node_1 = child(div);
     {
@@ -10411,13 +10394,12 @@ ${component_stack}
     }
     var node_3 = sibling(node_1, 2);
     {
-      var consequent_1 = ($$anchor2) => {
-        var div_2 = root_16();
-        delegated("pointerdown", div_2, (event2) => $$props.onresizestart?.(event2, $$props.node, "se"));
-        append($$anchor2, div_2);
-      };
-      if_block(node_3, ($$render) => {
-        if (selected() && !get(readOnly)) $$render(consequent_1);
+      let $0 = user_derived(() => selected() && !get(readOnly));
+      ResizeHandles(node_3, {
+        get visible() {
+          return get($0);
+        },
+        onresize: (event2, handle) => $$props.onresizestart?.(event2, $$props.node, handle)
       });
     }
     reset(div);
@@ -10439,8 +10421,8 @@ ${component_stack}
 
   // src/webview/canvas/nodes/NoteNode.svelte
   var root9 = from_html(`<div class="vz-note-body editing"><textarea class="vz-inline-textarea vz-note-textarea" placeholder="Write architecture notes, constraints, or implementation guidance\u2026" aria-label="Note text"></textarea></div>`);
-  var root_17 = from_html(`<div class="vz-note-text"> </div>`);
-  var root_26 = from_html(`<div class="vz-note-placeholder">Double-click to add note text</div>`);
+  var root_16 = from_html(`<div class="vz-note-text"> </div>`);
+  var root_25 = from_html(`<div class="vz-note-placeholder">Double-click to add note text</div>`);
   var root_35 = from_html(`<div class="vz-note-body"><!></div>`);
   var root_45 = from_html(`<div role="button"><!> <!> <!> <!></div>`);
   function NoteNode($$anchor, $$props) {
@@ -10491,13 +10473,13 @@ ${component_stack}
         var node_3 = child(div_2);
         {
           var consequent_1 = ($$anchor3) => {
-            var div_3 = root_17();
+            var div_3 = root_16();
             var text2 = only_child(div_3, true);
             template_effect(() => set_text(text2, $$props.node.text));
             append($$anchor3, div_3);
           };
           var alternate = ($$anchor3) => {
-            var div_4 = root_26();
+            var div_4 = root_25();
             append($$anchor3, div_4);
           };
           if_block(node_3, ($$render) => {
@@ -10517,9 +10499,6 @@ ${component_stack}
     {
       let $0 = user_derived(() => selected() && !get(readOnly));
       ResizeHandles(node_4, {
-        get selected() {
-          return selected();
-        },
         get visible() {
           return get($0);
         },
@@ -10558,8 +10537,8 @@ ${component_stack}
 
   // src/webview/canvas/nodes/ShapeNode.svelte
   var root10 = from_svg(`<rect class="vz-shape-selection-box" x="1" y="1" rx="4"></rect>`);
-  var root_18 = from_html(`<div class="vz-shape-label editing"><input type="text" class="vz-shape-inline-input" aria-label="Shape label"/></div>`);
-  var root_27 = from_html(`<div role="presentation"><!></div>`);
+  var root_17 = from_html(`<div class="vz-shape-label editing"><input type="text" class="vz-shape-inline-input" aria-label="Shape label"/></div>`);
+  var root_26 = from_html(`<div role="presentation"><!></div>`);
   var root_36 = from_html(`<div role="button"><svg class="vz-shape-svg" aria-hidden="true"><path class="vz-shape-outline"></path><!></svg> <!> <!> <!></div>`);
   function ShapeNode($$anchor, $$props) {
     push($$props, true);
@@ -10607,7 +10586,7 @@ ${component_stack}
     var node_2 = sibling(svg, 2);
     {
       var consequent_1 = ($$anchor2) => {
-        var div_1 = root_18();
+        var div_1 = root_17();
         var input_1 = child(div_1);
         remove_input_defaults(input_1);
         bind_this(input_1, ($$value) => set(inputEl, $$value), () => get(inputEl));
@@ -10622,7 +10601,7 @@ ${component_stack}
         append($$anchor2, div_1);
       };
       var alternate = ($$anchor2) => {
-        var div_2 = root_27();
+        var div_2 = root_26();
         let classes_1;
         var node_3 = child(div_2);
         NodeHeader(node_3, {
@@ -10648,9 +10627,6 @@ ${component_stack}
     {
       let $0 = user_derived(() => selected() && !get(readOnly));
       ResizeHandles(node_4, {
-        get selected() {
-          return selected();
-        },
         get visible() {
           return get($0);
         },
@@ -10738,7 +10714,7 @@ ${component_stack}
 
   // src/webview/canvas/edges/EdgePath.svelte
   var root12 = from_svg(`<path></path><path class="vz-edge-hit-path"></path>`, 1);
-  var root_19 = from_svg(`<path></path>`);
+  var root_18 = from_svg(`<path></path>`);
   function EdgePath($$anchor, $$props) {
     push($$props, true);
     let isDashed = prop($$props, "isDashed", 3, false), selected = prop($$props, "selected", 3, false), interactive = prop($$props, "interactive", 3, true);
@@ -10764,7 +10740,7 @@ ${component_stack}
         append($$anchor2, fragment_1);
       };
       var alternate = ($$anchor2) => {
-        var path_2 = root_19();
+        var path_2 = root_18();
         let classes_1;
         template_effect(() => {
           classes_1 = set_class(path_2, 0, "vz-edge-line", null, classes_1, { dashed: isDashed() });
@@ -10845,7 +10821,7 @@ ${component_stack}
 
   // src/webview/canvas/edges/EdgeLabel.svelte
   var root14 = from_html(`<div class="vz-edge-inline-editor"><input type="text" class="vz-edge-label-input" aria-label="Relation label"/></div>`);
-  var root_110 = from_html(`<div role="button" tabindex="-1"><span> </span></div>`);
+  var root_19 = from_html(`<div role="button" tabindex="-1"><span> </span></div>`);
   function EdgeLabel($$anchor, $$props) {
     push($$props, true);
     let selected = prop($$props, "selected", 3, false), editing = prop($$props, "editing", 3, false), draft = prop($$props, "draft", 3, ""), maxWidth = prop($$props, "maxWidth", 3, 220), align = prop($$props, "align", 3, "center"), frameLabel = prop($$props, "frameLabel", 3, false);
@@ -10885,7 +10861,7 @@ ${component_stack}
         append($$anchor2, div);
       };
       var consequent_1 = ($$anchor2) => {
-        var div_1 = root_110();
+        var div_1 = root_19();
         let classes;
         var span = child(div_1);
         var text2 = only_child(span, true);
@@ -10911,7 +10887,7 @@ ${component_stack}
 
   // src/webview/canvas/edges/MultiplicityTag.svelte
   var root15 = from_html(`<div class="vz-edge-inline-editor vz-mult-inline-editor"><input type="text" class="vz-edge-label-input" aria-label="Multiplicity" placeholder="1, *, 0..1"/></div>`);
-  var root_111 = from_html(`<div role="button" tabindex="-1"> </div>`);
+  var root_110 = from_html(`<div role="button" tabindex="-1"> </div>`);
   function MultiplicityTag($$anchor, $$props) {
     push($$props, true);
     let selected = prop($$props, "selected", 3, false), editing = prop($$props, "editing", 3, false), draft = prop($$props, "draft", 3, "");
@@ -10938,7 +10914,7 @@ ${component_stack}
         append($$anchor2, div);
       };
       var consequent_1 = ($$anchor2) => {
-        var div_1 = root_111();
+        var div_1 = root_110();
         let classes;
         var text_1 = only_child(div_1, true);
         template_effect(() => {
@@ -11036,8 +11012,8 @@ ${component_stack}
 
   // src/webview/canvas/CanvasViewport.svelte
   var root16 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`);
-  var root_112 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`);
-  var root_28 = from_svg(`<line class="vz-gesture-line"></line>`);
+  var root_111 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`);
+  var root_27 = from_svg(`<line class="vz-gesture-line"></line>`);
   var root_37 = from_svg(`<circle class="vz-endpoint-handle" r="9" role="presentation"></circle><circle class="vz-endpoint-handle" r="9" role="presentation"></circle>`, 1);
   var root_46 = from_html(`<!> <!> <!>`, 1);
   var root_54 = from_svg(`<rect class="vz-marquee-box"></rect>`);
@@ -12439,7 +12415,7 @@ ${component_stack}
         var node_7 = child(g_1);
         {
           var consequent_6 = ($$anchor3) => {
-            var line = root_28();
+            var line = root_27();
             template_effect(() => {
               set_attribute2(line, "x1", get(gesture).startPoint.x);
               set_attribute2(line, "y1", get(gesture).startPoint.y);
@@ -12921,12 +12897,12 @@ ${component_stack}
             append($$anchor3, polygon);
           };
           var consequent_1 = ($$anchor3) => {
-            var circle = root_113();
+            var circle = root_112();
             template_effect(() => set_attribute2(circle, "fill", get(v).startFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
             append($$anchor3, circle);
           };
           var consequent_2 = ($$anchor3) => {
-            var rect_1 = root_29();
+            var rect_1 = root_28();
             template_effect(() => set_attribute2(rect_1, "fill", get(v).startFill === "filled" ? "currentColor" : "var(--vscode-editor-background, #1e1e1e)"));
             append($$anchor3, rect_1);
           };
@@ -13044,8 +13020,8 @@ ${component_stack}
     append($$anchor, svg);
   };
   var root18 = from_svg(`<polygon points="1,8 3.5,5.5 6,8 3.5,10.5" stroke-width="1.2"></polygon>`);
-  var root_113 = from_svg(`<circle cx="3.5" cy="8" r="2.5" stroke-width="1.2"></circle>`);
-  var root_29 = from_svg(`<rect x="1" y="5.5" width="5" height="5" stroke-width="1.2"></rect>`);
+  var root_112 = from_svg(`<circle cx="3.5" cy="8" r="2.5" stroke-width="1.2"></circle>`);
+  var root_28 = from_svg(`<rect x="1" y="5.5" width="5" height="5" stroke-width="1.2"></rect>`);
   var root_38 = from_svg(`<polygon points="6,5 1,8 6,11" stroke-width="1.2"></polygon>`);
   var root_47 = from_svg(`<path d="M5 5.5 L1.5 8 L5 10.5" stroke-width="1.3"></path>`);
   var root_55 = from_svg(`<polygon points="10,8 12.5,5.5 15,8 12.5,10.5" stroke-width="1.2"></polygon>`);
@@ -13072,7 +13048,7 @@ ${component_stack}
   var root_262 = from_html(`<button type="button"><span class="vz-outline-icon" aria-hidden="true"><!></span> <!></button>`);
   var root_272 = from_html(`<button type="button" class="vz-add-dropdown-item" role="menuitem"><span> </span> <kbd class="vz-kbd"> </kbd></button>`);
   var root_282 = from_html(`<button type="button" class="vz-add-dropdown-item" role="menuitem"><span> </span></button>`);
-  var root_292 = from_html(`<div class="vz-add-dropdown" role="menu"><!> <div class="vz-context-divider"></div> <div class="vz-dropdown-section-label">Shapes</div> <!></div>`);
+  var root_29 = from_html(`<div class="vz-add-dropdown" role="menu"><!> <div class="vz-context-divider"></div> <div class="vz-dropdown-section-label">Shapes</div> <!></div>`);
   var root_30 = from_html(`<div class="vz-add-dropdown-wrap"><button type="button" class="vz-plus-btn" title="Add New UML Element" aria-label="Add New UML Element">\uFF0B</button> <!></div>`);
   var root_31 = from_html(`No elements yet. Click <strong>\uFF0B</strong> or right-click here to add one.`, 1);
   var root_322 = from_html(`<div class="vz-empty-hint"><!></div>`);
@@ -13362,7 +13338,7 @@ ${component_stack}
         var node_9 = sibling(button_1, 2);
         {
           var consequent_22 = ($$anchor3) => {
-            var div_3 = root_292();
+            var div_3 = root_29();
             var node_10 = child(div_3);
             each(node_10, 17, () => umlCreationOptions, (opt) => opt.kind, ($$anchor4, opt) => {
               var button_2 = root_272();
@@ -13479,7 +13455,7 @@ ${component_stack}
 
   // src/webview/ui/input/Select.svelte
   var root19 = from_html(`<span class="vz-ui-select-check svelte-1ajz7f5" aria-hidden="true">\u2713</span>`);
-  var root_114 = from_html(`<button type="button" role="option"><span> </span> <!></button>`);
+  var root_113 = from_html(`<button type="button" role="option"><span> </span> <!></button>`);
   var root_210 = from_html(`<div class="vz-ui-select-backdrop svelte-1ajz7f5"></div> <div class="vz-ui-select-menu svelte-1ajz7f5" role="listbox"></div>`, 1);
   var root_39 = from_html(`<div class="vz-ui-select svelte-1ajz7f5" data-vz-select=""><button type="button" aria-haspopup="listbox"><span> </span> <span class="vz-ui-select-chevron svelte-1ajz7f5" aria-hidden="true">\u25BE</span></button> <!></div>`);
   function Select($$anchor, $$props) {
@@ -13601,7 +13577,7 @@ ${component_stack}
         var div_1 = first_child(fragment);
         var div_2 = sibling(div_1, 2);
         each(div_2, 23, () => $$props.options, (option) => option.value, ($$anchor3, option, index2) => {
-          var button_1 = root_114();
+          var button_1 = root_113();
           let classes_2;
           var span_1 = child(button_1);
           var text_1 = only_child(span_1, true);
@@ -13664,7 +13640,7 @@ ${component_stack}
 
   // src/webview/sidebar/inspector/DocumentInspector.svelte
   var root20 = from_html(`<div class="vz-migration-banner vz-compatibility-banner"><div class="vz-migration-header"><span class="vz-migration-title">Compatibility Warning</span></div> <p class="vz-migration-text"> </p> <button type="button" class="vz-btn vz-btn-primary vz-migration-btn">Update</button></div>`);
-  var root_115 = from_html(`<div class="vz-migration-banner"><div class="vz-migration-header"><span class="vz-migration-title">Update Available</span></div> <p class="vz-migration-text"> </p> <button type="button" class="vz-btn vz-btn-primary vz-migration-btn">Migrate Document</button></div>`);
+  var root_114 = from_html(`<div class="vz-migration-banner"><div class="vz-migration-header"><span class="vz-migration-title">Update Available</span></div> <p class="vz-migration-text"> </p> <button type="button" class="vz-btn vz-btn-primary vz-migration-btn">Migrate Document</button></div>`);
   var root_211 = from_html(`<label class="vz-field"><span class="vz-field-label">Title</span> <input type="text" class="vz-input"/></label> <label class="vz-field"><span class="vz-field-label">Description</span> <textarea class="vz-textarea" rows="4" placeholder="Describe the purpose of this architecture model\u2026"></textarea></label> <div class="vz-field"><span class="vz-field-label">Default Routing</span> <!></div>`, 1);
   var root_310 = from_html(`<div class="vz-sidebar-header"><span class="vz-sidebar-title">UML Document</span></div> <div class="vz-inspector-body"><!> <!></div>`, 1);
   function DocumentInspector($$anchor, $$props) {
@@ -13686,7 +13662,7 @@ ${component_stack}
       };
       var d = user_derived(() => get(doc) && isNewerVersionDocument(get(doc)));
       var consequent_1 = ($$anchor2) => {
-        var div_2 = root_115();
+        var div_2 = root_114();
         var p_1 = sibling(child(div_2), 2);
         var text_1 = only_child(p_1);
         var button_1 = sibling(p_1, 2);
@@ -13762,7 +13738,7 @@ ${component_stack}
 
   // src/webview/sidebar/inspector/EdgeInspector.svelte
   var root21 = from_html(`<div class="vz-field"><span class="vz-field-label">Fill</span> <!></div>`);
-  var root_116 = from_html(`<div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label"> </span></div> <label class="vz-field"><span class="vz-field-label">Multiplicity (optional)</span> <input type="text" class="vz-input" placeholder="e.g. 1, *, 1..5, 2..*"/></label> <div class="vz-field-grid"><div class="vz-field"><span class="vz-field-label">Shape</span> <!></div> <!></div></div>`);
+  var root_115 = from_html(`<div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label"> </span></div> <label class="vz-field"><span class="vz-field-label">Multiplicity (optional)</span> <input type="text" class="vz-input" placeholder="e.g. 1, *, 1..5, 2..*"/></label> <div class="vz-field-grid"><div class="vz-field"><span class="vz-field-label">Shape</span> <!></div> <!></div></div>`);
   var root_212 = from_html(`<div class="vz-sidebar-header"><span class="vz-sidebar-title"> </span></div> <div class="vz-inspector-body"><div class="vz-field"><span class="vz-field-label">Semantic Relation</span> <!></div> <label class="vz-field"><span class="vz-field-label">Label</span> <input type="text" class="vz-input" placeholder="e.g. belongs to, uses"/></label> <button type="button" class="vz-btn">\u21C4 Switch Direction</button> <div class="vz-field-grid"><div class="vz-field"><span class="vz-field-label">Line Style</span> <!></div> <div class="vz-field"><span class="vz-field-label">Routing</span> <!></div></div> <!></div>`, 1);
   function EdgeInspector($$anchor, $$props) {
     push($$props, true);
@@ -13867,7 +13843,7 @@ ${component_stack}
       const currentDecoration = user_derived(() => $$props.selectedEdge.visual?.[endKey] ?? { shape: "none" });
       const shapeDescriptor = user_derived(() => endpointShapes.find((shape) => shape.kind === get(currentDecoration).shape));
       const currentMultiplicity = user_derived(() => endKey === "start" ? $$props.selectedEdge.source.multiplicity ?? "" : $$props.selectedEdge.target.multiplicity ?? "");
-      var div_6 = root_116();
+      var div_6 = root_115();
       var div_7 = sibling(child(div_6), 2);
       var span_1 = child(div_7);
       var text_1 = only_child(span_1, true);
@@ -13982,7 +13958,7 @@ ${component_stack}
         append($$anchor2, svg);
       };
       var alternate = ($$anchor2) => {
-        var svg_1 = root_117();
+        var svg_1 = root_116();
         append($$anchor2, svg_1);
       };
       if_block(node, ($$render) => {
@@ -13993,7 +13969,7 @@ ${component_stack}
     append($$anchor, fragment);
   };
   var root22 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`);
-  var root_117 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`);
+  var root_116 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`);
   var root_213 = from_html(`<div class="vz-warning-box">Unsupported node kind <code> </code>. Shown in non-destructive read-only fallback mode.</div>`);
   var root_311 = from_html(`<div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label">Note Text</span></div> <textarea class="vz-textarea" rows="6" placeholder="Write architecture notes, constraints, or implementation guidance\u2026"></textarea></div>`);
   var root_48 = from_html(`<div class="vz-field"><span class="vz-field-label">Shape Geometry</span> <!></div>`);
@@ -14490,12 +14466,12 @@ ${component_stack}
 
   // src/webview/App.svelte
   var root28 = from_html(`<div class="vz-main-split"><!> <!></div>`);
-  var root_118 = from_html(`<main class="vz-root" aria-label="Vizion Visual Architecture Editor"><!> <!> <!> <!> <!></main>`);
+  var root_117 = from_html(`<main class="vz-root" aria-label="Vizion Visual Architecture Editor"><!> <!> <!> <!> <!></main>`);
   function App($$anchor, $$props) {
     push($$props, true);
     let initialKind2 = prop($$props, "initialKind", 3, "uml");
     const store = new VizionWebviewStore(initialKind2());
-    var main = root_118();
+    var main = root_117();
     var node = child(main);
     {
       var consequent = ($$anchor2) => {
