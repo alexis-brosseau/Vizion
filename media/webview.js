@@ -9104,7 +9104,7 @@ ${component_stack}
         const editedName = draft?.name ?? node.name ?? "";
         const lineCount = Math.max(1, estimateNoteLineCount(editedText, width));
         const nameLines = estimateNoteLineCount(editedName, width);
-        contentHeight = 52 + Math.max(0, nameLines - 1) * 16 + 20 + lineCount * 18 + 6;
+        contentHeight = 52 + Math.max(0, nameLines - 1) * 16 + 20 + lineCount * 18 + 26;
       } else {
         const draftAttrsRows = draft?.attributes?.split("\n").length;
         const draftOpsRows = draft?.operations?.split("\n").length;
@@ -10420,7 +10420,7 @@ ${component_stack}
   delegate(["pointerdown", "contextmenu", "dblclick"]);
 
   // src/webview/canvas/nodes/NoteNode.svelte
-  var root9 = from_html(`<div class="vz-note-body editing"><textarea class="vz-inline-textarea vz-note-textarea" placeholder="Write architecture notes, constraints, or implementation guidance\u2026" aria-label="Note text"></textarea></div>`);
+  var root9 = from_html(`<div class="vz-note-body editing"><div class="vz-inline-sec-hdr"><span>Content</span></div> <textarea class="vz-inline-textarea vz-note-textarea" placeholder="Write architecture notes, constraints, or implementation guidance\u2026" aria-label="Note content"></textarea></div>`);
   var root_16 = from_html(`<div class="vz-note-text"> </div>`);
   var root_25 = from_html(`<div class="vz-note-placeholder">Double-click to add note text</div>`);
   var root_35 = from_html(`<div class="vz-note-body"><!></div>`);
@@ -10457,7 +10457,7 @@ ${component_stack}
     {
       var consequent = ($$anchor2) => {
         var div_1 = root9();
-        var textarea = child(div_1);
+        var textarea = sibling(child(div_1), 2);
         remove_textarea_child(textarea);
         reset(div_1);
         template_effect(() => set_value(textarea, get(editingState).text));
@@ -13971,7 +13971,7 @@ ${component_stack}
   var root22 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`);
   var root_116 = from_svg(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`);
   var root_213 = from_html(`<div class="vz-warning-box">Unsupported node kind <code> </code>. Shown in non-destructive read-only fallback mode.</div>`);
-  var root_311 = from_html(`<div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label">Note Text</span></div> <textarea class="vz-textarea" rows="6" placeholder="Write architecture notes, constraints, or implementation guidance\u2026"></textarea></div>`);
+  var root_311 = from_html(`<div class="vz-inspector-section"><div class="vz-section-divider"></div> <div class="vz-section-header"><span class="vz-field-label">Content</span></div> <textarea class="vz-textarea" rows="6" placeholder="Write architecture notes, constraints, or implementation guidance\u2026"></textarea></div>`);
   var root_48 = from_html(`<div class="vz-field"><span class="vz-field-label">Shape Geometry</span> <!></div>`);
   var root_56 = from_html(`<div class="vz-field"><span class="vz-field-label">Frame Border</span> <!></div>`);
   var root_65 = from_html(`<textarea class="vz-textarea vz-inspector-members-textarea" data-field="inspector-attributes" aria-label="Attributes" placeholder="+ name: type\\n- secret: number"></textarea>`);

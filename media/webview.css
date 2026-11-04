@@ -317,6 +317,7 @@ select:disabled {
   overflow: hidden;
   outline: none;
   background-color: var(--vz-bg);
+  user-select: none;
 }
 .vz-viewport.space-grab,
 .vz-viewport.space-grab .vz-uml-node {
@@ -339,11 +340,47 @@ select:disabled {
   align-items: stretch;
   gap: 0;
   padding: 0;
-  border: 1px solid var(--vz-widget-border);
+  border: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, rgba(128, 128, 128, 0.25)));
   border-radius: var(--vz-radius-md);
-  background: var(--vz-widget-bg);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  background: var(--vscode-sideBar-background, var(--vscode-editorWidget-background));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   overflow: hidden;
+}
+.vz-zoom-pill-btn,
+.vz-zoom-pill-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 22px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--vscode-editor-foreground);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.vz-zoom-pill-btn:first-child {
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+.vz-zoom-pill-btn:last-child {
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+.vz-zoom-pill-label {
+  font-weight: 600;
+  min-width: 52px;
+  text-align: center;
+  border-left: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, rgba(128, 128, 128, 0.25)));
+  border-right: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, rgba(128, 128, 128, 0.25)));
+}
+.vz-zoom-pill-btn:hover,
+.vz-zoom-pill-label:hover {
+  background-color: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.2));
 }
 .vz-html-frames,
 .vz-html-world {
@@ -407,7 +444,7 @@ select:disabled {
   font-size: var(--vz-font-size-sm);
   line-height: 1.4;
   white-space: nowrap;
-  cursor: text;
+  cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
 }
 .vz-edge-label-group.frame {
@@ -418,6 +455,7 @@ select:disabled {
 .vz-edge-label-group.selected,
 .vz-edge-label-group.frame.selected {
   border-color: var(--vz-accent);
+  cursor: text;
 }
 .vz-edge-inline-editor {
   position: absolute;
@@ -516,6 +554,7 @@ select:disabled {
 }
 .vz-note-body.editing {
   display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
@@ -1200,117 +1239,6 @@ body,
   line-height: 1.4;
 }
 
-/* src/webview/styles/canvas-legacy.css */
-.vz-viewport {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  background-color: var(--vscode-editor-background);
-  user-select: none;
-}
-.vz-viewport.space-grab,
-.vz-viewport.space-grab .vz-uml-node {
-  cursor: grab !important;
-}
-.vz-viewport.space-grabbing,
-.vz-viewport.space-grabbing .vz-uml-node {
-  cursor: grabbing !important;
-}
-.vz-floating-zoom {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 30;
-  display: inline-flex;
-  align-items: stretch;
-  padding: 0;
-  background-color: var(--vscode-editor-background);
-  background-color: color-mix(in srgb, var(--vscode-editor-background) 85%, #000000 15%);
-  border: 1px solid var(--vscode-panel-border, var(--vscode-focusBorder, rgba(128, 128, 128, 0.4)));
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
-}
-.vz-zoom-pill-btn,
-.vz-zoom-pill-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  min-height: 22px;
-  padding: 0 9px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: var(--vscode-editor-foreground);
-  font-family: inherit;
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-}
-.vz-zoom-pill-btn:first-child {
-  border-top-left-radius: 6px;
-  border-bottom-left-radius: 6px;
-}
-.vz-zoom-pill-btn:last-child {
-  border-top-right-radius: 6px;
-  border-bottom-right-radius: 6px;
-}
-.vz-zoom-pill-label {
-  font-weight: 600;
-  min-width: 52px;
-  text-align: center;
-  border-left: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.25));
-  border-right: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.25));
-}
-.vz-zoom-pill-btn:hover,
-.vz-zoom-pill-label:hover {
-  background-color: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.2));
-}
-.vz-svg-layer {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-.vz-svg-relations,
-.vz-svg-overlay {
-  z-index: 5;
-  pointer-events: none;
-}
-.vz-svg-relations .vz-edge-group,
-.vz-svg-relations .vz-edge-hit,
-.vz-svg-relations .vz-edge-label-group,
-.vz-svg-relations .vz-edge-mult-group,
-.vz-svg-relations .vz-endpoint-picker-target,
-.vz-svg-overlay .vz-edge-group,
-.vz-svg-overlay .vz-edge-hit,
-.vz-svg-overlay .vz-edge-label-group,
-.vz-svg-overlay .vz-edge-mult-group,
-.vz-svg-overlay .vz-endpoint-picker-target {
-  pointer-events: all;
-}
-.vz-svg-foreground {
-  z-index: 15;
-  pointer-events: none;
-}
-.vz-svg-foreground .vz-endpoint-picker-target {
-  pointer-events: all;
-}
-.vz-edge-label-group,
-.vz-edge-mult-group {
-  cursor: text;
-}
-.vz-html-world {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 10;
-  transform-origin: 0 0;
-  pointer-events: none;
-}
-
 /* src/webview/styles/nodes.css */
 .vz-uml-node {
   position: absolute;
@@ -1344,14 +1272,6 @@ body,
 .vz-uml-note-body .vz-inline-textarea {
   background-color: var(--vscode-textBlockQuote-background, var(--vscode-editorWidget-background)) !important;
   color: var(--vscode-editor-foreground);
-}
-.vz-html-frames {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 3;
-  transform-origin: 0 0;
-  pointer-events: none;
 }
 .vz-uml-node.kind-frame {
   background-color: transparent !important;

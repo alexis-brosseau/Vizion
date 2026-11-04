@@ -142,7 +142,7 @@
       <div class="vz-inspector-section">
         <div class="vz-section-divider"></div>
         <div class="vz-section-header">
-          <span class="vz-field-label">Note Text</span>
+          <span class="vz-field-label">Content</span>
         </div>
         <textarea
           class="vz-textarea"

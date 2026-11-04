@@ -38,15 +38,6 @@
   color: var(--vscode-editor-foreground);
 }
 
-.vz-html-frames {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 3;
-  transform-origin: 0 0;
-  pointer-events: none;
-}
-
 .vz-uml-node.kind-frame {
   background-color: transparent !important;
   border: 3px solid var(--vscode-panel-border, var(--vscode-editor-foreground));

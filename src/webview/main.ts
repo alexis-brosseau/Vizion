@@ -7,7 +7,6 @@ import './styles/canvas.css';
 import './styles/legacy-base.css';
 import './styles/sidebar.css';
 import './styles/menus.css';
-import './styles/canvas-legacy.css';
 import './styles/nodes.css';
 import './styles/endpoints.css';
 import './styles/visibility.css';

@@ -61,11 +61,12 @@
 
   {#if editingState}
     <div class="vz-note-body editing">
+      <div class="vz-inline-sec-hdr"><span>Content</span></div>
       <textarea
         class="vz-inline-textarea vz-note-textarea"
         placeholder="Write architecture notes, constraints, or implementation guidance…"
         value={editingState.text}
-        aria-label="Note text"
+        aria-label="Note content"
         oninput={(event) => store.inlineEdit.updateNodeDraft({ text: event.currentTarget.value })}
         onblur={() => store.inlineEdit.commitNode(node)}
         onkeydown={(event) => {

@@ -21,6 +21,7 @@
   overflow: hidden;
   outline: none;
   background-color: var(--vz-bg);
+  user-select: none;
 }
 
 .vz-viewport.space-grab,
@@ -47,11 +48,52 @@
   align-items: stretch;
   gap: 0;
   padding: 0;
-  border: 1px solid var(--vz-widget-border);
+  border: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, rgba(128, 128, 128, 0.25)));
   border-radius: var(--vz-radius-md);
-  background: var(--vz-widget-bg);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  background: var(--vscode-sideBar-background, var(--vscode-editorWidget-background));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   overflow: hidden;
+}
+
+.vz-zoom-pill-btn,
+.vz-zoom-pill-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 22px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--vscode-editor-foreground);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.vz-zoom-pill-btn:first-child {
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+.vz-zoom-pill-btn:last-child {
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+.vz-zoom-pill-label {
+  font-weight: 600;
+  min-width: 52px;
+  text-align: center;
+  border-left: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, rgba(128, 128, 128, 0.25)));
+  border-right: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, rgba(128, 128, 128, 0.25)));
+}
+
+.vz-zoom-pill-btn:hover,
+.vz-zoom-pill-label:hover {
+  background-color: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.2));
 }
 
 .vz-html-frames,
@@ -130,7 +172,7 @@
   font-size: var(--vz-font-size-sm);
   line-height: 1.4;
   white-space: nowrap;
-  cursor: text;
+  cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
 }
 
@@ -143,6 +185,7 @@
 .vz-edge-label-group.selected,
 .vz-edge-label-group.frame.selected {
   border-color: var(--vz-accent);
+  cursor: text;
 }
 
 .vz-edge-inline-editor {
@@ -257,6 +300,7 @@
 
 .vz-note-body.editing {
   display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }

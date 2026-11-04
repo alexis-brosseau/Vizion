@@ -63,7 +63,7 @@ export function computeNodeMinSize(
       const editedName = draft?.name ?? node.name ?? '';
       const lineCount = Math.max(1, estimateNoteLineCount(editedText, width));
       const nameLines = estimateNoteLineCount(editedName, width);
-      contentHeight = 52 + Math.max(0, nameLines - 1) * 16 + 20 + lineCount * 18 + 6;
+      contentHeight = 52 + Math.max(0, nameLines - 1) * 16 + 20 + lineCount * 18 + 26;
     } else {
       const draftAttrsRows = draft?.attributes?.split('\n').length;
       const draftOpsRows = draft?.operations?.split('\n').length;
