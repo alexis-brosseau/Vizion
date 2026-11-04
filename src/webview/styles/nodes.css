@@ -158,13 +158,6 @@
   color: var(--vscode-editor-foreground);
 }
 
-.vz-empty-hint {
-  font-size: 11px;
-  color: var(--vscode-descriptionForeground);
-  font-style: italic;
-  padding: 4px 0;
-}
-
 .vz-uml-node.kind-shape {
   background: transparent;
   border: none;

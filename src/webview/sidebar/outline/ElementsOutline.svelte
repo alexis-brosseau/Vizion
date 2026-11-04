@@ -436,7 +436,7 @@
       {#if store.outlineSearchQuery.trim()}
         No matching elements for "{store.outlineSearchQuery}".
       {:else}
-        No elements yet. Click <strong>＋</strong> or right-click here to add one.
+        No elements yet.
       {/if}
     </div>
   {:else}

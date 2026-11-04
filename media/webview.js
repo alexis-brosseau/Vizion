@@ -7958,6 +7958,10 @@ ${component_stack}
     version: "0.3.0",
     publisher: "Vizionary",
     license: "MIT",
+    repository: {
+      type: "git",
+      url: "https://github.com/alexis-brosseau/Vizion.git"
+    },
     engines: {
       vscode: "^1.90.0"
     },
@@ -13055,11 +13059,10 @@ ${component_stack}
   var root_282 = from_html(`<button type="button" class="vz-add-dropdown-item" role="menuitem"><span> </span></button>`);
   var root_29 = from_html(`<div class="vz-add-dropdown" role="menu"><!> <div class="vz-context-divider"></div> <div class="vz-dropdown-section-label">Shapes</div> <!></div>`);
   var root_30 = from_html(`<div class="vz-add-dropdown-wrap"><button type="button" class="vz-plus-btn" title="Add New UML Element" aria-label="Add New UML Element">\uFF0B</button> <!></div>`);
-  var root_31 = from_html(`No elements yet. Click <strong>\uFF0B</strong> or right-click here to add one.`, 1);
-  var root_322 = from_html(`<div class="vz-empty-hint"><!></div>`);
-  var root_332 = from_html(`<li role="option"><!></li>`);
-  var root_342 = from_html(`<ul class="vz-outline-list" role="listbox" aria-label="Diagram elements"></ul>`);
-  var root_352 = from_html(`<section class="vz-outline-section" aria-label="Elements List"><div class="vz-outline-header"><span class="vz-sidebar-title"> </span> <!></div> <div class="vz-outline-search-row"><input type="search" class="vz-input" placeholder="Search" aria-label="Search elements"/></div> <!></section>  <div class="vz-section-splitter" role="separator" aria-orientation="horizontal" aria-label="Resize Elements and Inspector sections" tabindex="0"></div>`, 1);
+  var root_31 = from_html(`<div class="vz-empty-hint"><!></div>`);
+  var root_322 = from_html(`<li role="option"><!></li>`);
+  var root_332 = from_html(`<ul class="vz-outline-list" role="listbox" aria-label="Diagram elements"></ul>`);
+  var root_342 = from_html(`<section class="vz-outline-section" aria-label="Elements List"><div class="vz-outline-header"><span class="vz-sidebar-title"> </span> <!></div> <div class="vz-outline-search-row"><input type="search" class="vz-input" placeholder="Search" aria-label="Search elements"/></div> <!></section>  <div class="vz-section-splitter" role="separator" aria-orientation="horizontal" aria-label="Resize Elements and Inspector sections" tabindex="0"></div>`, 1);
   function ElementsOutline($$anchor, $$props) {
     push($$props, true);
     const outlineItemButton = ($$anchor2, item = noop) => {
@@ -13326,7 +13329,7 @@ ${component_stack}
         set(resizingVertical, null);
       }
     }
-    var fragment_6 = root_352();
+    var fragment_6 = root_342();
     event("pointerdown", $window, handleWindowPointerDown);
     event("pointermove", $window, handleWindowPointerMove);
     event("pointerup", $window, handleWindowPointerUp);
@@ -13403,7 +13406,7 @@ ${component_stack}
     var node_12 = sibling(div_4, 2);
     {
       var consequent_25 = ($$anchor2) => {
-        var div_5 = root_322();
+        var div_5 = root_31();
         var node_13 = child(div_5);
         {
           var consequent_24 = ($$anchor3) => {
@@ -13413,9 +13416,8 @@ ${component_stack}
           };
           var d = user_derived(() => store().outlineSearchQuery.trim());
           var alternate_3 = ($$anchor3) => {
-            var fragment_8 = root_31();
-            next(2);
-            append($$anchor3, fragment_8);
+            var text_10 = text("No elements yet.");
+            append($$anchor3, text_10);
           };
           if_block(node_13, ($$render) => {
             if (get(d)) $$render(consequent_24);
@@ -13426,9 +13428,9 @@ ${component_stack}
         append($$anchor2, div_5);
       };
       var alternate_4 = ($$anchor2) => {
-        var ul = root_342();
+        var ul = root_332();
         each(ul, 21, () => get(filteredItems), (item) => item.id, ($$anchor3, item) => {
-          var li = root_332();
+          var li = root_322();
           var node_14 = child(li);
           outlineItemButton(node_14, () => get(item));
           reset(li);

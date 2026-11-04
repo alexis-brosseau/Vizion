@@ -1237,6 +1237,7 @@ body,
   color: var(--vscode-descriptionForeground);
   font-size: 12px;
   line-height: 1.4;
+  text-align: center;
 }
 
 /* src/webview/styles/nodes.css */
@@ -1377,12 +1378,6 @@ body,
 .vz-contained-name {
   font-weight: 500;
   color: var(--vscode-editor-foreground);
-}
-.vz-empty-hint {
-  font-size: 11px;
-  color: var(--vscode-descriptionForeground);
-  font-style: italic;
-  padding: 4px 0;
 }
 .vz-uml-node.kind-shape {
   background: transparent;
