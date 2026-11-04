@@ -14,13 +14,19 @@ A visual UML editor for VS Code. Diagram classes, notes, frames and relationship
 
 ## Install
 
+1. Download `vizion-0.3.0.vsix` below.
+2. Open the Command Palette (**Ctrl+Shift+P**)
+3. Select **Extensions: Intall from VSIX...**
+4. Select `vizion-0.3.0.vsix`
+
+Or clone the project and run:
+
 ```bash
 npm ci
 npm run package
 code --install-extension vizion-0.3.0.vsix
 ```
 
-Or run from source with `npm run build`, press **F5**, and open `.vizion/example.viz`.
 
 ## Development
 
@@ -30,3 +36,5 @@ npm run check
 npm test
 npm run build
 ```
+
+Then press **F5**, and open `.vizion/example.viz`.
